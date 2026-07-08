@@ -80,7 +80,7 @@ function AddFood({ userId }: { userId: string }) {
       if (!est.is_food) { setAiMsg("That doesn't look like a food — try rephrasing."); return; }
       // save as an AI food owned by this user, then open the quantity sheet
       const { data: food, error } = await supabase.from("foods").insert({
-        name: est.name, source: "ai", owner_id: userId,
+        name: est.name, source: "ai", owner_id: userId, is_liquid: !!est.is_liquid,
         kcal: est.kcal, protein_g: est.protein_g, carbs_g: est.carbs_g,
         fat_g: est.fat_g, fiber_g: est.fiber_g,
         sodium_mg: est.sodium_mg ?? null, calcium_mg: est.calcium_mg ?? null, iron_mg: est.iron_mg ?? null,
@@ -112,7 +112,7 @@ function AddFood({ userId }: { userId: string }) {
       const est = body.estimate;
       if (!est.is_food) { setPhotoMsg("Couldn't recognize a food in that photo — try again or search instead."); return; }
       const { data: food, error } = await supabase.from("foods").insert({
-        name: est.name, source: "ai", owner_id: userId,
+        name: est.name, source: "ai", owner_id: userId, is_liquid: !!est.is_liquid,
         kcal: est.kcal, protein_g: est.protein_g, carbs_g: est.carbs_g,
         fat_g: est.fat_g, fiber_g: est.fiber_g,
       }).select("*").single();

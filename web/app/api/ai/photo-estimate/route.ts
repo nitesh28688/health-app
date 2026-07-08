@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
       body: JSON.stringify({
         contents: [{
           parts: [
-            { text: "Identify the food in this photo and estimate its nutrition per 100 grams. If this isn't food, set is_food to false." },
+            { text: "Identify the food in this photo and estimate its nutrition per 100 grams. If this isn't food, set is_food to false. Set is_liquid to true if it's a drink/beverage/soup measured in ml rather than grams." },
             { inline_data: { mime_type: mimeType, data: base64 } },
           ],
         }],
@@ -52,11 +52,11 @@ export async function POST(req: NextRequest) {
           responseSchema: {
             type: "OBJECT",
             properties: {
-              is_food: { type: "BOOLEAN" }, name: { type: "STRING" },
+              is_food: { type: "BOOLEAN" }, name: { type: "STRING" }, is_liquid: { type: "BOOLEAN" },
               kcal: { type: "NUMBER" }, protein_g: { type: "NUMBER" },
               carbs_g: { type: "NUMBER" }, fat_g: { type: "NUMBER" }, fiber_g: { type: "NUMBER" },
             },
-            required: ["is_food", "name", "kcal", "protein_g", "carbs_g", "fat_g", "fiber_g"],
+            required: ["is_food", "name", "is_liquid", "kcal", "protein_g", "carbs_g", "fat_g", "fiber_g"],
           },
         },
       }),

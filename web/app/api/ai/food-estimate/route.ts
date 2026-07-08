@@ -46,7 +46,8 @@ export async function POST(req: NextRequest) {
 
   // 3. Gemini (REST, JSON mode — no SDK dependency)
   const prompt = `Estimate nutrition per 100 grams for this food (likely Indian cuisine): "${query}".
-Respond with realistic values. If the query is not a food, set "is_food" to false.`;
+Respond with realistic values. If the query is not a food, set "is_food" to false.
+Set "is_liquid" to true if this is a drink/beverage/soup that people would measure in ml rather than grams (tea, coffee, juice, milk, soda, soup, lassi, smoothie, shake). False for solid foods.`;
   const res = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${process.env.GEMINI_API_KEY}`,
     {
@@ -61,11 +62,12 @@ Respond with realistic values. If the query is not a food, set "is_food" to fals
             properties: {
               is_food: { type: "BOOLEAN" },
               name: { type: "STRING" },
+              is_liquid: { type: "BOOLEAN" },
               kcal: { type: "NUMBER" }, protein_g: { type: "NUMBER" },
               carbs_g: { type: "NUMBER" }, fat_g: { type: "NUMBER" }, fiber_g: { type: "NUMBER" },
               sodium_mg: { type: "NUMBER" }, calcium_mg: { type: "NUMBER" }, iron_mg: { type: "NUMBER" },
             },
-            required: ["is_food", "name", "kcal", "protein_g", "carbs_g", "fat_g", "fiber_g"],
+            required: ["is_food", "name", "is_liquid", "kcal", "protein_g", "carbs_g", "fat_g", "fiber_g"],
           },
         },
       }),
