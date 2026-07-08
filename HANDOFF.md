@@ -34,6 +34,7 @@ Architecture is FIXED. Read `docs/ARCHITECTURE.md` (why) and `docs/SONNET_GUIDEL
 - [x] Correct abbreviations (`Protein` vs `P`).
 - [x] AppShell padding `pb-36` to ensure buttons aren't hidden under bottom nav.
 - [x] Profile measurements: added waist & body fat logging, and hid menstrual cycle tracking for non-females.
+- [x] Food Logging UX: added unit multipliers (e.g. log 2 chapatis directly) and an edit pencil icon to modify existing diary logs.
 - [ ] Challenges UI (create/join/`get_challenge_progress` scoreboard — schema+RPC ready).
 - [ ] Badges (criteria map in app code → insert user_badges on qualifying events, 409 = earned; confetti).
 - [ ] AI daily suggestions (kind='daily_tip' in ai_suggestions).
