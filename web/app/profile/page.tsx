@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { AppShell } from "../AppShell";
 import { supabase } from "@/lib/supabase";
-import { bmr, tdee, ageFromBirthDate, todayLocal, ACTIVITY_FACTORS, bmi, bmiCategory } from "@/lib/nutrition";
+import { bmr, tdee, ageFromBirthDate, todayLocal, ACTIVITY_FACTORS, bmi, bmiCategory, DIET_PRESETS, macrosForTarget, type DietType } from "@/lib/nutrition";
 import type { Profile } from "@/lib/useUser";
 import { PhoneInput } from "@/lib/PhoneInput";
 import { PageSkeleton } from "@/lib/Skeleton";
@@ -35,6 +35,7 @@ function ProfileForm({ profile, setProfile, userId, email }: {
     share_diary: profile.share_diary,
     share_weight: profile.share_weight,
     track_cycle: profile.track_cycle ?? false,
+    diet_type: (profile.diet_type ?? "balanced") as DietType,
   });
   const [weight, setWeight] = useState("");
   const [waist, setWaist] = useState("");
@@ -85,14 +86,23 @@ function ProfileForm({ profile, setProfile, userId, email }: {
       bmr(w, h, ageFromBirthDate(f.birth_date), f.sex as "male" | "female" | "other"),
       f.activity_level);
     const kcal = goal === "lose" ? maintenance - 400 : goal === "gain" ? maintenance + 300 : maintenance;
-    setF((x) => ({
-      ...x,
-      target_kcal: String(kcal),
-      target_protein: String(Math.round(w * (goal === "gain" ? 1.8 : 1.6))), // g/kg bodyweight
-      target_fat: String(Math.round((kcal * 0.28) / 9)),
-      target_carbs: String(Math.round((kcal - w * (goal === "gain" ? 1.8 : 1.6) * 4 - kcal * 0.28) / 4)),
-    }));
+    const { proteinG, carbsG, fatG } = macrosForTarget(kcal, w, goal, f.diet_type);
+    setF((x) => ({ ...x, target_kcal: String(kcal), target_protein: String(proteinG), target_carbs: String(carbsG), target_fat: String(fatG) }));
     setSuggestedFor(goal === "lose" ? "Lose fat" : goal === "gain" ? "Gain muscle" : "Maintain");
+  }
+
+  // Editing calories directly (e.g. "I want a 1000 kcal deficit") re-derives
+  // protein/carbs/fat from the same diet-type ratios instead of leaving them
+  // stuck at whatever the last BMR-based suggestion happened to produce.
+  function onKcalChange(v: string) {
+    const kcalNum = parseFloat(v) || 0;
+    if (w > 0 && kcalNum > 0) {
+      const { proteinG, carbsG, fatG } = macrosForTarget(kcalNum, w, goal ?? "maintain", f.diet_type);
+      setF((x) => ({ ...x, target_kcal: v, target_protein: String(proteinG), target_carbs: String(carbsG), target_fat: String(fatG) }));
+    } else {
+      setF((x) => ({ ...x, target_kcal: v }));
+    }
+    setSuggestedFor(null);
   }
 
   async function save() {
@@ -114,6 +124,7 @@ function ProfileForm({ profile, setProfile, userId, email }: {
       share_diary: f.share_diary,
       share_weight: f.share_weight,
       track_cycle: f.track_cycle,
+      diet_type: f.diet_type,
     };
     const { data, error } = await supabase.from("profiles").update(patch).eq("id", userId).select().single();
     if (error) { setError(error.message); return; }
@@ -263,6 +274,25 @@ function ProfileForm({ profile, setProfile, userId, email }: {
             </button>
           ))}
         </div>
+        <div className="mb-3">
+          <label className={labelCls}>Diet style</label>
+          <select className={inputCls} value={f.diet_type}
+            onChange={(e) => {
+              const diet = e.target.value as DietType;
+              setF((x) => ({ ...x, diet_type: diet }));
+              // Re-split the current calorie target under the new ratios immediately —
+              // switching to keto shouldn't require re-typing the kcal number.
+              const kcalNum = parseFloat(f.target_kcal) || 0;
+              if (w > 0 && kcalNum > 0) {
+                const { proteinG, carbsG, fatG } = macrosForTarget(kcalNum, w, goal ?? "maintain", diet);
+                setF((x) => ({ ...x, diet_type: diet, target_protein: String(proteinG), target_carbs: String(carbsG), target_fat: String(fatG) }));
+              }
+            }}>
+            {(Object.keys(DIET_PRESETS) as DietType[]).map((d) => (
+              <option key={d} value={d}>{DIET_PRESETS[d].label}</option>
+            ))}
+          </select>
+        </div>
         <button onClick={suggest} disabled={!canSuggest || !goal}
           className="w-full rounded-xl border border-green-600 text-green-600 py-2.5 font-semibold text-sm disabled:opacity-40 mb-1">
           {goal ? "✨ Suggest targets from my stats" : "☝️ Pick a goal above first"}
@@ -278,10 +308,13 @@ function ProfileForm({ profile, setProfile, userId, email }: {
             <div key={k}>
               <label className={labelCls}>{label}</label>
               <input className={inputCls} inputMode="numeric" value={f[k]}
-                onChange={(e) => setF({ ...f, [k]: e.target.value })} />
+                onChange={(e) => k === "target_kcal" ? onKcalChange(e.target.value) : setF({ ...f, [k]: e.target.value })} />
             </div>
           ))}
         </div>
+        {w === 0 && (
+          <p className="text-xs text-neutral-400 mt-1">Add your weight above to auto-split calories into protein/carbs/fat as you type.</p>
+        )}
       </section>
 
       <section className="mt-8">

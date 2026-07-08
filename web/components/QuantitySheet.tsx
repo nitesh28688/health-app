@@ -19,6 +19,7 @@ export function QuantitySheet({
     name: string;
     brand?: string | null;
     kcal: number;
+    is_liquid?: boolean;
   };
   initialQtyGrams?: number;
   onClose: () => void;
@@ -27,6 +28,11 @@ export function QuantitySheet({
   const [servings, setServings] = useState<Serving[]>([]);
   const [unit, setUnit] = useState<"grams" | number>("grams");
   const [amount, setAmount] = useState(String(initialQtyGrams));
+  // Per-piece/per-serving weight, editable — a chapati isn't always 35g, a pani
+  // puri isn't always 15g. Defaults from the food_servings row but the user can
+  // override it just for this log entry without changing the shared default.
+  const [gramsEach, setGramsEach] = useState<string>("");
+  const baseUnitLabel = food.is_liquid ? "ml" : "grams";
 
   useEffect(() => {
     supabase
@@ -37,23 +43,24 @@ export function QuantitySheet({
       .then(({ data }) => {
         const svgs = (data as Serving[]) ?? [];
         setServings(svgs);
-        
+
         // If the initial quantity perfectly matches a serving size, select it automatically
         if (initialQtyGrams !== 100) {
           const match = svgs.find((s) => Math.abs(s.grams - initialQtyGrams) < 0.1);
           if (match) {
             setUnit(match.id);
             setAmount("1");
+            setGramsEach(String(match.grams));
           }
         }
       });
   }, [food.id, initialQtyGrams]);
 
   const amt = parseFloat(amount) || 0;
+  const gEach = parseFloat(gramsEach) || 0;
   let g = amt;
   if (unit !== "grams") {
-    const s = servings.find((s) => s.id === unit);
-    if (s) g = amt * s.grams;
+    g = amt * (gEach > 0 ? gEach : (servings.find((s) => s.id === unit)?.grams ?? 0));
   }
 
   return (
@@ -81,7 +88,7 @@ export function QuantitySheet({
                   : "border-neutral-300 dark:border-neutral-700"
               }`}
             >
-              Grams
+              {food.is_liquid ? "ml" : "Grams"}
             </button>
             {servings.map((s) => (
               <button
@@ -89,6 +96,7 @@ export function QuantitySheet({
                 onClick={() => {
                   setUnit(s.id);
                   setAmount(unit === s.id ? amount : "1");
+                  setGramsEach(String(s.grams));
                 }}
                 className={`rounded-full border px-3 py-2 text-sm font-medium ${
                   unit === s.id
@@ -102,6 +110,13 @@ export function QuantitySheet({
           </div>
         )}
 
+        {!servings.length && !food.is_liquid && (
+          <p className="text-xs text-neutral-400 mb-3">
+            No preset serving for this food yet — enter grams, or switch to
+            counting pieces below.
+          </p>
+        )}
+
         <div className="flex items-center gap-3">
           <input
             inputMode="decimal"
@@ -111,17 +126,43 @@ export function QuantitySheet({
           />
           <div className="flex flex-col">
             <span className="text-neutral-500 leading-tight">
-              {unit === "grams" ? "grams" : "servings"}
+              {unit === "grams" ? baseUnitLabel : "×"}
             </span>
-            {unit !== "grams" && g > 0 && (
-              <span className="text-xs text-neutral-400 font-medium">
-                = {Math.round(g)}g
+            {unit !== "grams" && (
+              <span className="text-xs text-neutral-400 font-medium flex items-center gap-1">
+                <input
+                  inputMode="decimal"
+                  value={gramsEach}
+                  onChange={(e) => setGramsEach(e.target.value)}
+                  className="w-12 rounded border border-neutral-300 dark:border-neutral-700 bg-transparent px-1 py-0.5 text-xs text-center"
+                />
+                g each = {Math.round(g)}g
               </span>
             )}
           </div>
           <div className="flex-1" />
           <p className="font-bold text-lg">{Math.round((Number(food.kcal) * g) / 100)} kcal</p>
         </div>
+
+        {!food.is_liquid && (
+          <button
+            onClick={() => {
+              if (unit === "grams") {
+                // Switch to counting pieces even when no preset serving exists —
+                // e.g. "I had 6 pani puri" without a seeded serving size yet.
+                setUnit(-1);
+                setAmount("1");
+                setGramsEach(String(g > 0 ? Math.round(g) : 100));
+              } else {
+                setUnit("grams");
+                setAmount(String(g > 0 ? Math.round(g) : 100));
+              }
+            }}
+            className="mt-2 text-xs text-neutral-400 underline"
+          >
+            {unit === "grams" ? "Count pieces instead →" : "← Back to weight"}
+          </button>
+        )}
 
         <button
           onClick={() => onSave(g)}

@@ -25,6 +25,7 @@ export interface Profile {
   phone: string | null;
   avatar_url: string | null;
   track_cycle: boolean;
+  diet_type: "balanced" | "high_protein" | "low_carb" | "keto" | "diabetic_friendly";
 }
 
 export function useUser() {

@@ -13,6 +13,7 @@ type Food = FoodNutrients & {
   name: string;
   source: string;
   brand?: string | null;
+  is_liquid?: boolean;
 };
 
 function AddFood({ userId }: { userId: string }) {

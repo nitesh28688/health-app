@@ -74,6 +74,31 @@ export function bmiCategory(v: number) {
   return "Obese";
 }
 
+/** Diet presets shape how "Suggest targets" splits calories into protein/carbs/fat.
+ *  Protein is set per kg bodyweight (drives satiety/muscle retention); fat is a % of
+ *  total kcal; carbs get whatever's left. This is what makes a 1000 kcal deficit
+ *  actually redistribute macros instead of just shrinking a generic 50/30/20 split. */
+export const DIET_PRESETS = {
+  balanced: { label: "Balanced", proteinPerKg: { lose: 1.6, maintain: 1.6, gain: 1.8 }, fatPctOfKcal: 0.28 },
+  high_protein: { label: "High Protein", proteinPerKg: { lose: 2.0, maintain: 1.8, gain: 2.2 }, fatPctOfKcal: 0.25 },
+  low_carb: { label: "Low Carb", proteinPerKg: { lose: 1.8, maintain: 1.7, gain: 1.9 }, fatPctOfKcal: 0.50 },
+  keto: { label: "Keto", proteinPerKg: { lose: 1.6, maintain: 1.6, gain: 1.7 }, fatPctOfKcal: 0.72 },
+  diabetic_friendly: { label: "Diabetic-friendly", proteinPerKg: { lose: 1.6, maintain: 1.6, gain: 1.7 }, fatPctOfKcal: 0.35 },
+} as const;
+
+export type DietType = keyof typeof DIET_PRESETS;
+
+/** Split a target kcal figure into protein/carbs/fat grams for a given goal + diet.
+ *  Protein is fixed by bodyweight first (the thing that actually matters for the
+ *  goal), fat is a % of kcal, carbs absorb whatever's left — never negative. */
+export function macrosForTarget(kcal: number, weightKg: number, goal: "lose" | "maintain" | "gain", diet: DietType) {
+  const preset = DIET_PRESETS[diet];
+  const proteinG = Math.round(weightKg * preset.proteinPerKg[goal]);
+  const fatG = Math.round((kcal * preset.fatPctOfKcal) / 9);
+  const carbsG = Math.max(0, Math.round((kcal - proteinG * 4 - fatG * 9) / 4));
+  return { proteinG, carbsG, fatG };
+}
+
 /** Workout calorie estimate: MET formula. */
 export function kcalBurned(met: number, weightKg: number, durationMin: number) {
   return Math.round(met * weightKg * (durationMin / 60));
