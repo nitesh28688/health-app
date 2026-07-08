@@ -6,7 +6,7 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 }
 
-const DISMISS_KEY = "installPromptDismissedAt";
+const DISMISS_KEY = "installPromptDismissedAt_v2";
 const DISMISS_DAYS = 14;
 
 function isIos() {
@@ -33,6 +33,13 @@ export function InstallPrompt() {
       setShow(true);
       return;
     }
+
+    const e = (window as any).__deferredInstallPrompt;
+    if (e) {
+      setDeferred(e as BeforeInstallPromptEvent);
+      setShow(true);
+    }
+
     const handler = (e: Event) => {
       e.preventDefault();
       setDeferred(e as BeforeInstallPromptEvent);

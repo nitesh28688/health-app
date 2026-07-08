@@ -416,8 +416,9 @@ prediction from cycle history.
 - **Typography & Theme:** Enforced `Geist` font globally in `globals.css`. Upgraded `AppShell.tsx` bottom nav to use a glassmorphic `backdrop-blur-xl` and replaced emojis with sleek `lucide-react` icons.
 - **Animations:** Introduced `framer-motion` for fluid page transitions between tabs, animated active-tab bubbles, and graceful slide-down animations for AI meal suggestions.
 - **Data Visualization:** Replaced the flat horizontal macro bars on the Diary page with modern SVG-based circular `Ring` progress indicators for a premium dashboard feel.
-- **Navigation UX:** Switched tab navigation (both tap and swipe gestures) to use router `replace` instead of `push`, preventing browser history bloat and ensuring the back button correctly exits the app.
+- **Navigation UX:** Switched tab navigation (both tap and swipe gestures) to use router `replace` instead of `push`, preventing browser history bloat and ensuring the back button correctly exits the app. Fixed a significant tab-switching freeze/hang by removing `framer-motion`'s `<AnimatePresence mode="wait">` which was blocking Next.js route replacements on exit.
 - **AI Improvements:** Validated that Gemini AI endpoints use the optimal free-tier model (`gemini-flash-latest`), while significantly improving the perceived speed and UX through animated presentation of the results.
+- **PWA & Friends Polish:** Fixed a timing bug where Next.js SPA hydration missed the early-firing `beforeinstallprompt` event (captured it in `<head>` early). Reset the 14-day dismissal timeout cache. Improved Admin sheet padding for mobile browser nav bars. Updated the Friends page to display explicit outgoing requests with cancellation buttons instead of a generic count.
 
 **Not yet built** (schema/RPCs already exist, just needs UI):
 - Challenges UI (create/join/scoreboard) — `challenges` table + `get_challenge_progress()` ready.

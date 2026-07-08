@@ -211,7 +211,7 @@ export default function AdminPage() {
             {selected && (
               <div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/40" onClick={() => setSelected(null)}>
                 <div onClick={(e) => e.stopPropagation()}
-                  className="rounded-t-3xl bg-white dark:bg-neutral-950 p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] max-w-md w-full mx-auto max-h-[85vh] overflow-y-auto">
+                  className="rounded-t-3xl bg-white dark:bg-neutral-950 p-5 pb-[calc(3rem+env(safe-area-inset-bottom))] max-w-md w-full mx-auto max-h-[85vh] overflow-y-auto">
                   <p className="font-bold text-lg">{selected.profile.display_name as string}</p>
                   <p className="text-sm text-neutral-500 mb-4">
                     @{selected.profile.username as string} · {selected.email}

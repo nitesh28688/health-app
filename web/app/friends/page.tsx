@@ -202,7 +202,19 @@ function Friends({ userId }: { userId: string }) {
             );
           })}
           {outgoing.length > 0 && (
-            <p className="text-xs text-neutral-400 mt-4">{outgoing.length} request(s) pending acceptance.</p>
+            <>
+              <h2 className="font-bold mt-5 mb-1">Sent Requests ({outgoing.length})</h2>
+              {outgoing.map((f) => (
+                <div key={f.addressee_id} className="flex items-center gap-3 py-3 border-b border-neutral-100 dark:border-neutral-900">
+                  <div className="flex-1">
+                    <p className="font-semibold text-sm">{profiles[f.addressee_id]?.display_name ?? "…"}</p>
+                    <p className="text-xs text-neutral-500">@{profiles[f.addressee_id]?.username}</p>
+                  </div>
+                  <button onClick={() => unfriend(f)}
+                    className="rounded-lg border border-neutral-300 dark:border-neutral-700 text-xs px-3 py-2.5">Cancel</button>
+                </div>
+              ))}
+            </>
           )}
         </div>
       )}
