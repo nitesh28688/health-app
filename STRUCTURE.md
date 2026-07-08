@@ -305,6 +305,8 @@ near-identical passwordless options was confusing rather than helpful.
 ## 6. Deployment
 
 - **Hosting:** Vercel Hobby (free), project `health-app`, root directory `web/`.
+- **CI/CD Pipeline:** The project is linked to GitHub (`nitesh28688/health-app`). Vercel automatically deploys the `master` branch on every push. 
+  - *Note:* Because the codebase is inside the `web/` folder, the **Root Directory** setting in the Vercel Dashboard (Settings > General) MUST be explicitly set to `web`.
 - **Domain:** `health.linearventures.in` → CNAME to Vercel, DNS-only (not proxied)
   in Cloudflare.
 - **Env vars** (Vercel → Settings → Environment Variables, Production):
