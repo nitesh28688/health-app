@@ -37,6 +37,8 @@ function ProfileForm({ profile, setProfile, userId, email }: {
     track_cycle: profile.track_cycle ?? false,
   });
   const [weight, setWeight] = useState("");
+  const [waist, setWaist] = useState("");
+  const [bodyFat, setBodyFat] = useState("");
   // No default selection — forces an explicit tap so there's never ambiguity
   // about which goal a "Suggest" result was calculated for.
   const [goal, setGoal] = useState<"lose" | "maintain" | "gain" | null>(null);
@@ -50,9 +52,13 @@ function ProfileForm({ profile, setProfile, userId, email }: {
   const [avatarError, setAvatarError] = useState<string | null>(null);
 
   useEffect(() => {
-    supabase.from("body_metrics").select("weight_kg").eq("user_id", userId)
+    supabase.from("body_metrics").select("weight_kg, waist_cm, body_fat_pct").eq("user_id", userId)
       .order("log_date", { ascending: false }).limit(1).maybeSingle()
-      .then(({ data }) => { if (data?.weight_kg) setWeight(String(data.weight_kg)); });
+      .then(({ data }) => {
+        if (data?.weight_kg) setWeight(String(data.weight_kg));
+        if (data?.waist_cm) setWaist(String(data.waist_cm));
+        if (data?.body_fat_pct) setBodyFat(String(data.body_fat_pct));
+      });
     if (!pushSupported()) { setNotifStatus("unsupported"); return; }
     currentPushSubscription().then((sub) => setNotifStatus(sub ? "enabled" : "disabled"));
   }, [userId]);
@@ -112,8 +118,14 @@ function ProfileForm({ profile, setProfile, userId, email }: {
     const { data, error } = await supabase.from("profiles").update(patch).eq("id", userId).select().single();
     if (error) { setError(error.message); return; }
     if (w > 0) {
+      const waistNum = parseFloat(waist);
+      const bfNum = parseFloat(bodyFat);
       await supabase.from("body_metrics").upsert(
-        { user_id: userId, log_date: todayLocal(), weight_kg: w }, { onConflict: "user_id,log_date" });
+        { 
+          user_id: userId, log_date: todayLocal(), weight_kg: w,
+          waist_cm: waistNum > 0 ? waistNum : null,
+          body_fat_pct: bfNum > 0 ? bfNum : null,
+        }, { onConflict: "user_id,log_date" });
     }
     setProfile(data as Profile);
     setSaved(true);
@@ -192,7 +204,24 @@ function ProfileForm({ profile, setProfile, userId, email }: {
             BMI <b>{bmi(w, h)}</b> · {bmiCategory(bmi(w, h))}
           </p>
         )}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-3 mt-1">
+          <div>
+            <label className={labelCls}>Waist (cm)</label>
+            <input className={inputCls} inputMode="decimal" value={waist}
+              onChange={(e) => setWaist(e.target.value)} />
+          </div>
+          <div>
+            <label className={labelCls}>Body Fat (%)</label>
+            <input className={inputCls} inputMode="decimal" value={bodyFat}
+              onChange={(e) => setBodyFat(e.target.value)} />
+          </div>
+        </div>
+        {parseFloat(waist) > 0 && f.sex && (
+          <p className="text-sm text-neutral-500 -mt-1">
+            Healthy limit: {f.sex === "male" ? "< 90 cm" : f.sex === "female" ? "< 80 cm" : "< 90 cm"}
+          </p>
+        )}
+        <div className="grid grid-cols-2 gap-3 mt-1">
           <div>
             <label className={labelCls}>Birth date</label>
             <input type="date" className={inputCls} value={f.birth_date}
@@ -278,17 +307,21 @@ function ProfileForm({ profile, setProfile, userId, email }: {
           <span>💊 Medications</span>
           <span className="text-neutral-400">→</span>
         </Link>
-        <label className="flex items-center justify-between py-3 border-b border-neutral-100 dark:border-neutral-900">
-          <span>Track menstrual cycle</span>
-          <input type="checkbox" checked={f.track_cycle}
-            onChange={(e) => setF({ ...f, track_cycle: e.target.checked })}
-            className="w-6 h-6 accent-green-600" />
-        </label>
-        {f.track_cycle && (
-          <Link href="/cycle" className="flex items-center justify-between py-3 border-b border-neutral-100 dark:border-neutral-900">
-            <span>🌸 Cycle tracking</span>
-            <span className="text-neutral-400">→</span>
-          </Link>
+        {f.sex === "female" && (
+          <>
+            <label className="flex items-center justify-between py-3 border-b border-neutral-100 dark:border-neutral-900">
+              <span>Track menstrual cycle</span>
+              <input type="checkbox" checked={f.track_cycle}
+                onChange={(e) => setF({ ...f, track_cycle: e.target.checked })}
+                className="w-6 h-6 accent-green-600" />
+            </label>
+            {f.track_cycle && (
+              <Link href="/cycle" className="flex items-center justify-between py-3 border-b border-neutral-100 dark:border-neutral-900">
+                <span>🌸 Cycle tracking</span>
+                <span className="text-neutral-400">→</span>
+              </Link>
+            )}
+          </>
         )}
       </section>
 

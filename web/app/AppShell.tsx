@@ -62,7 +62,7 @@ export function AppShell({ children }: {
           initial={{ opacity: 0, y: 5, scale: 0.98 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           transition={{ duration: 0.15 }}
-          className="flex-1 pb-24 max-w-md w-full mx-auto"
+          className="flex-1 pb-36 max-w-md w-full mx-auto"
         >
           {children({ session, profile, setProfile })}
         </motion.div>
