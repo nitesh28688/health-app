@@ -3,6 +3,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { todayLocal } from "@/lib/nutrition";
+import { generateWithFallback } from "@/lib/gemini";
 
 const admin = () =>
   createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
@@ -36,14 +37,8 @@ export async function POST(req: NextRequest) {
     `${Math.round(remCarbs)}g carbs, ${Math.round(remFat)}g fat left in their daily targets. ` +
     `Suggest ONE simple Indian-friendly meal or snack that roughly fits. Max 40 words, plain text, no markdown.`;
 
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${process.env.GEMINI_API_KEY}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
-    });
-  if (!res.ok) return NextResponse.json({ error: "AI unavailable" }, { status: 502 });
+  const res = await generateWithFallback([{ text: prompt }]);
+  if (!res.ok) return NextResponse.json({ error: "AI unavailable — Google's models are under heavy load, try again shortly" }, { status: 502 });
   const body = await res.json();
   const text = body.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
   if (!text) return NextResponse.json({ error: "AI returned nothing" }, { status: 502 });

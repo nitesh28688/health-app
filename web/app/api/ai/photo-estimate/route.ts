@@ -4,6 +4,7 @@
 // regardless of how many people use the app.
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { generateWithFallback } from "@/lib/gemini";
 
 const DAILY_USER_CAP = 10;
 
@@ -35,34 +36,22 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "daily AI limit reached, try tomorrow" }, { status: 429 });
   }
 
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${process.env.GEMINI_API_KEY}`,
+  const res = await generateWithFallback(
+    [
+      { text: "Identify the food in this photo and estimate its nutrition per 100 grams. If this isn't food, set is_food to false. Set is_liquid to true if it's a drink/beverage/soup measured in ml rather than grams." },
+      { inline_data: { mime_type: mimeType, data: base64 } },
+    ],
     {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{
-          parts: [
-            { text: "Identify the food in this photo and estimate its nutrition per 100 grams. If this isn't food, set is_food to false. Set is_liquid to true if it's a drink/beverage/soup measured in ml rather than grams." },
-            { inline_data: { mime_type: mimeType, data: base64 } },
-          ],
-        }],
-        generationConfig: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: "OBJECT",
-            properties: {
-              is_food: { type: "BOOLEAN" }, name: { type: "STRING" }, is_liquid: { type: "BOOLEAN" },
-              kcal: { type: "NUMBER" }, protein_g: { type: "NUMBER" },
-              carbs_g: { type: "NUMBER" }, fat_g: { type: "NUMBER" }, fiber_g: { type: "NUMBER" },
-            },
-            required: ["is_food", "name", "is_liquid", "kcal", "protein_g", "carbs_g", "fat_g", "fiber_g"],
-          },
-        },
-      }),
+      type: "OBJECT",
+      properties: {
+        is_food: { type: "BOOLEAN" }, name: { type: "STRING" }, is_liquid: { type: "BOOLEAN" },
+        kcal: { type: "NUMBER" }, protein_g: { type: "NUMBER" },
+        carbs_g: { type: "NUMBER" }, fat_g: { type: "NUMBER" }, fiber_g: { type: "NUMBER" },
+      },
+      required: ["is_food", "name", "is_liquid", "kcal", "protein_g", "carbs_g", "fat_g", "fiber_g"],
     }
   );
-  if (!res.ok) return NextResponse.json({ error: "AI unavailable" }, { status: 502 });
+  if (!res.ok) return NextResponse.json({ error: "AI unavailable — Google's models are under heavy load, try again shortly" }, { status: 502 });
   const body = await res.json();
   let estimate;
   try { estimate = JSON.parse(body.candidates[0].content.parts[0].text); }
