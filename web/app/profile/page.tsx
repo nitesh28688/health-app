@@ -145,7 +145,7 @@ function ProfileForm({ profile, setProfile, userId, email }: {
 
   return (
     <main className="px-5 pt-6">
-      <div className="flex items-center gap-4 mb-1">
+      <div className="flex items-center gap-4 mb-5">
         <label className="relative shrink-0 cursor-pointer">
           {profile.avatar_url ? (
             <img src={profile.avatar_url} alt="" className="w-16 h-16 rounded-full object-cover border border-neutral-200 dark:border-neutral-800" />
@@ -163,7 +163,7 @@ function ProfileForm({ profile, setProfile, userId, email }: {
         </div>
       </div>
       {avatarError && <p className="text-xs text-amber-600 mb-4">{avatarError}</p>}
-      <Link href="/progress" className="block text-sm text-green-600 font-semibold mb-6">📸 Before/after progress photos →</Link>
+      <Link href="/progress" className="block text-sm text-green-600 font-semibold mt-2 mb-8">📸 Before/after progress photos →</Link>
 
       <section className="flex flex-col gap-4">
         <div>

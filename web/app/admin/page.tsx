@@ -211,7 +211,7 @@ export default function AdminPage() {
             {selected && (
               <div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/40" onClick={() => setSelected(null)}>
                 <div onClick={(e) => e.stopPropagation()}
-                  className="rounded-t-3xl bg-white dark:bg-neutral-950 p-5 pb-[calc(3rem+env(safe-area-inset-bottom))] max-w-md w-full mx-auto max-h-[85vh] overflow-y-auto">
+                  className="rounded-t-3xl bg-white dark:bg-neutral-950 p-5 pb-[calc(1.5rem+env(safe-area-inset-bottom))] max-w-md w-full mx-auto max-h-[85vh] overflow-y-auto">
                   <p className="font-bold text-lg">{selected.profile.display_name as string}</p>
                   <p className="text-sm text-neutral-500 mb-4">
                     @{selected.profile.username as string} · {selected.email}
@@ -231,7 +231,7 @@ export default function AdminPage() {
                   </div>
                   <button onClick={() => deleteUser(selected.id, selected.profile.display_name as string)}
                     disabled={busyId !== null}
-                    className="w-full rounded-xl border border-red-300 text-red-600 py-3 font-semibold disabled:opacity-50">
+                    className="w-full rounded-xl border border-red-300 text-red-600 py-3 font-semibold disabled:opacity-50 mb-6 mt-2">
                     {busyId ? "Deleting…" : "Delete this user"}
                   </button>
                 </div>

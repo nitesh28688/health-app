@@ -1,7 +1,7 @@
 // Minimal offline-shell service worker.
 // Static assets: cache-first. Supabase/API calls: network-only (data must be fresh;
 // offline queueing is handled in app code via IndexedDB, not here).
-const CACHE = "health-v1";
+const CACHE = "health-v2";
 const SHELL = ["/", "/manifest.json"];
 
 self.addEventListener("install", (e) => {
@@ -44,12 +44,24 @@ self.addEventListener("notificationclick", (e) => {
 self.addEventListener("fetch", (e) => {
   const url = new URL(e.request.url);
   if (e.request.method !== "GET" || url.origin !== location.origin || url.pathname.startsWith("/api/")) return;
+  
+  if (e.request.mode === "navigate" || SHELL.includes(url.pathname)) {
+    e.respondWith(
+      fetch(e.request).then((res) => {
+        const copy = res.clone();
+        caches.open(CACHE).then((c) => c.put(e.request, copy));
+        return res;
+      }).catch(() => caches.match(e.request))
+    );
+    return;
+  }
+
   e.respondWith(
     caches.match(e.request).then(
       (hit) =>
         hit ||
         fetch(e.request).then((res) => {
-          if (res.ok && (url.pathname.startsWith("/_next/static/") || SHELL.includes(url.pathname))) {
+          if (res.ok && (url.pathname.startsWith("/_next/static/"))) {
             const copy = res.clone();
             caches.open(CACHE).then((c) => c.put(e.request, copy));
           }
