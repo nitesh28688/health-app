@@ -124,12 +124,20 @@ console.log(`\npass 3 done: nutrients found for ${nutrientsByFood.size} of ${all
 // protein shakes all flagged is_liquid=false. The product name reliably says what it is.
 const LIQUID_NAME_KEYWORDS = [
   "cola", "soda", "coffee", "tea", "latte", "cappuccino", "espresso", "juice", "milk",
-  "smoothie", "shake", "energy drink", "sports drink", "lemonade", "beverage", "drink",
+  "smoothie", "shake", "energy drink", "sports drink", "thirst quencher", "lemonade", "beverage", "drink",
   "water", "syrup", "beer", "wine",
 ];
 const NOT_LIQUID_KEYWORDS = ["powder", "bar", "candy", "chocolate", "cookie"];
-const isLiquidByName = (name) => {
+// Brand-name fallback, same reasoning as seed-off.mjs: Gatorade's "Thirst Quencher"
+// line names flavors like "ICY CHARGE"/"GLACIER CHERRY" with no generic beverage word
+// at all — confirmed 2026-07-08, those came through is_liquid=false without this.
+const LIQUID_BRAND_KEYWORDS = ["sprite", "gatorade", "red bull", "monster energy", "coca-cola",
+  "coca cola", "pepsi", "fanta", "mountain dew", "7up", "7-up", "nescafe", "nescafé", "starbucks",
+  "lipton", "twinings"];
+const isLiquidByName = (name, brand) => {
   const n = (name || "").toLowerCase();
+  const b = (brand || "").toLowerCase();
+  if (LIQUID_BRAND_KEYWORDS.some((k) => n.includes(k) || b.includes(k))) return true;
   return LIQUID_NAME_KEYWORDS.some((k) => n.includes(k)) && !NOT_LIQUID_KEYWORDS.some((k) => n.includes(k));
 };
 
@@ -172,7 +180,7 @@ for (let i = 0; i < mapped.length; i += 200) {
   chunk.forEach((f, j) => {
     const base = j * cols.length;
     values.push(`(${cols.map((_, k) => `$${base + k + 1}`).join(",")})`);
-    params.push(`USDABR-${f.fdcId}`, f.name, f.brand, "usda", isLiquidByName(f.name),
+    params.push(`USDABR-${f.fdcId}`, f.name, f.brand, "usda", isLiquidByName(f.name, f.brand),
       f.n.kcal ?? 0, f.n.protein_g ?? 0, f.n.carbs_g ?? 0, f.n.fat_g ?? 0, f.n.fiber_g ?? 0,
       f.n.sat_fat_g ?? null, f.n.sugar_g ?? null, f.n.cholesterol_mg ?? null,
       f.n.sodium_mg ?? null, f.n.potassium_mg ?? null, f.n.calcium_mg ?? null, f.n.iron_mg ?? null);

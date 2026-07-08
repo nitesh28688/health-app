@@ -23,11 +23,21 @@ const clamp = (v, max) => (v !== null && Math.abs(v) <= max ? v : null);
 // Same name-keyword heuristic used for indb/usda (category fields are unreliable
 // across every source we've tried) — see migration 0017 and seed-usda-branded.mjs.
 const LIQUID_KEYWORDS = ["cola", "soda", "coffee", "tea", "latte", "cappuccino", "espresso",
-  "juice", "milk", "smoothie", "shake", "energy drink", "sports drink", "lemonade",
+  "juice", "milk", "smoothie", "shake", "energy drink", "sports drink", "thirst quencher", "lemonade",
   "beverage", "drink", "water", "syrup", "beer", "wine", "lassi", "buttermilk", "chaas"];
 const NOT_LIQUID_KEYWORDS = ["powder", "bar", "candy", "chocolate", "cookie"];
-const isLiquidByName = (name) => {
+// Brand-name fallback: a lot of real products (Sprite, Thums Up, Bisleri) are just
+// the brand name with no generic beverage word in sight — "Sprite" contains none of
+// the keywords above. Confirmed 2026-07-08: Sprite/Thums Up/Bisleri all came through
+// is_liquid=false on a fresh OFF seed until this list was added.
+const LIQUID_BRAND_KEYWORDS = ["sprite", "thums up", "bisleri", "limca", "mirinda", "frooti", "maaza",
+  "appy", "slice", "rooh afza", "paper boat", "kinley", "aquafina", "gatorade", "monster", "red bull",
+  "sting", "tropicana", "minute maid", "nescafe", "nescafé", "lipton", "tetley", "mountain dew",
+  "7up", "7-up", "coca-cola", "coca cola", "pepsi", "fanta", "dr pepper", "schweppes"];
+const isLiquidByName = (name, brand) => {
   const lower = name.toLowerCase();
+  const brandLower = (brand || "").toLowerCase();
+  if (LIQUID_BRAND_KEYWORDS.some((k) => lower.includes(k) || brandLower.includes(k))) return true;
   return LIQUID_KEYWORDS.some((k) => lower.includes(k)) && !NOT_LIQUID_KEYWORDS.some((k) => lower.includes(k));
 };
 
@@ -81,7 +91,7 @@ for (let page = START_PAGE; page <= PAGES; page++) {
     products.forEach((p, j) => {
       const base = j * cols.length;
       values.push(`(${cols.map((_, k) => `$${base + k + 1}`).join(",")})`);
-      params.push(`OFF-${p.code}`, p.name, p.brand, "off", isLiquidByName(p.name), p.kcal, p.protein_g, p.carbs_g,
+      params.push(`OFF-${p.code}`, p.name, p.brand, "off", isLiquidByName(p.name, p.brand), p.kcal, p.protein_g, p.carbs_g,
         p.fat_g, p.fiber_g ?? 0, p.sat_fat_g, p.sugar_g, p.sodium_mg, p.calcium_mg, p.iron_mg, p.potassium_mg);
     });
     await db.query(

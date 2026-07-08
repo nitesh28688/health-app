@@ -3,7 +3,7 @@
 Short pointer document. For the deep "why is it built this way" reference, read
 `STRUCTURE.md` — that's the source of truth and is kept in sync every session.
 
-## Where things stand (2026-07-09)
+## Where things stand (2026-07-08)
 
 **The app is live and in real use.** Family members have signed up
 (health.linearventures.in). Feature set is complete for daily use: auth (email +
@@ -23,23 +23,30 @@ this network).
 
 ## Immediate open items
 
-1. **Open Food Facts — parked, not pursuing further for now.** Stuck at 168
+1. **Open Food Facts — parked, not pursuing further for now.** Stuck at 172
    products; repeated retries across multiple days all hit the same throttle
-   within 1-5 requests (not a short cooldown like OFF's docs suggest). Superseded
-   by USDA Branded Foods (80,820 products, see below) for the global-brand gap
-   OFF was mainly filling. Retry command still works if picked back up later:
-   `node scripts/seed-off.mjs <pages> <startPage> <pageSize>`.
-2. **USDA Branded Foods — done, 80,820 products live** (2026-07-09). Offline bulk
-   CSV from FoodData Central, filtered to a curated brand allowlist (Coca-Cola,
-   Pepsi, Red Bull, Starbucks, Nescafé, Cadbury, protein brands, etc.) — zero
-   rate-limit risk since it's a static download, not a live API. `is_liquid` is
-   name-keyword-based (category field proved too sparse/inconsistent — see
-   `scripts/fix-branded-liquid.mjs` for the correction that was needed after the
-   first pass got it wrong). Real gap remaining: Indian-specific brands (Amul,
-   Britannia, Parle, Haldiram's) aren't in USDA's US-market label data — AI
-   fallback (permanently self-saving each lookup) is the practical mitigation.
-   Re-run script: `scripts/seed-usda-branded.mjs` (needs `data/usda_branded/`
-   CSVs re-downloaded — deleted after seeding to save 2.9GB disk space).
+   within 1-9 requests (not a short cooldown like OFF's docs suggest — retested
+   2026-07-08, got a bit further before failing, but the extra pages that did
+   succeed returned products already in the DB, so no real progress). Superseded
+   by USDA Branded Foods for the global-brand gap OFF was mainly filling.
+   `seed-off.mjs` now takes a country arg for when this gets picked back up:
+   `node scripts/seed-off.mjs <pages> <startPage> <pageSize> <india|uae>`.
+2. **USDA Branded Foods — 16,244 products live** (trimmed + deduped 2026-07-08,
+   down from an original 80,820 seeded 2026-07-09). `scripts/trim-usda-branded.mjs`
+   cut US-only SKUs to an India/UAE brand allowlist (removed 41,875 rows), then
+   `scripts/dedupe-branded.mjs` collapsed pack-size duplicates — USDA gives every
+   UPC its own row, so one product could have 100+ near-identical rows (removed
+   22,701 more). Both dry-run by default, `--apply` to execute, skip anything
+   already in a user's `food_logs`. `is_liquid` is name+brand keyword-based —
+   two correction rounds so far: `scripts/fix-branded-liquid.mjs` (Round 7,
+   USDA's category field was unreliable) and `scripts/fix-liquid-round2.mjs`
+   (Round 8, brand-only product names like "Sprite"/"Thums Up"/"Bisleri" had no
+   generic keyword to match on, corrected 1,412 rows). Real gap remaining:
+   Indian-specific brands (Amul, Britannia, Parle, Haldiram's) aren't in USDA's
+   US-market label data — AI fallback (permanently self-saving each lookup) is
+   the practical mitigation. Re-run script: `scripts/seed-usda-branded.mjs`
+   (needs `data/usda_branded/` CSVs re-downloaded — deleted after seeding to
+   save 2.9GB disk space).
 2. **Challenges UI, badges UI, AI daily suggestions, offline write queue, Hindi
    `name_local` search data** — schema/RPCs already exist for the first three, just
    need screens. See STRUCTURE.md § "Not yet built" for specifics.

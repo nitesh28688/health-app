@@ -16,10 +16,11 @@ workouts, and cheer each other on. Food data comes from three seeded sources plu
   fast-food chains (KFC Popcorn Chicken, McDonald's fries, etc.), with 13k+ household
   serving sizes.
 - **Open Food Facts India** ('off' source, ODbL) — packaged/branded groceries with a
-  `brand` column. Only 168 products in, parked — see "Known gap" below.
-- **USDA Branded Foods** ('usda' source, `indb_code` prefix `USDABR-`) — 80,820
+  `brand` column. Only 172 products in, parked — see "Known gap" below.
+- **USDA Branded Foods** ('usda' source, `indb_code` prefix `USDABR-`) — 16,244
   global-brand packaged products (Coca-Cola, Red Bull, Starbucks, Cadbury, protein
-  brands). Offline bulk CSV, not a live API — see Round 7 below.
+  brands), trimmed from an original 80,820 to India/UAE-relevant brands with
+  pack-size duplicates collapsed. Offline bulk CSV, not a live API — see Round 7/8 below.
 - **Gemini AI fallback** for anything not found — estimates get an "AI" badge and an
   admin moderation queue.
 - Search ranks by text similarity across name/local-name/brand, with substring matching
@@ -401,16 +402,20 @@ fat/Maintain/Gain muscle before "Suggest" is even enabled, and the result is lab
 computed for the wrong goal. Verified live: Lose fat and Gain muscle produce visibly
 different numbers (1964 vs 2664 kcal in testing), each correctly labeled.
 
-**Open Food Facts India: parked, not pursuing further (as of 2026-07-09).** Stuck
-at 168 branded/packaged products (Coca-Cola, Pepsi, Sprite, Fanta, Thums Up, Red
+**Open Food Facts India: parked, not pursuing further (as of 2026-07-08).** Stuck
+at 172 branded/packaged products (Coca-Cola, Pepsi, Sprite, Fanta, Thums Up, Red
 Bull, Limca confirmed searchable). OFF's API throttles hard after roughly 10-15
 requests **regardless of page size** (tested 100, 25, and 10 — same wall every
 time), and the block lasts far longer than OFF's docs suggest — repeated retries
 across several separate days all failed within 1-5 requests, not just the first
-20-minute follow-up. This is a request-count/IP throttle on OFF's side, not a
-data-format or size problem. User's call: stop retrying, revisit in a few days if
-at all. Retry command still works: `node scripts/seed-off.mjs <pages> <startPage>
-<pageSize>`. It's idempotent (upserts on barcode) so re-running never duplicates data.
+20-minute follow-up. Retested 2026-07-08 (Round 8): got to page 9 before failing
+(further than before), but every page that succeeded returned products already
+in the DB — so still a real throttle, not solved by patience. This is a
+request-count/IP throttle on OFF's side, not a data-format or size problem.
+User's call: stop retrying, revisit in a few days if at all. Retry command still
+works: `node scripts/seed-off.mjs <pages> <startPage> <pageSize> <country>`
+(`country` is `india` or `uae`, added Round 8). It's idempotent (upserts on
+barcode) so re-running never duplicates data.
 
 **Round 7 (2026-07-09): USDA Branded Foods — 80,820 products, supersedes OFF for
 the global-brand gap.** Offline bulk CSV from FoodData Central (public domain,
@@ -448,6 +453,37 @@ brands (Amul, Britannia, Parle, Haldiram's, Bikaji) aren't in it. The AI fallbac
 itself classifies `is_liquid` via Gemini) is the practical mitigation for that,
 not a full solve. Nothing is blocked for users: any product not found falls
 through to AI and permanently joins the searchable database on first use.
+
+**Round 8 (2026-07-08): USDA branded trim/dedupe, is_liquid brand-keyword fix,
+OFF retest.** Three cleanup passes on the branded-foods data:
+1. **`scripts/trim-usda-branded.mjs`** cut the 80,820 USDA branded rows down to
+   the ones actually stocked in India/UAE, using a narrower allowlist than the
+   original seed (that one was "could plausibly be searched for", this one is
+   "genuinely on shelves here") — removed 41,875 US-only-SKU rows.
+2. **`scripts/dedupe-branded.mjs`** then collapsed pack-size duplicates (USDA
+   gives every UPC — every bottle size, multi-pack count — its own row; 267
+   near-identical Cheez-It rows, 150 Diet Pepsi variants confirmed) down to one
+   row per distinct product — removed 22,701 more. **Net: 80,820 → 16,244 USDA
+   branded rows.** Both scripts default to dry-run and skip any food already in
+   a user's `food_logs` (that FK is `ON DELETE RESTRICT` anyway, so this is a
+   belt-and-suspenders check, not the only thing preventing data loss).
+3. **`is_liquid` had a second blind spot** beyond the Round 7 fix: the
+   keyword list only matched generic words ("cola", "juice"), so brand-only
+   product names with no generic word in them — "Sprite", "Thums Up",
+   "Bisleri", Gatorade's "ICY CHARGE"/"GLACIER CHERRY" flavor names — still
+   came through `is_liquid=false`. Added a brand-name keyword list (checked
+   against both `name` and `brand`) to `seed-off.mjs` and
+   `seed-usda-branded.mjs` for future seeds, plus `scripts/fix-liquid-round2.mjs`
+   as a one-off backfill for already-inserted rows (corrected 1,412 rows;
+   verified Sprite/Thums Up/Bisleri/Gatorade Thirst Quencher flavors now all
+   `is_liquid=true`).
+4. **OFF retested, still throttled** — `seed-off.mjs` now takes a `country`
+   arg (`india`/`uae`, defaults to india) for future UAE seeding. A retest got
+   further than prior sessions (page 9 before failing, vs. page 1-5 before) but
+   still hit 503s and, new this time, some 401s around page 10 — and the pages
+   that did succeed were entirely products already in the DB, so **172 total OFF
+   rows, no net change**. Conclusion unchanged from Round 6: OFF's throttle is
+   real and still active, not solved by patience alone yet.
 
 **Round 6.5 (2026-07-09): flexible units + diet-aware targets.**
 `QuantitySheet` now defaults liquids to ml (via `food.is_liquid`) instead of
