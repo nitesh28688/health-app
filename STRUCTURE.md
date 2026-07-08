@@ -16,8 +16,10 @@ workouts, and cheer each other on. Food data comes from three seeded sources plu
   fast-food chains (KFC Popcorn Chicken, McDonald's fries, etc.), with 13k+ household
   serving sizes.
 - **Open Food Facts India** ('off' source, ODbL) — packaged/branded groceries with a
-  `brand` column. Seeded via `scripts/seed-off.mjs` (OFF's search API is flaky — the
-  script is idempotent, rerun it whenever their API is up).
+  `brand` column. Only 168 products in, parked — see "Known gap" below.
+- **USDA Branded Foods** ('usda' source, `indb_code` prefix `USDABR-`) — 80,820
+  global-brand packaged products (Coca-Cola, Red Bull, Starbucks, Cadbury, protein
+  brands). Offline bulk CSV, not a live API — see Round 7 below.
 - **Gemini AI fallback** for anything not found — estimates get an "AI" badge and an
   admin moderation queue.
 - Search ranks by text similarity across name/local-name/brand, with substring matching
@@ -399,22 +401,68 @@ fat/Maintain/Gain muscle before "Suggest" is even enabled, and the result is lab
 computed for the wrong goal. Verified live: Lose fat and Gain muscle produce visibly
 different numbers (1964 vs 2664 kcal in testing), each correctly labeled.
 
-**Known gap (partial): Open Food Facts India.** 168 branded/packaged products seeded
-as of 2026-07-09 (Coca-Cola, Pepsi, Sprite, Fanta, Thums Up, Red Bull, Limca and more
-all confirmed searchable with correct brand names) — but OFF's API throttles hard
-after roughly 10-15 requests **regardless of page size** (tested 100, 25, and 10 —
-all hit the same wall at the same request count), and the block appears to last
-hours, not minutes: a follow-up attempt after ~20 minutes failed on its very first
-request. This is a request-count/IP throttle on OFF's side, not a data-format or
-size problem — don't waste time re-tuning `PAGE_SIZE` further. To get more: rerun
-`node scripts/seed-off.mjs <pages> <startPage> <pageSize>` (e.g.
-`node scripts/seed-off.mjs 30 30 10` to fetch 30 more pages starting deeper in the
-list) after a multi-hour gap, and expect it to stop itself after ~10-15 successful
-requests — that's normal, not a bug in the script. It's idempotent (upserts on
-barcode) so re-running never duplicates or corrupts data. Nothing is blocked for
-users in the meantime: any packaged product not found falls through to the **AI
-fallback**, which is now easier to reach (see Round 6 below) and permanently adds
-that item to the searchable database on first use.
+**Open Food Facts India: parked, not pursuing further (as of 2026-07-09).** Stuck
+at 168 branded/packaged products (Coca-Cola, Pepsi, Sprite, Fanta, Thums Up, Red
+Bull, Limca confirmed searchable). OFF's API throttles hard after roughly 10-15
+requests **regardless of page size** (tested 100, 25, and 10 — same wall every
+time), and the block lasts far longer than OFF's docs suggest — repeated retries
+across several separate days all failed within 1-5 requests, not just the first
+20-minute follow-up. This is a request-count/IP throttle on OFF's side, not a
+data-format or size problem. User's call: stop retrying, revisit in a few days if
+at all. Retry command still works: `node scripts/seed-off.mjs <pages> <startPage>
+<pageSize>`. It's idempotent (upserts on barcode) so re-running never duplicates data.
+
+**Round 7 (2026-07-09): USDA Branded Foods — 80,820 products, supersedes OFF for
+the global-brand gap.** Offline bulk CSV from FoodData Central (public domain,
+same free source `seed-usda.mjs` already used for SR Legacy), not a live API —
+zero rate-limit risk, the exact problem OFF had. `scripts/seed-usda-branded.mjs`
+streams `food.csv`/`branded_food.csv`/`food_nutrient.csv` (2.9GB unzipped, deleted
+from `data/usda_branded/` after seeding — gitignored, never commit it, individual
+files exceed GitHub's 100MB/file limit) using a hand-rolled streaming CSV parser
+(handles embedded quoted newlines in the `ingredients` column, unlike the
+`readFileSync`-based parser `seed-usda.mjs` uses for the much smaller SR Legacy set).
+
+Two real bugs surfaced and were fixed during this seed:
+1. **Category-keyword filtering was far too loose.** First attempt matched generic
+   words ("snack", "bar", "sauce") against USDA's `branded_food_category` taxonomy
+   and kept 1.1M of ~2M rows — not viable for a 500MB free Postgres. Switched to a
+   curated **brand-name allowlist** (Coca-Cola, Pepsi, Red Bull, Starbucks, Nescafé,
+   Cadbury, protein brands like Optimum Nutrition/Quest/MuscleMilk, etc.), which
+   landed at a sane 80,820 rows (~40-50MB footprint).
+2. **`is_liquid` came out wrong for almost everything.** Initially derived from
+   `branded_food_category`, which proved too sparse/inconsistent — Coca-Cola, Red
+   Bull, coffee drinks, and protein shakes were all flagged `is_liquid=false`.
+   Switched to the same name-keyword heuristic the OFF/indb migration (0017)
+   already used successfully, and ran a one-off correction
+   (`scripts/fix-branded-liquid.mjs`) on the 80,820 already-inserted rows —
+   verified via spot-check queries afterward (Coca-Cola/coffee/Red Bull/protein
+   shakes → `liquid=true`; Cadbury chocolate → `liquid=false`, correctly).
+3. Also hit a `numeric field overflow` Postgres error mid-run from garbage/miscoded
+   nutrient values in the crowdsourced-adjacent label data — fixed by clamping
+   each nutrient column to its schema precision before insert (same pattern
+   `seed-off.mjs` already used, just hadn't been ported to this new script yet).
+
+**Real gap remaining:** USDA Branded is US-market label data, so Indian-specific
+brands (Amul, Britannia, Parle, Haldiram's, Bikaji) aren't in it. The AI fallback
+(permanently self-saving each lookup, and — see Round 6 additions below — now
+itself classifies `is_liquid` via Gemini) is the practical mitigation for that,
+not a full solve. Nothing is blocked for users: any product not found falls
+through to AI and permanently joins the searchable database on first use.
+
+**Round 6.5 (2026-07-09): flexible units + diet-aware targets.**
+`QuantitySheet` now defaults liquids to ml (via `food.is_liquid`) instead of
+always showing grams, and any food — not just ones with a preset serving — can
+switch to "count pieces" with an editable per-piece gram weight the user can
+override per log entry (a chapati isn't always exactly 35g, a pani puri isn't
+always exactly 15g; migration 0017 seeded reasonable defaults for common count
+foods, but the override always wins). Profile gained a `diet_type` column
+(balanced/high_protein/low_carb/keto/diabetic_friendly) — `macrosForTarget()` in
+`lib/nutrition.ts` now drives both the "Suggest" button and *live* recalculation
+when the user directly edits the kcal field, so typing "1000" for a hard deficit
+actually re-splits protein/carbs/fat by the selected diet's ratios instead of
+leaving them at a stale generic 50/30/20 split. Also added global
+`safe-area-inset-top` padding (`app/layout.tsx`) to fix an iPhone notch overlap
+reported on the Profile page.
 
 **Round 4 additions (2026-07-08):** avatar upload + before/after progress photo
 comparison (Cloudflare R2, bucket `health-app-photos` — **live**, verified end-to-end
