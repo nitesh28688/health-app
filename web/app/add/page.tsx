@@ -7,6 +7,7 @@ import { supabase } from "@/lib/supabase";
 import { logSnapshot, todayLocal, type FoodNutrients } from "@/lib/nutrition";
 import { compressImage } from "@/lib/imageCompress";
 import { QuantitySheet } from "@/components/QuantitySheet";
+import { Loader2 } from "lucide-react";
 
 type Food = FoodNutrients & {
   id: number;
@@ -29,6 +30,7 @@ function AddFood({ userId }: { userId: string }) {
   const [picked, setPicked] = useState<Food | null>(null);
   const [aiBusy, setAiBusy] = useState(false);
   const [aiMsg, setAiMsg] = useState<string | null>(null);
+  const [aiElapsed, setAiElapsed] = useState(0);
   const [photoBusy, setPhotoBusy] = useState(false);
   const [photoMsg, setPhotoMsg] = useState<string | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -66,13 +68,19 @@ function AddFood({ userId }: { userId: string }) {
   }
 
   async function askAI() {
-    setAiBusy(true); setAiMsg(null);
+    setAiBusy(true); setAiMsg(null); setAiElapsed(0);
+    const tick = setInterval(() => setAiElapsed((s) => s + 1), 1000);
+    // Gemini cold starts can genuinely take 15-30s — a hard client-side timeout
+    // stops the button looking permanently stuck if it ever goes further than that.
+    const controller = new AbortController();
+    const killer = setTimeout(() => controller.abort(), 30000);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const res = await fetch("/api/ai/food-estimate", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token}` },
         body: JSON.stringify({ query: q.trim() }),
+        signal: controller.signal,
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) { setAiMsg(body.error ?? "AI isn't set up yet — ask the admin to add the Gemini key."); return; }
@@ -87,9 +95,13 @@ function AddFood({ userId }: { userId: string }) {
       }).select("*").single();
       if (error || !food) { setAiMsg(error?.message ?? "couldn't save"); return; }
       pick(food as Food);
-    } catch {
-      setAiMsg("AI isn't set up yet — ask the admin to add the Gemini key.");
+    } catch (e) {
+      setAiMsg(e instanceof DOMException && e.name === "AbortError"
+        ? "AI took too long to respond — please try again."
+        : "AI isn't set up yet — ask the admin to add the Gemini key.");
     } finally {
+      clearTimeout(killer);
+      clearInterval(tick);
       setAiBusy(false);
     }
   }
@@ -98,7 +110,10 @@ function AddFood({ userId }: { userId: string }) {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
-    setPhotoBusy(true); setPhotoMsg(null);
+    setPhotoBusy(true); setPhotoMsg(null); setAiElapsed(0);
+    const tick = setInterval(() => setAiElapsed((s) => s + 1), 1000);
+    const controller = new AbortController();
+    const killer = setTimeout(() => controller.abort(), 30000);
     try {
       const dataUrl = await compressImage(file, 1024, 0.7);
       const { data: { session } } = await supabase.auth.getSession();
@@ -106,6 +121,7 @@ function AddFood({ userId }: { userId: string }) {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token}` },
         body: JSON.stringify({ imageDataUrl: dataUrl }),
+        signal: controller.signal,
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) { setPhotoMsg(body.error ?? "couldn't analyze photo"); return; }
@@ -118,9 +134,13 @@ function AddFood({ userId }: { userId: string }) {
       }).select("*").single();
       if (error || !food) { setPhotoMsg(error?.message ?? "couldn't save"); return; }
       pick(food as Food);
-    } catch {
-      setPhotoMsg("Something went wrong analyzing that photo.");
+    } catch (e) {
+      setPhotoMsg(e instanceof DOMException && e.name === "AbortError"
+        ? "AI took too long to respond — please try again."
+        : "Something went wrong analyzing that photo.");
     } finally {
+      clearTimeout(killer);
+      clearInterval(tick);
       setPhotoBusy(false);
     }
   }
@@ -140,8 +160,13 @@ function AddFood({ userId }: { userId: string }) {
       <div className="flex items-center justify-between mt-2">
         <Link href="/recipes" className="text-sm text-green-600 font-semibold">🍲 My recipes →</Link>
         <button onClick={() => photoInput.current?.click()} disabled={photoBusy}
-          className="text-sm text-violet-600 font-semibold disabled:opacity-50">
-          {photoBusy ? "Analyzing…" : "📷 Snap a photo"}
+          className="text-sm text-violet-600 font-semibold disabled:opacity-50 inline-flex items-center gap-1.5">
+          {photoBusy ? (
+            <>
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              {aiElapsed < 8 ? "Analyzing…" : `Still analyzing… (${aiElapsed}s)`}
+            </>
+          ) : "📷 Snap a photo"}
         </button>
         <input ref={photoInput} type="file" accept="image/*" capture="environment"
           onChange={onPhotoPicked} className="hidden" />
@@ -178,8 +203,13 @@ function AddFood({ userId }: { userId: string }) {
             {results.length === 0 ? "No match in the food database." : "Not the one you meant?"}
           </p>
           <button onClick={askAI} disabled={aiBusy}
-            className="rounded-xl border border-violet-500 text-violet-500 px-5 py-3 font-semibold text-sm disabled:opacity-50">
-            {aiBusy ? "Asking AI…" : `🤖 Estimate "${q.trim()}" with AI`}
+            className="rounded-xl border border-violet-500 text-violet-500 px-5 py-3 font-semibold text-sm disabled:opacity-50 inline-flex items-center gap-2">
+            {aiBusy ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                {aiElapsed < 8 ? "Asking AI…" : `Still thinking… (${aiElapsed}s)`}
+              </>
+            ) : `🤖 Estimate "${q.trim()}" with AI`}
           </button>
           {aiMsg && <p className="text-sm text-amber-600 mt-2">{aiMsg}</p>}
         </div>
