@@ -307,7 +307,7 @@ function ProfileForm({ profile, setProfile, userId, email }: {
           <span>💊 Medications</span>
           <span className="text-neutral-400">→</span>
         </Link>
-        {f.sex === "female" && (
+        {f.sex !== "male" && f.sex !== "" && (
           <>
             <label className="flex items-center justify-between py-3 border-b border-neutral-100 dark:border-neutral-900">
               <span>Track menstrual cycle</span>

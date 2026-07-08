@@ -1,5 +1,6 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { AppShell } from "../AppShell";
 import { supabase } from "@/lib/supabase";
 import { todayLocal, bmiCategory } from "@/lib/nutrition";
@@ -76,9 +77,6 @@ function Trends({ profile, userId }: { profile: Profile | null; userId: string }
   const [week, setWeek] = useState<DayTotal[]>([]);
   const [streaks, setStreaks] = useState<Streak[]>([]);
   const [weight, setWeight] = useState("");
-  const [waist, setWaist] = useState("");
-  const [bodyFat, setBodyFat] = useState("");
-  const [showMeasurements, setShowMeasurements] = useState(false);
   const [savedMsg, setSavedMsg] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
@@ -100,16 +98,13 @@ function Trends({ profile, userId }: { profile: Profile | null; userId: string }
   async function logWeight() {
     const w = parseFloat(weight);
     if (!(w > 0)) return;
-    const waistNum = parseFloat(waist);
-    const bfNum = parseFloat(bodyFat);
+    // Deliberately omits waist_cm/body_fat_pct: Profile is the single place those
+    // are edited now. Including them here (even as null) would silently overwrite
+    // whatever was logged there today, since this is an upsert on the same row.
     await supabase.from("body_metrics").upsert(
-      {
-        user_id: userId, log_date: todayLocal(), weight_kg: w,
-        waist_cm: waistNum > 0 ? waistNum : null,
-        body_fat_pct: bfNum > 0 ? bfNum : null,
-      },
+      { user_id: userId, log_date: todayLocal(), weight_kg: w },
       { onConflict: "user_id,log_date" });
-    setWeight(""); setWaist(""); setBodyFat("");
+    setWeight("");
     setSavedMsg(true);
     setTimeout(() => setSavedMsg(false), 1500);
     load();
@@ -160,19 +155,9 @@ function Trends({ profile, userId }: { profile: Profile | null; userId: string }
             {savedMsg ? "✓" : "Log"}
           </button>
         </div>
-        <button onClick={() => setShowMeasurements((s) => !s)} className="mt-2 text-xs text-neutral-400 underline">
-          {showMeasurements ? "Hide" : "Add"} waist & body fat %
-        </button>
-        {showMeasurements && (
-          <div className="grid grid-cols-2 gap-2 mt-2">
-            <input inputMode="decimal" placeholder="Waist (cm)" value={waist}
-              onChange={(e) => setWaist(e.target.value)}
-              className="rounded-xl border border-neutral-300 dark:border-neutral-700 bg-transparent px-4 py-3 text-base" />
-            <input inputMode="decimal" placeholder="Body fat (%)" value={bodyFat}
-              onChange={(e) => setBodyFat(e.target.value)}
-              className="rounded-xl border border-neutral-300 dark:border-neutral-700 bg-transparent px-4 py-3 text-base" />
-          </div>
-        )}
+        <p className="mt-2 text-xs text-neutral-400">
+          Log waist &amp; body fat % in <Link href="/profile" className="underline">Profile</Link>.
+        </p>
 
         {weightHistory.length > 0 && (
           <div className="mt-4 pt-3 border-t border-neutral-100 dark:border-neutral-900">

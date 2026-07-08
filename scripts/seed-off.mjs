@@ -1,10 +1,15 @@
 // Seed Open Food Facts India (ODbL) — most-scanned packaged/branded products.
 // Respects OFF API rate limits (10 search req/min → 6.5s between pages).
 // Idempotent: upserts on indb_code = 'OFF-<barcode>'.
-// Run: SEED_DB_URL='postgresql://...' node scripts/seed-off.mjs [pages=15]
+// NOTE: page_size=100 reliably 503s on OFF's current (degraded) infra even when
+// small requests succeed — confirmed by isolating the parameter. page_size=25
+// works. Keep it small; don't "optimize" this back up without re-testing.
+// Run: SEED_DB_URL='postgresql://...' node scripts/seed-off.mjs [pages=40]
 import pg from "pg";
 
-const PAGES = +(process.argv[2] ?? 15);
+const PAGES = +(process.argv[2] ?? 40);
+const START_PAGE = +(process.argv[3] ?? 1);
+const PAGE_SIZE = +(process.argv[4] ?? 10);
 const UA = "HealthApp-Family/1.0 (personal macro tracker; contact shool007@gmail.com)";
 
 const n = (v) => (v === undefined || v === null || v === "" || Number.isNaN(+v) ? null : Math.round(+v * 1000) / 1000);
@@ -19,13 +24,24 @@ const cols = ["indb_code", "name", "brand", "source", "kcal", "protein_g", "carb
   "sat_fat_g", "sugar_g", "sodium_mg", "calcium_mg", "iron_mg", "potassium_mg"];
 
 let total = 0;
-for (let page = 1; page <= PAGES; page++) {
+let consecutiveFailures = 0;
+for (let page = START_PAGE; page <= PAGES; page++) {
   // world.* proved far more stable than in.* during this session's OFF outages.
   const url = `https://world.openfoodfacts.org/api/v2/search?fields=code,product_name,brands,nutriments,quantity` +
-    `&countries_tags_en=india&page_size=100&page=${page}&sort_by=unique_scans_n`;
-  const res = await fetch(url, { headers: { "User-Agent": UA } });
-  if (!res.ok) { console.error(`page ${page}: HTTP ${res.status}, stopping`); break; }
-  const body = await res.json();
+    `&countries_tags_en=india&page_size=${PAGE_SIZE}&page=${page}&sort_by=unique_scans_n`;
+
+  let res, body;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    res = await fetch(url, { headers: { "User-Agent": UA } });
+    if (res.ok) { body = await res.json(); break; }
+    if (attempt < 3) await new Promise((r) => setTimeout(r, 3000 * attempt));
+  }
+  if (!body) {
+    console.error(`page ${page}: HTTP ${res.status} after retries, skipping this page`);
+    if (++consecutiveFailures >= 5) { console.error("5 pages failed in a row, stopping run"); break; }
+    continue;
+  }
+  consecutiveFailures = 0;
   const products = (body.products ?? [])
     .map((p) => {
       const m = p.nutriments ?? {};
@@ -63,7 +79,7 @@ for (let page = 1; page <= PAGES; page++) {
     total += products.length;
   }
   console.log(`page ${page}: +${products.length} (total ${total})`);
-  if (page < PAGES) await new Promise((r) => setTimeout(r, 6500));
+  if (page < PAGES) await new Promise((r) => setTimeout(r, 10000));
 }
 
 const { rows: [c] } = await db.query(`select count(*) from foods where source='off'`);
