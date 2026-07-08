@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
 interface Serving {
@@ -7,6 +7,8 @@ interface Serving {
   label: string;
   grams: number;
 }
+
+const CUSTOM_PIECE = -1;
 
 export function QuantitySheet({
   food,
@@ -31,7 +33,13 @@ export function QuantitySheet({
   // Per-piece/per-serving weight, editable — a chapati isn't always 35g, a pani
   // puri isn't always 15g. Defaults from the food_servings row but the user can
   // override it just for this log entry without changing the shared default.
+  // Left BLANK (not defaulted to the previous gram amount) when switching to a
+  // custom piece count with no known serving — silently assuming "1 piece = 100g"
+  // for something like chicken strips produced a wildly wrong 1740kcal in testing.
   const [gramsEach, setGramsEach] = useState<string>("");
+  const [aiBusy, setAiBusy] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+  const gramsEachRef = useRef<HTMLInputElement>(null);
   const baseUnitLabel = food.is_liquid ? "ml" : "grams";
 
   useEffect(() => {
@@ -58,9 +66,53 @@ export function QuantitySheet({
 
   const amt = parseFloat(amount) || 0;
   const gEach = parseFloat(gramsEach) || 0;
+  const knownServing = servings.find((s) => s.id === unit);
   let g = amt;
   if (unit !== "grams") {
-    g = amt * (gEach > 0 ? gEach : (servings.find((s) => s.id === unit)?.grams ?? 0));
+    g = amt * (gEach > 0 ? gEach : (knownServing?.grams ?? 0));
+  }
+  const needsWeight = unit === CUSTOM_PIECE && !(gEach > 0);
+
+  function selectGrams() {
+    setUnit("grams");
+    setAmount(String(g > 0 ? Math.round(g) : 100));
+    setAiError(null);
+  }
+  function selectServing(s: Serving) {
+    setUnit(s.id);
+    setAmount(unit === s.id ? amount : "1");
+    setGramsEach(String(s.grams));
+    setAiError(null);
+  }
+  function selectCustomPiece() {
+    setUnit(CUSTOM_PIECE);
+    setAmount("1");
+    setGramsEach(""); // blank on purpose — see note above
+    setAiError(null);
+    setTimeout(() => gramsEachRef.current?.focus(), 0);
+  }
+
+  async function estimatePieceWeight() {
+    setAiBusy(true); setAiError(null);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const controller = new AbortController();
+      const killer = setTimeout(() => controller.abort(), 20000);
+      const res = await fetch("/api/ai/piece-weight", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token}` },
+        body: JSON.stringify({ name: food.name }),
+        signal: controller.signal,
+      });
+      clearTimeout(killer);
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) { setAiError(body.error ?? "couldn't estimate"); return; }
+      setGramsEach(String(Math.round(body.grams)));
+    } catch {
+      setAiError("Couldn't reach AI — enter the weight manually.");
+    } finally {
+      setAiBusy(false);
+    }
   }
 
   return (
@@ -75,93 +127,89 @@ export function QuantitySheet({
           {Math.round(Number(food.kcal))} kcal /100g
         </p>
 
-        {servings.length > 0 && (
-          <div className="flex flex-wrap gap-2 mb-3">
-            <button
-              onClick={() => {
-                setUnit("grams");
-                setAmount(String(g > 0 ? Math.round(g) : 100));
-              }}
+        {/* Unit picker: grams/ml, any known servings, and a generic "count pieces"
+            option all live together as one chip row instead of a separate toggle. */}
+        <div className="flex flex-wrap gap-2 mb-3">
+          <button onClick={selectGrams}
+            className={`rounded-full border px-3 py-2 text-sm font-medium ${
+              unit === "grams" ? "border-green-600 text-green-600 bg-green-600/10" : "border-neutral-300 dark:border-neutral-700"}`}>
+            {baseUnitLabel}
+          </button>
+          {servings.map((s) => (
+            <button key={s.id} onClick={() => selectServing(s)}
               className={`rounded-full border px-3 py-2 text-sm font-medium ${
-                unit === "grams"
-                  ? "border-green-600 text-green-600 bg-green-600/10"
-                  : "border-neutral-300 dark:border-neutral-700"
-              }`}
-            >
-              {food.is_liquid ? "ml" : "Grams"}
+                unit === s.id ? "border-green-600 text-green-600 bg-green-600/10" : "border-neutral-300 dark:border-neutral-700"}`}>
+              {s.label}
             </button>
-            {servings.map((s) => (
-              <button
-                key={s.id}
-                onClick={() => {
-                  setUnit(s.id);
-                  setAmount(unit === s.id ? amount : "1");
-                  setGramsEach(String(s.grams));
-                }}
-                className={`rounded-full border px-3 py-2 text-sm font-medium ${
-                  unit === s.id
-                    ? "border-green-600 text-green-600 bg-green-600/10"
-                    : "border-neutral-300 dark:border-neutral-700"
-                }`}
-              >
-                {s.label}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {!servings.length && !food.is_liquid && (
-          <p className="text-xs text-neutral-400 mb-3">
-            No preset serving for this food yet — enter grams, or switch to
-            counting pieces below.
-          </p>
-        )}
-
-        <div className="flex items-center gap-3">
-          <input
-            inputMode="decimal"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            className="w-24 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-transparent px-4 py-3 text-base text-center"
-          />
-          <div className="flex flex-col">
-            <span className="text-neutral-500 leading-tight">
-              {unit === "grams" ? baseUnitLabel : "×"}
-            </span>
-            {unit !== "grams" && (
-              <span className="text-xs text-neutral-400 font-medium flex items-center gap-1">
-                <input
-                  inputMode="decimal"
-                  value={gramsEach}
-                  onChange={(e) => setGramsEach(e.target.value)}
-                  className="w-12 rounded border border-neutral-300 dark:border-neutral-700 bg-transparent px-1 py-0.5 text-xs text-center"
-                />
-                g each = {Math.round(g)}g
-              </span>
-            )}
-          </div>
-          <div className="flex-1" />
-          <p className="font-bold text-lg">{Math.round((Number(food.kcal) * g) / 100)} kcal</p>
+          ))}
+          {!food.is_liquid && (
+            <button onClick={selectCustomPiece}
+              className={`rounded-full border px-3 py-2 text-sm font-medium ${
+                unit === CUSTOM_PIECE ? "border-green-600 text-green-600 bg-green-600/10" : "border-neutral-300 dark:border-neutral-700"}`}>
+              Count pieces
+            </button>
+          )}
         </div>
 
-        {!food.is_liquid && (
-          <button
-            onClick={() => {
-              if (unit === "grams") {
-                // Switch to counting pieces even when no preset serving exists —
-                // e.g. "I had 6 pani puri" without a seeded serving size yet.
-                setUnit(-1);
-                setAmount("1");
-                setGramsEach(String(g > 0 ? Math.round(g) : 100));
-              } else {
-                setUnit("grams");
-                setAmount(String(g > 0 ? Math.round(g) : 100));
-              }
-            }}
-            className="mt-2 text-xs text-neutral-400 underline"
-          >
-            {unit === "grams" ? "Count pieces instead →" : "← Back to weight"}
-          </button>
+        {unit === "grams" ? (
+          <div className="flex items-center gap-3">
+            <input
+              inputMode="decimal"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              className="w-24 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-transparent px-4 py-3 text-base text-center"
+            />
+            <span className="text-neutral-500">{baseUnitLabel}</span>
+            <div className="flex-1" />
+            <p className="font-bold text-lg">{Math.round((Number(food.kcal) * g) / 100)} kcal</p>
+          </div>
+        ) : (
+          <div>
+            <div className="flex items-end gap-3">
+              <div>
+                <label className="text-xs text-neutral-400 block mb-1">Count</label>
+                <input
+                  inputMode="decimal"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  className="w-20 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-transparent px-3 py-3 text-base text-center"
+                />
+              </div>
+              <span className="text-neutral-400 pb-3">×</span>
+              <div>
+                <label className="text-xs text-neutral-400 block mb-1">
+                  {knownServing ? `g per "${knownServing.label}"` : "g per piece"}
+                </label>
+                <input
+                  ref={gramsEachRef}
+                  inputMode="decimal"
+                  placeholder="e.g. 30"
+                  value={gramsEach}
+                  onChange={(e) => setGramsEach(e.target.value)}
+                  className={`w-24 rounded-xl border bg-transparent px-3 py-3 text-base text-center ${
+                    needsWeight ? "border-amber-500" : "border-neutral-300 dark:border-neutral-700"}`}
+                />
+              </div>
+              <div className="flex-1" />
+              <p className="font-bold text-lg pb-1">{g > 0 ? Math.round((Number(food.kcal) * g) / 100) : "—"} kcal</p>
+            </div>
+
+            {needsWeight && (
+              <div className="mt-2 flex items-center gap-2">
+                <p className="text-xs text-amber-600 flex-1">Enter a weight to log this, or</p>
+                <button onClick={estimatePieceWeight} disabled={aiBusy}
+                  className="text-xs text-violet-600 font-semibold disabled:opacity-50 shrink-0">
+                  {aiBusy ? "Estimating…" : "🤖 estimate with AI"}
+                </button>
+              </div>
+            )}
+            {aiError && <p className="text-xs text-amber-600 mt-1">{aiError}</p>}
+            {!needsWeight && (
+              <p className="text-xs text-neutral-400 mt-2">
+                = {amt} × {gEach > 0 ? gEach : knownServing?.grams}g = {Math.round(g)}g total
+              </p>
+            )}
+          </div>
         )}
 
         <button
