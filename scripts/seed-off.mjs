@@ -1,15 +1,18 @@
-// Seed Open Food Facts India (ODbL) — most-scanned packaged/branded products.
-// Respects OFF API rate limits (10 search req/min → 6.5s between pages).
-// Idempotent: upserts on indb_code = 'OFF-<barcode>'.
+// Seed Open Food Facts (ODbL) — most-scanned packaged/branded products for a
+// given country. Respects OFF API rate limits (10 search req/min → 6.5s between
+// pages). Idempotent: upserts on indb_code = 'OFF-<barcode>'.
 // NOTE: page_size=100 reliably 503s on OFF's current (degraded) infra even when
 // small requests succeed — confirmed by isolating the parameter. page_size=25
 // works. Keep it small; don't "optimize" this back up without re-testing.
-// Run: SEED_DB_URL='postgresql://...' node scripts/seed-off.mjs [pages=40]
+// This has also hit multi-day IP/request-count throttles in the past — run small
+// batches patiently rather than large ones, even when the API seems to be up.
+// Run: SEED_DB_URL='postgresql://...' node scripts/seed-off.mjs [pages=40] [startPage=1] [pageSize=10] [country=india|uae]
 import pg from "pg";
 
 const PAGES = +(process.argv[2] ?? 40);
 const START_PAGE = +(process.argv[3] ?? 1);
 const PAGE_SIZE = +(process.argv[4] ?? 10);
+const COUNTRY = process.argv[5] === "uae" ? "united-arab-emirates" : "india";
 const UA = "HealthApp-Family/1.0 (personal macro tracker; contact shool007@gmail.com)";
 
 const n = (v) => (v === undefined || v === null || v === "" || Number.isNaN(+v) ? null : Math.round(+v * 1000) / 1000);
@@ -17,10 +20,21 @@ const n = (v) => (v === undefined || v === null || v === "" || Number.isNaN(+v) 
 // off by 1000x). Clamp to sane per-100g bounds; anything beyond is nulled, not stored.
 const clamp = (v, max) => (v !== null && Math.abs(v) <= max ? v : null);
 
+// Same name-keyword heuristic used for indb/usda (category fields are unreliable
+// across every source we've tried) — see migration 0017 and seed-usda-branded.mjs.
+const LIQUID_KEYWORDS = ["cola", "soda", "coffee", "tea", "latte", "cappuccino", "espresso",
+  "juice", "milk", "smoothie", "shake", "energy drink", "sports drink", "lemonade",
+  "beverage", "drink", "water", "syrup", "beer", "wine", "lassi", "buttermilk", "chaas"];
+const NOT_LIQUID_KEYWORDS = ["powder", "bar", "candy", "chocolate", "cookie"];
+const isLiquidByName = (name) => {
+  const lower = name.toLowerCase();
+  return LIQUID_KEYWORDS.some((k) => lower.includes(k)) && !NOT_LIQUID_KEYWORDS.some((k) => lower.includes(k));
+};
+
 const db = new pg.Client({ connectionString: process.env.SEED_DB_URL });
 await db.connect();
 
-const cols = ["indb_code", "name", "brand", "source", "kcal", "protein_g", "carbs_g", "fat_g", "fiber_g",
+const cols = ["indb_code", "name", "brand", "source", "is_liquid", "kcal", "protein_g", "carbs_g", "fat_g", "fiber_g",
   "sat_fat_g", "sugar_g", "sodium_mg", "calcium_mg", "iron_mg", "potassium_mg"];
 
 let total = 0;
@@ -28,7 +42,7 @@ let consecutiveFailures = 0;
 for (let page = START_PAGE; page <= PAGES; page++) {
   // world.* proved far more stable than in.* during this session's OFF outages.
   const url = `https://world.openfoodfacts.org/api/v2/search?fields=code,product_name,brands,nutriments,quantity` +
-    `&countries_tags_en=india&page_size=${PAGE_SIZE}&page=${page}&sort_by=unique_scans_n`;
+    `&countries_tags_en=${COUNTRY}&page_size=${PAGE_SIZE}&page=${page}&sort_by=unique_scans_n`;
 
   let res, body;
   for (let attempt = 1; attempt <= 3; attempt++) {
@@ -67,14 +81,14 @@ for (let page = START_PAGE; page <= PAGES; page++) {
     products.forEach((p, j) => {
       const base = j * cols.length;
       values.push(`(${cols.map((_, k) => `$${base + k + 1}`).join(",")})`);
-      params.push(`OFF-${p.code}`, p.name, p.brand, "off", p.kcal, p.protein_g, p.carbs_g,
+      params.push(`OFF-${p.code}`, p.name, p.brand, "off", isLiquidByName(p.name), p.kcal, p.protein_g, p.carbs_g,
         p.fat_g, p.fiber_g ?? 0, p.sat_fat_g, p.sugar_g, p.sodium_mg, p.calcium_mg, p.iron_mg, p.potassium_mg);
     });
     await db.query(
       `insert into foods (${cols.join(",")}) values ${values.join(",")}
        on conflict (indb_code) do update set name=excluded.name, brand=excluded.brand,
-         kcal=excluded.kcal, protein_g=excluded.protein_g, carbs_g=excluded.carbs_g,
-         fat_g=excluded.fat_g, sugar_g=excluded.sugar_g`,
+         is_liquid=excluded.is_liquid, kcal=excluded.kcal, protein_g=excluded.protein_g,
+         carbs_g=excluded.carbs_g, fat_g=excluded.fat_g, sugar_g=excluded.sugar_g`,
       params);
     total += products.length;
   }

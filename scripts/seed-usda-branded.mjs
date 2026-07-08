@@ -47,16 +47,20 @@ async function* csvStream(filename) {
 // 1.1M of ~2M rows on a first attempt, far too much for a 500MB free Postgres.
 // Filtering by the actual global brands people search for (the ones flagged as
 // missing: Coca-Cola, coffee, protein shakes) keeps this bounded and relevant.
+// Narrowed to brands actually sold in India/UAE with roughly the same recipe —
+// a first pass matched brand_name+brand_owner together, so "nestle" pulled in
+// every Nestle-owned sub-brand including ones that aren't sold here (Stouffer's
+// frozen dinners, US-only private labels) even though the displayed brand was
+// never "Nestle". Matching brand_name alone (falling back to owner only when
+// brand_name is blank) avoids that conglomerate-sweep problem.
 const ALLOWED_BRAND_KEYWORDS = [
   "coca-cola", "coca cola", "pepsi", "sprite", "fanta", "mountain dew", "7up", "7-up",
-  "thums up", "limca", "mirinda", "red bull", "monster energy", "gatorade", "powerade",
-  "nescafe", "nescafé", "starbucks", "lipton", "tetley", "twinings", "bru",
-  "amul", "nestle", "nestlé", "britannia", "parle", "haldiram",
-  "quest nutrition", "optimum nutrition", "muscle milk", "premier protein",
-  "myprotein", "isopure", "ensure", "boost", "pediasure", "horlicks", "bournvita",
-  "cadbury", "hershey", "mars", "kitkat", "kit kat", "ferrero", "nutella",
-  "lays", "lay's", "pringles", "doritos", "kurkure", "bingo",
-  "kelloggs", "kellogg's", "quaker", "maggi", "knorr", "heinz",
+  "red bull", "monster energy", "gatorade",
+  "nescafe", "nescafé", "starbucks", "lipton", "twinings",
+  "nestle", "nestlé", "cadbury", "hershey", "mars", "kitkat", "kit kat", "ferrero", "nutella",
+  "lays", "lay's", "pringles", "doritos",
+  "quest nutrition", "optimum nutrition", "myprotein", "isopure", "ensure",
+  "kelloggs", "kellogg's", "quaker", "heinz", "knorr",
 ];
 
 console.log("pass 1: scanning branded_food.csv for allowed brands…");
@@ -65,7 +69,7 @@ let scanned = 0;
 for await (const r of csvStream("branded_food.csv")) {
   scanned++;
   if (scanned % 200000 === 0) process.stdout.write(`  scanned ${scanned}, kept ${allowed.size}\r`);
-  const brand = `${r.brand_name || ""} ${r.brand_owner || ""}`.toLowerCase();
+  const brand = (r.brand_name || r.brand_owner || "").toLowerCase();
   if (!ALLOWED_BRAND_KEYWORDS.some((k) => brand.includes(k))) continue;
   allowed.set(r.fdc_id, {
     brand: (r.brand_name || r.brand_owner || "").trim().slice(0, 80) || null,
