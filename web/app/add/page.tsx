@@ -6,6 +6,7 @@ import { AppShell } from "../AppShell";
 import { supabase } from "@/lib/supabase";
 import { logSnapshot, todayLocal, type FoodNutrients } from "@/lib/nutrition";
 import { compressImage } from "@/lib/imageCompress";
+import { QuantitySheet } from "@/components/QuantitySheet";
 
 type Food = FoodNutrients & {
   id: number;
@@ -13,7 +14,6 @@ type Food = FoodNutrients & {
   source: string;
   brand?: string | null;
 };
-interface Serving { id: number; label: string; grams: number; }
 
 function AddFood({ userId }: { userId: string }) {
   const router = useRouter();
@@ -26,8 +26,6 @@ function AddFood({ userId }: { userId: string }) {
   const [recents, setRecents] = useState<Food[]>([]);
   const [searching, setSearching] = useState(false);
   const [picked, setPicked] = useState<Food | null>(null);
-  const [servings, setServings] = useState<Serving[]>([]);
-  const [qty, setQty] = useState("100");
   const [aiBusy, setAiBusy] = useState(false);
   const [aiMsg, setAiMsg] = useState<string | null>(null);
   const [photoBusy, setPhotoBusy] = useState(false);
@@ -64,19 +62,6 @@ function AddFood({ userId }: { userId: string }) {
 
   async function pick(f: Food) {
     setPicked(f);
-    setQty("100");
-    const { data } = await supabase.from("food_servings").select("id,label,grams").eq("food_id", f.id).limit(6);
-    setServings((data as Serving[]) ?? []);
-  }
-
-  async function log() {
-    if (!picked) return;
-    const g = parseFloat(qty);
-    if (!(g > 0)) return;
-    const snap = logSnapshot(picked, g);
-    const { error } = await supabase.from("food_logs").insert({
-      user_id: userId, log_date: date, meal, food_id: picked.id, ...snap });
-    if (!error) router.push("/");
   }
 
   async function askAI() {
@@ -140,7 +125,6 @@ function AddFood({ userId }: { userId: string }) {
   }
 
   const list = q.trim().length >= 2 ? results : recents;
-  const g = parseFloat(qty) || 0;
 
   return (
     <main className="px-4 pt-4">
@@ -197,38 +181,16 @@ function AddFood({ userId }: { userId: string }) {
 
       {/* quantity sheet */}
       {picked && (
-        <div className="fixed inset-0 z-[60] flex flex-col justify-end bg-black/40" onClick={() => setPicked(null)}>
-          <div onClick={(e) => e.stopPropagation()}
-            className="rounded-t-3xl bg-white dark:bg-neutral-950 p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] max-w-md w-full mx-auto">
-            <p className="font-bold">{picked.name}</p>
-            <p className="text-xs text-neutral-500 mb-4">
-              {picked.brand && `${picked.brand} · `}{Math.round(Number(picked.kcal))} kcal /100g
-            </p>
-            {servings.length > 0 && (
-              <div className="flex flex-wrap gap-2 mb-3">
-                {servings.map((s) => (
-                  <button key={s.id} onClick={() => setQty(String(s.grams))}
-                    className={`rounded-full border px-3 py-2 text-sm font-medium ${
-                      qty === String(s.grams) ? "border-green-600 text-green-600 bg-green-600/10"
-                        : "border-neutral-300 dark:border-neutral-700"}`}>
-                    {s.label} ({Math.round(s.grams)}g)
-                  </button>
-                ))}
-              </div>
-            )}
-            <div className="flex items-center gap-3">
-              <input inputMode="decimal" value={qty} onChange={(e) => setQty(e.target.value)}
-                className="w-28 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-transparent px-4 py-3 text-base text-center" />
-              <span className="text-neutral-500">grams</span>
-              <div className="flex-1" />
-              <p className="font-bold">{Math.round(Number(picked.kcal) * g / 100)} kcal</p>
-            </div>
-            <button onClick={log} disabled={!(g > 0)}
-              className="mt-4 w-full rounded-xl bg-green-600 text-white py-3.5 font-semibold disabled:opacity-40 active:scale-[0.98]">
-              Log it
-            </button>
-          </div>
-        </div>
+        <QuantitySheet
+          food={picked}
+          onClose={() => setPicked(null)}
+          onSave={async (grams) => {
+            const snap = logSnapshot(picked, grams);
+            const { error } = await supabase.from("food_logs").insert({
+              user_id: userId, log_date: date, meal, food_id: picked.id, ...snap });
+            if (!error) router.push("/");
+          }}
+        />
       )}
     </main>
   );

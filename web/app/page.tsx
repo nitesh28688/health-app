@@ -7,6 +7,8 @@ import { supabase } from "@/lib/supabase";
 import { todayLocal, logSnapshot, type FoodNutrients } from "@/lib/nutrition";
 import type { Profile } from "@/lib/useUser";
 import { Skeleton } from "@/lib/Skeleton";
+import { QuantitySheet } from "@/components/QuantitySheet";
+import { Pencil, X } from "lucide-react";
 
 const MEALS = [
   { key: "breakfast", label: "Breakfast", icon: "🌅" },
@@ -21,7 +23,7 @@ const MICRO_LABELS: Record<string, string> = {
 };
 
 interface LogRow {
-  id: number; meal: string; qty_g: number; kcal: number;
+  id: number; food_id: number; meal: string; qty_g: number; kcal: number;
   protein_g: number; carbs_g: number; fat_g: number; fiber_g: number;
   foods: { name: string } | null;
 }
@@ -83,10 +85,11 @@ function Diary({ profile, userId }: { profile: Profile | null; userId: string })
   const [mealIdea, setMealIdea] = useState<string | null>(null);
   const [mealIdeaBusy, setMealIdeaBusy] = useState(false);
   const [mealIdeaError, setMealIdeaError] = useState<string | null>(null);
+  const [editingLog, setEditingLog] = useState<{ log: LogRow; food: any } | null>(null);
 
   const load = useCallback(async () => {
     const [logsRes, totalsRes] = await Promise.all([
-      supabase.from("food_logs").select("id,meal,qty_g,kcal,protein_g,carbs_g,fat_g,fiber_g,foods(name)")
+      supabase.from("food_logs").select("id,food_id,meal,qty_g,kcal,protein_g,carbs_g,fat_g,fiber_g,foods(name)")
         .eq("user_id", userId).eq("log_date", date).order("id"),
       supabase.rpc("get_daily_totals", { p_from: date, p_to: date }),
     ]);
@@ -127,6 +130,11 @@ function Diary({ profile, userId }: { profile: Profile | null; userId: string })
   async function removeLog(id: number) {
     await supabase.from("food_logs").delete().eq("id", id);
     load();
+  }
+
+  async function startEdit(log: LogRow) {
+    const { data: food } = await supabase.from("foods").select("*").eq("id", log.food_id).single();
+    if (food) setEditingLog({ log, food });
   }
 
   async function copyMeal(meal: string) {
@@ -285,8 +293,16 @@ function Diary({ profile, userId }: { profile: Profile | null; userId: string })
                         {" "}Fat {Math.round(Number(l.fat_g))}g · Fiber {Math.round(Number(l.fiber_g ?? 0))}g
                       </p>
                     </div>
-                    <button onClick={() => removeLog(l.id)} aria-label="Delete"
-                      className="w-9 h-9 rounded-full text-neutral-400 flex items-center justify-center">✕</button>
+                    <div className="flex items-center">
+                      <button onClick={() => startEdit(l)} aria-label="Edit"
+                        className="w-10 h-10 rounded-full text-neutral-400 flex items-center justify-center active:bg-neutral-100 dark:active:bg-neutral-800">
+                        <Pencil className="w-4 h-4" />
+                      </button>
+                      <button onClick={() => removeLog(l.id)} aria-label="Delete"
+                        className="w-10 h-10 rounded-full text-neutral-400 flex items-center justify-center active:bg-neutral-100 dark:active:bg-neutral-800">
+                        <X className="w-5 h-5" />
+                      </button>
+                    </div>
                   </li>
                 ))}
               </ul>
@@ -299,6 +315,20 @@ function Diary({ profile, userId }: { profile: Profile | null; userId: string })
         <Link href="/admin" className="mt-8 mb-2 block text-center text-sm text-neutral-400">🛠️ Admin dashboard</Link>
       )}
       </div>
+
+      {editingLog && (
+        <QuantitySheet
+          food={editingLog.food}
+          initialQtyGrams={editingLog.log.qty_g}
+          onClose={() => setEditingLog(null)}
+          onSave={async (grams) => {
+            const snap = logSnapshot(editingLog.food, grams);
+            await supabase.from("food_logs").update(snap).eq("id", editingLog.log.id);
+            setEditingLog(null);
+            load();
+          }}
+        />
+      )}
     </main>
   );
 }
