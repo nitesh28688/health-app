@@ -151,16 +151,6 @@ function AddFood({ userId }: { userId: string }) {
         <p className="text-xs font-semibold text-neutral-400 uppercase mt-4 mb-1">Recent</p>
       )}
       {searching && <p className="text-sm text-neutral-400 mt-4">Searching…</p>}
-      {!searching && q.trim().length >= 2 && results.length === 0 && (
-        <div className="mt-4 text-center">
-          <p className="text-sm text-neutral-400 mb-3">No match in the food database.</p>
-          <button onClick={askAI} disabled={aiBusy}
-            className="rounded-xl border border-violet-500 text-violet-500 px-5 py-3 font-semibold text-sm disabled:opacity-50">
-            {aiBusy ? "Asking AI…" : "🤖 Estimate with AI"}
-          </button>
-          {aiMsg && <p className="text-sm text-amber-600 mt-2">{aiMsg}</p>}
-        </div>
-      )}
 
       <ul className="mt-2 flex flex-col gap-1.5">
         {list.map((f) => (
@@ -178,6 +168,21 @@ function AddFood({ userId }: { userId: string }) {
           </li>
         ))}
       </ul>
+
+      {/* AI fallback: shown for ANY search with 2+ chars, not just zero results —
+          "none of these are right" is just as common as "nothing showed up". */}
+      {!searching && q.trim().length >= 2 && (
+        <div className="mt-4 text-center">
+          <p className="text-sm text-neutral-400 mb-3">
+            {results.length === 0 ? "No match in the food database." : "Not the one you meant?"}
+          </p>
+          <button onClick={askAI} disabled={aiBusy}
+            className="rounded-xl border border-violet-500 text-violet-500 px-5 py-3 font-semibold text-sm disabled:opacity-50">
+            {aiBusy ? "Asking AI…" : `🤖 Estimate "${q.trim()}" with AI`}
+          </button>
+          {aiMsg && <p className="text-sm text-amber-600 mt-2">{aiMsg}</p>}
+        </div>
+      )}
 
       {/* quantity sheet */}
       {picked && (
