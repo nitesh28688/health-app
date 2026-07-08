@@ -191,7 +191,7 @@ function Workout({ profile, setProfile, userId }: {
 
       {/* day sheet */}
       {openDay && (
-        <div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/40" onClick={() => setOpenDay(null)}>
+        <div className="fixed inset-0 z-[60] flex flex-col justify-end bg-black/40" onClick={() => setOpenDay(null)}>
           <div onClick={(e) => e.stopPropagation()}
             className="rounded-t-3xl bg-white dark:bg-neutral-950 p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] max-w-md w-full mx-auto max-h-[80vh] overflow-y-auto">
             <h2 className="font-bold text-lg mb-3">Day {openDay.day_number} · {openDay.title}</h2>
@@ -224,7 +224,7 @@ function Workout({ profile, setProfile, userId }: {
 
       {/* custom workout sheet */}
       {customOpen && (
-        <div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/40" onClick={() => setCustomOpen(false)}>
+        <div className="fixed inset-0 z-[60] flex flex-col justify-end bg-black/40" onClick={() => setCustomOpen(false)}>
           <div onClick={(e) => e.stopPropagation()}
             className="rounded-t-3xl bg-white dark:bg-neutral-950 p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] max-w-md w-full mx-auto">
             <h2 className="font-bold text-lg mb-3">Log your own workout</h2>

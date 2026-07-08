@@ -197,7 +197,7 @@ function AddFood({ userId }: { userId: string }) {
 
       {/* quantity sheet */}
       {picked && (
-        <div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/40" onClick={() => setPicked(null)}>
+        <div className="fixed inset-0 z-[60] flex flex-col justify-end bg-black/40" onClick={() => setPicked(null)}>
           <div onClick={(e) => e.stopPropagation()}
             className="rounded-t-3xl bg-white dark:bg-neutral-950 p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] max-w-md w-full mx-auto">
             <p className="font-bold">{picked.name}</p>
