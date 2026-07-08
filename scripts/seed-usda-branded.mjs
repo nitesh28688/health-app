@@ -129,15 +129,32 @@ const isLiquidByName = (name) => {
   return LIQUID_NAME_KEYWORDS.some((k) => n.includes(k)) && !NOT_LIQUID_KEYWORDS.some((k) => n.includes(k));
 };
 
-const mapped = [];
+const candidates = [];
 for (const [fdcId, info] of allowed) {
   const name = descriptions.get(fdcId);
   const n = nutrientsByFood.get(fdcId);
   if (!name || name.length < 3 || !n || n.kcal == null || n.kcal > 900) continue;
   if (n.protein_g == null || n.carbs_g == null || n.fat_g == null) continue;
-  mapped.push({ fdcId, name, ...info, n });
+  candidates.push({ fdcId, name, ...info, n });
 }
-console.log(`${mapped.length} branded foods ready to insert`);
+console.log(`${candidates.length} branded foods pass basic filters`);
+
+// USDA gives every pack size/container a separate UPC/fdc_id for the SAME product
+// (confirmed: 267 near-identical Cheez-It rows differing only by box size). Dedup
+// by brand + name-with-pack-noise-stripped + rounded macros, keeping one per group —
+// otherwise search results are dozens of "Diet Coke, 20 fl oz" / "12 fl oz" / "2L".
+const stripPackNoise = (name) =>
+  name.split(",")[0].replace(/\s+(Bottles?|Cans?|Jugs?|Jars?|Boxes?|Bags?|Cartons?|Packs?|Pouches?)$/i, "").trim();
+const seenGroups = new Set();
+const mapped = [];
+for (const c of candidates) {
+  const key = [c.brand, stripPackNoise(c.name).toLowerCase(),
+    Math.round(c.n.kcal), Math.round(c.n.protein_g), Math.round(c.n.carbs_g), Math.round(c.n.fat_g)].join("|");
+  if (seenGroups.has(key)) continue;
+  seenGroups.add(key);
+  mapped.push(c);
+}
+console.log(`${mapped.length} branded foods ready to insert after dedup (${candidates.length - mapped.length} pack-size duplicates skipped)`);
 
 const db = new pg.Client({ connectionString: process.env.SEED_DB_URL });
 await db.connect();
