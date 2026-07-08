@@ -1,7 +1,9 @@
 # Health App — Structure & How It Works
 
-Last updated: 2026-07-08. Read this first if you're new to the codebase — it explains
-*why* things are built the way they are, not just what the files are.
+Last updated: 2026-07-09. Read this first if you're new to the codebase — it explains
+*why* things are built the way they are, not just what the files are. For a short
+"what's the current state, what's next" pointer, see `HANDOFF.md` — this file is the
+deep reference.
 
 ---
 
@@ -51,7 +53,7 @@ That's why:
 
 ## 3. Database (the real backend)
 
-11 migrations, run in order, in `supabase/migrations/`. Each one is additive — never
+16 migrations, run in order, in `supabase/migrations/`. Each one is additive — never
 edit an already-applied migration; add a new one.
 
 | # | File | What it added |
@@ -377,10 +379,13 @@ swipeable date picker, full macro names, and Indian + western + fast-food search
 cooked-yield engine, water tracking, weight/BMI trends with per-day macro context on
 every check-in, workout plans (4 free seeded plans, 879 exercises) *and* freeform
 custom logging with an AI coach that reviews recent training, friends (requests/feed/
-cheers/leaderboard), AI food-estimate fallback (Gemini, cached), a real admin panel
-(full user list, per-user activity detail, delete-user with self-delete protection,
-AI-food moderation queue), Web Push reminders (one tailored daily nudge), and an
-install-app prompt for both Android and iOS.
+cheers/leaderboard), AI food-estimate fallback (Gemini, cached, reachable even when
+search returns wrong-but-non-empty results), photo-based AI food logging (Gemini
+vision), a real admin panel (full user list, per-user activity detail, delete-user
+with self-delete protection, AI-food moderation queue), Web Push reminders (one
+tailored daily nudge covering food/water/medications), an install-app prompt for both
+Android and iOS, avatar + before/after progress photos (Cloudflare R2), medications
+with reminder times, and opt-in menstrual cycle tracking with next-period prediction.
 
 **The "goal toggle reverts to maintain" report:** the most likely root cause was
 `useUser.ts`'s profile-fetch effect being keyed on the whole Supabase `session`
@@ -394,13 +399,22 @@ fat/Maintain/Gain muscle before "Suggest" is even enabled, and the result is lab
 computed for the wrong goal. Verified live: Lose fat and Gain muscle produce visibly
 different numbers (1964 vs 2664 kcal in testing), each correctly labeled.
 
-**Known gap:** Open Food Facts India (packaged/branded groceries — Maggi, Amul,
-Lay's, etc.) is not yet seeded. Their search API had a multi-hour outage (confirmed
-across `in.*`, `world.*`, and their search-a-licious service — not something on our
-end) during this build. `scripts/seed-off.mjs` is idempotent and ready — rerun
-`node scripts/seed-off.mjs 20` from repo root once their API is stable. Nothing is
-actually blocked for users in the meantime: the Gemini AI fallback covers any
-packaged product searched and not found.
+**Known gap (partial): Open Food Facts India.** 168 branded/packaged products seeded
+as of 2026-07-09 (Coca-Cola, Pepsi, Sprite, Fanta, Thums Up, Red Bull, Limca and more
+all confirmed searchable with correct brand names) — but OFF's API throttles hard
+after roughly 10-15 requests **regardless of page size** (tested 100, 25, and 10 —
+all hit the same wall at the same request count), and the block appears to last
+hours, not minutes: a follow-up attempt after ~20 minutes failed on its very first
+request. This is a request-count/IP throttle on OFF's side, not a data-format or
+size problem — don't waste time re-tuning `PAGE_SIZE` further. To get more: rerun
+`node scripts/seed-off.mjs <pages> <startPage> <pageSize>` (e.g.
+`node scripts/seed-off.mjs 30 30 10` to fetch 30 more pages starting deeper in the
+list) after a multi-hour gap, and expect it to stop itself after ~10-15 successful
+requests — that's normal, not a bug in the script. It's idempotent (upserts on
+barcode) so re-running never duplicates or corrupts data. Nothing is blocked for
+users in the meantime: any packaged product not found falls through to the **AI
+fallback**, which is now easier to reach (see Round 6 below) and permanently adds
+that item to the searchable database on first use.
 
 **Round 4 additions (2026-07-08):** avatar upload + before/after progress photo
 comparison (Cloudflare R2, bucket `health-app-photos` — **live**, verified end-to-end
@@ -419,6 +433,37 @@ prediction from cycle history.
 - **Navigation UX:** Switched tab navigation (both tap and swipe gestures) to use router `replace` instead of `push`, preventing browser history bloat and ensuring the back button correctly exits the app. Fixed a significant tab-switching freeze/hang by removing `framer-motion`'s `<AnimatePresence mode="wait">` which was blocking Next.js route replacements on exit.
 - **AI Improvements:** Validated that Gemini AI endpoints use the optimal free-tier model (`gemini-flash-latest`), while significantly improving the perceived speed and UX through animated presentation of the results.
 - **Profile & PWA Polish:** Added explicit waist and body fat inputs in Profile with gender-specific guidelines. Hid menstrual cycle tracking for non-females. Fixed a timing bug where Next.js SPA hydration missed the early-firing `beforeinstallprompt` event (captured it in `<head>` early). Reset the 14-day dismissal timeout cache. Improved Admin sheet padding for mobile browser nav bars. Updated the Friends page to display explicit outgoing requests with cancellation buttons instead of a generic count.
+
+**Round 6 additions (2026-07-09) — bug fixes on top of Antigravity's UI pass:**
+- **AI fallback was unreachable whenever search returned *any* results, even wrong
+  ones.** The "🤖 Estimate with AI" button only appeared when `results.length === 0`
+  — but "these 10 matches are all wrong" (e.g. searching "milk coffee" surfaced
+  soymilk, milk cookies, coffee biscuits — nothing resembling actual milk coffee) is
+  at least as common as "nothing found," and was a dead end requiring a workaround
+  search just to unlock AI. Now the button always shows for any 2+ character query,
+  with copy that adapts ("No match" vs. "Not the one you meant?") and names the exact
+  query it'll estimate.
+- **Duplicate body-measurement UI removed.** Antigravity had added waist/body-fat %
+  inputs to Profile; an earlier round's version on Trends was still there too — both
+  wrote to the same `body_metrics` row. Removed the Trends copy and fixed a real bug
+  in the process: Trends' weight-log was an upsert that always included
+  `waist_cm`/`body_fat_pct` (as `null` if untouched), which would silently overwrite
+  whatever was logged in Profile that same day. Trends' weight-log payload now omits
+  those keys entirely so it can never touch them.
+- **Cycle tracking widened.** Antigravity had gated it to `sex === "female"` exactly,
+  locking out anyone who selected "Other." Changed to show for anyone except "Male" —
+  still opt-in via the existing checkbox either way.
+- **Confirmed real, not aspirational:** the GitHub → Vercel CI/CD pipeline
+  (`nitesh28688/health-app` on `master`) genuinely auto-deploys on `git push` — verified
+  by watching a deploy appear in `vercel ls` within ~30s of a push, with no manual
+  `vercel deploy` call. **This is now the standard way to ship** — commit + push,
+  don't run `vercel deploy --prod` directly unless git is unavailable.
+- Audited all 8 of Antigravity's commits by hand (full `git diff` read, not just
+  skimmed): the service-worker cache-strategy fix (network-first for the HTML shell,
+  fixing a real "users stuck on stale build after deploy" bug), the
+  `beforeinstallprompt` early-capture fix (real race condition), and the bottom-sheet
+  z-index consistency fix are all correct and valuable. No other issues found beyond
+  the three above.
 
 **Not yet built** (schema/RPCs already exist, just needs UI):
 - Challenges UI (create/join/scoreboard) — `challenges` table + `get_challenge_progress()` ready.
@@ -449,7 +494,3 @@ prediction from cycle history.
   bigger project than anything else in this app, not a quick add. If step tracking
   becomes a priority, treat it as a distinct v3 initiative, not an incremental
   feature.
-
-**Recommended but not done:** Resend (or similar) for custom SMTP — Supabase's
-built-in mailer works but rate-limits to a few emails/hour and sends from a generic
-address, which matters at family-wide launch time.

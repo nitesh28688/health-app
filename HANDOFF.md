@@ -1,50 +1,72 @@
-# Handoff to Sonnet — read this first
+# Handoff — current status
 
-Architecture is FIXED. Read `docs/ARCHITECTURE.md` (why) and `docs/SONNET_GUIDELINES.md` (rules + build order). Do not add tables, backends, or paid services.
+Short pointer document. For the deep "why is it built this way" reference, read
+`STRUCTURE.md` — that's the source of truth and is kept in sync every session.
 
-## ✅ DONE (do not redo)
+## Where things stand (2026-07-09)
 
-**Database — 100% complete and LIVE** (Supabase project `caqtjgruowpgujtmuwkf`, Mumbai):
-- Migrations 0001–0009 applied: foods+micros, logs, recipes, body metrics, water, workouts, social (friends/cheers/feed), hardening, fun (streaks/leaderboard/challenges/badges). All RLS, all indexes, all RPCs.
-- Seeded: 1,014 INDB Indian foods (with micros + 917 serving sizes), 879 exercises, 4 public workout plans (65 items).
-- Verified live: `search_foods('dal makhani')` returns correct data via REST.
-- Connection for any future migration/seed: session pooler `aws-1-ap-south-1.pooler.supabase.com:5432`, user `postgres.caqtjgruowpgujtmuwkf` (direct db host is IPv6-only — unreachable, don't use). Push with `npx supabase db push --db-url ...` from repo root.
+**The app is live and in real use.** Family members have signed up
+(health.linearventures.in). Feature set is complete for daily use: auth (email +
+WhatsApp OTP), food diary with Indian/western/branded search + AI fallback (text and
+photo), recipes, water, weight/BMI/waist/body-fat trends, workout plans + freeform
+logging + AI coaching, friends/leaderboard/cheers, medications, menstrual cycle
+tracking, avatar + progress photos, Web Push reminders, admin panel.
 
-**Web app scaffold in `web/`** (Next.js 16.2.10, App Router, Tailwind, TS — NOTE: read `web/AGENTS.md`, this Next version has breaking changes; check `node_modules/next/dist/docs/`):
-- `lib/supabase.ts` — client (env vars already in `web/.env.local`).
-- `lib/nutrition.ts` — ALL calculation logic: `logSnapshot()` (use for EVERY food_logs insert — builds macro columns + micros JSONB), `bmr`/`tdee` (Mifflin-St Jeor), `bmi`/`bmiCategory` (Asian-Indian cutoffs), `kcalBurned` (MET), `todayLocal()` (ALWAYS use this for log_date — never toISOString, it breaks IST dates before 5:30am).
-- `app/api/ai/food-estimate/route.ts` — Gemini with cache-first + 10/user/day cap. Needs `GEMINI_API_KEY` + `SUPABASE_SERVICE_ROLE_KEY` env (user adds; get service key from Supabase dashboard → Settings → API).
-- PWA: `public/manifest.json`, `public/sw.js` (offline shell), SW registered in layout. **Missing: `public/icon-192.png` + `icon-512.png`** — generate simple green heart/leaf icons.
-- Production build verified passing.
+**Deploy pipeline:** `git push origin master` → Vercel auto-deploys (confirmed real,
+~30s builds). Don't use `vercel deploy --prod` unless git is unavailable — git is now
+the standard path.
 
-## 🔨 YOUR JOB (build order — each phase shippable)
+**Database:** Supabase project `caqtjgruowpgujtmuwkf` (Mumbai), 16 migrations, all
+live. Connect via the session pooler only — `aws-1-ap-south-1.pooler.supabase.com`,
+user `postgres.caqtjgruowpgujtmuwkf` (the direct host is IPv6-only, unreachable from
+this network).
 
-1. ~~**Auth**~~ ✅ DONE by Fable (2026-07-07): `lib/useUser.ts` (session+profile hook, copies username from signup metadata on first login), `/login`, `/signup` (username pre-check, email-confirm fallback), `app/AppShell.tsx` (client auth gate + bottom nav — wrap every signed-in page with it), stub pages for all tabs. ALSO DONE: **Admin** — migration 0010 (is_admin flag, FIRST signup auto-becomes admin, get_admin_stats RPC, admin moderation policies) + `/admin` page (stats tiles, AI-food verify/delete queue, recent signups). Verified rendering on mobile viewport, no console errors.
-2. ~~**Profile setup wizard**~~ ✅ DONE by Fable: `/profile` — body stats, BMI live preview (Asian cutoffs), goal chips (lose/maintain/gain), ✨ suggest-targets (tdee −400/+300, protein 1.6–1.8 g/kg, fat 28% kcal), editable targets, water target, share toggles, weight upsert to body_metrics. E2E verified (math checked: 75kg/175cm/31y male light = 2329 kcal ✓).
-3. ~~**Diary (core screen)**~~ ✅ DONE by Fable: `/` — date nav (todayLocal-safe), totals card (kcal + P/C/F bars vs live targets, burn 🔥), water chips (+250/+500 with optimistic update), 4 meal sections with per-meal kcal, delete log, `/add` page (recents → debounced search_foods → bottom-sheet with serving chips → logSnapshot insert). E2E verified: logged 1 bowl (353g) Dal makhani = 262 kcal ✓; all pages zero horizontal overflow at 375px.
-4. ~~**Trends**~~ ✅ DONE by Fable: `/trends` — streak tiles (get_streaks), 90-day weight SVG line chart + BMI badge (get_bmi_series), weight quick-log, 7-day kcal bars vs target + water avg + burn total (get_daily_totals). E2E verified.
-5. ~~**Recipes**~~ ✅ DONE by Fable: `/recipes` (linked from /add) — builder with ingredient search, raw grams, cooked-yield field, live kcal/100g estimate; DB trigger result verified to match client estimate exactly (168 kcal/100g test). Share toggle + delete (delete blocked by FK if logged — alert shown). Own recipes appear in food search with 🍲.
-6. ~~**Workouts**~~ ✅ DONE by Fable: `/workout` — plan picker (4 seeded), active plan (profiles.active_plan_id), day sheet with exercises + live MET burn estimate, one-tap log (verified: 40min ≈ 272 kcal at 75.5kg), recent logs; burn flows to diary header + get_daily_totals.
-7. ~~**AI wiring**~~ ✅ DONE by Fable: /add search-miss → "🤖 Estimate with AI" → route → insert as source='ai' owned food → quantity sheet. LIVE-TESTED 2026-07-07 with real keys (both now in web/.env.local): Gemini estimate ✓, global cache hit on repeat query ✓, per-user daily cap wired. When deploying to Vercel, copy GEMINI_API_KEY + SUPABASE_SERVICE_ROLE_KEY as server env vars (via Bash printf, never PowerShell pipe).
-8. ~~**Social**~~ ✅ MOSTLY DONE by Fable: `/friends` — 3 tabs: Feed (get_friends_feed + 👏 cheers), Leaderboard (get_leaderboard, week since Monday, verified), People (search_profiles → request → accept/unfriend, pending badges). NOT yet tested with 2 real users — smoke test the request/accept/feed flow when family joins.
-9. ~~**UI Modernization & CI/CD**~~ ✅ DONE (2026-07-08): Upgraded typography to Geist, transitioned from emoji to Lucide icons, added Framer Motion page transitions and AI slide-down animations. Replaced flat macro bars with circular SVG Rings. Migrated deployment to automatic GitHub-Vercel CI/CD pipeline (Root Directory: `web`). Fixed AppShell Framer Motion tab-switching lockups, captured PWA `beforeinstallprompt` prior to React hydration to ensure installability, improved Admin mobile padding, fixed bottom sheet modal z-index layering over nav bar, and added actionable sent-friend-request tracking.
-10. **Fun remaining (YOUR JOB)**:
-- [x] Service worker cached old bundles -> Network-first fetch implemented.
-- [x] Restored circular macro Rings instead of flat progress bars.
-- [x] Correct abbreviations (`Protein` vs `P`).
-- [x] AppShell padding `pb-36` to ensure buttons aren't hidden under bottom nav.
-- [x] Profile measurements: added waist & body fat logging, and hid menstrual cycle tracking for non-females.
-- [x] Food Logging UX: added unit multipliers (e.g. log 2 chapatis directly) and an edit pencil icon to modify existing diary logs.
-- [ ] Challenges UI (create/join/`get_challenge_progress` scoreboard — schema+RPC ready).
-- [ ] Badges (criteria map in app code → insert user_badges on qualifying events, 409 = earned; confetti).
-- [ ] AI daily suggestions (kind='daily_tip' in ai_suggestions).
-- [ ] Offline IndexedDB queue.
-- [ ] `name_local` Hindi search data.
-- [ ] Micronutrient detail screen (`get_daily_micros`).
-   ⚠️ Dev gotchas (keep): service worker registers ONLY in production, dev self-unregisters (`app/sw-register.tsx`) — a SW caching dev pages hung all navigation. React controlled inputs need native-setter + input event when filled programmatically. Supabase built-in mailer rate-limits signups (~3/hr) — fine for family, but disable "Confirm email" in Auth settings for smoother onboarding.
+## Immediate open items
 
-## Hard rules recap
-- Mobile-first 380px, bottom tabs: Diary / + / Workout / Trends / Profile.
-- One round trip per screen; no polling; no realtime; no images/uploads.
-- Snapshot at write (`logSnapshot`); reads never join.
-- Deploy: Vercel Hobby, root dir `web/`, env vars from `web/.env.local` (use Bash `printf` to set Vercel env vars — PowerShell pipes add BOM).
+1. **Open Food Facts reseed** — 168 branded products in so far (major drinks/brands
+   confirmed working), throttled by OFF's API after ~10-15 requests regardless of
+   batch size. Retry after a multi-hour gap: `node scripts/seed-off.mjs 30 30 10`
+   (see STRUCTURE.md § "Known gap" for the full story). Not urgent — AI fallback
+   covers gaps in the meantime and now permanently saves each lookup.
+2. **Challenges UI, badges UI, AI daily suggestions, offline write queue, Hindi
+   `name_local` search data** — schema/RPCs already exist for the first three, just
+   need screens. See STRUCTURE.md § "Not yet built" for specifics.
+3. **Candidate v2 features** (not started, ideas only): barcode scanner (real
+   payoff once OFF has more products — `BarcodeDetector` browser API, no library
+   needed), fasting timer, weekly email digest (Brevo SMTP already set up, unused
+   beyond auth mail). Step counting was deliberately **not** attempted — no
+   standard browser API exists; would need native HealthKit/Google Fit integration,
+   a distinct project, not an incremental feature.
+
+## Critical gotchas (don't relearn these the hard way)
+
+- **`todayLocal()` always, never `toISOString()`** for any `log_date` — the latter is
+  UTC and shifts IST users' late-evening entries onto the wrong day.
+- **Snapshot at write** (`logSnapshot()`) for every `food_logs` insert — never join
+  back to `foods` for historical macros; recipes can change after the fact.
+- **Test accounts:** create via direct SQL insert into `auth.users` + `auth.identities`
+  (see any earlier seed script or ask for the pattern) — **never** via the real
+  signup API with a fake email, which actually sends a confirmation email and can
+  trigger Supabase bounce-rate warnings (happened once, lesson learned). Always
+  clean up test rows immediately after verifying.
+- **Never mint a session/JWT for a real user's account**, even non-destructively —
+  blocked by the permission system as credential materialization, and correctly so.
+  To test admin-only routes, temporarily grant `is_admin` to a disposable test
+  account instead.
+- Service worker only registers in production (`app/sw-register.tsx` unregisters +
+  clears caches in dev) — a caching SW in dev hangs all navigation.
+- React controlled inputs need the native-setter + `input` event dispatch pattern
+  when filled programmatically (e.g. in browser-automation testing) — plain
+  `.value = x` is silently ignored by React.
+- Vercel env vars: set via Bash `printf '%s' value | vercel env add NAME production`
+  — PowerShell pipes add a BOM that corrupts the value.
+- A stale `.next/dev/types/` cache can break `next build` with a nonsensical type
+  error after running the dev server — `rm -rf .next` and rebuild clean if that
+  happens.
+
+## Hard rules (unchanged since the original architecture)
+
+- Mobile-first ~380px, bottom tabs: Diary / Workout / Trends / Friends / Profile.
+- One round trip per screen where possible; RLS enforces security, not app code.
+- Zero-budget: every service used has a genuine free tier (Supabase, Vercel, Google
+  AI Studio, Cloudflare R2, Brevo, Meta Cloud API). No paid tier has been added.
