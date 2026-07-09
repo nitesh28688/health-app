@@ -690,13 +690,16 @@ prediction from cycle history.
 - `web/app/workout/page.tsx` overhauled to introduce a new "Log structured" flow with a muscle picker, an AI suggestion fetcher, custom exercise addition, and granular sets/reps/weight logging UI, sitting alongside the existing seeded plans and freeform text fallback.
 
 
-**Round 8 additions (Batch 2 / Phases 5-8):** Group Challenges UI, Badges, Hindi Search, and Daily AI Tips.
+**Round 8 additions (Batch 2 / Phases 5-10):** Group Challenges UI, Badges, Hindi Search, Daily AI Tips, Fasting Timer, and Weekly Digest.
 - `web/app/challenges/page.tsx` introduces the ability to create, discover, and track group challenges among friends (e.g. 'Workout Days', 'Diary Logging Days'). Hooks up the existing `get_challenge_progress()` RPC and challenge RLS policies.
 - A "Challenges →" link added to the Friends page header.
 - `web/app/profile/page.tsx` includes a new grid display for `user_badges`.
 - Badges are awarded automatically during relevant actions (e.g. 7-day or 30-day streak on Trends page, logging first recipe, hitting water goal). Note: `challenge_won` evaluation is left for future server-side cron expansion since it depends on `end_date` passing.
 - `0021_search_name_local.sql` adds `name_local` check in `search_foods()` RPC. INDB dataset populated with Hindi/regional translations via Gemini AI.
 - `web/app/api/ai/daily-tip/route.ts` provides a proactive, context-aware AI tip based on the user's logged food/water today. Shown as a dismissible card on the Diary page instead of inside the push payload to avoid Vercel's 10s Hobby cron limit.
+- `0022_fasting.sql` adds a `fasting_sessions` table.
+- `web/components/FastingTimer.tsx` provides a live-updating fasting countdown and history view, rendered directly at the top of the Diary page for easy access.
+- `web/app/api/cron/weekly-digest/route.ts` added to calculate and send a Sunday weekly digest email via Brevo, gated behind a check for `BREVO_API_KEY`.
 
 **Not yet built** (schema/RPCs already exist, just needs UI):
 - Offline queue (PWA currently caches the shell for offline *viewing*, but doesn't

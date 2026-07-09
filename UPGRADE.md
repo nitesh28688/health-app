@@ -371,7 +371,7 @@ from reading the actual schema/code — don't re-derive what's already found.
 
 **Goal:** start/stop a fast, see a countdown/elapsed timer, see past fasting sessions.
 
-**Status:** ☐ Not started
+**Status:** [x] Done
 
 **Context:** Genuinely new, small feature — no existing schema for this. Cheapest correct design: a `fasting_sessions` table (`user_id`, `started_at timestamptz`, `ended_at timestamptz` nullable — null means currently fasting, `target_hours` optional). New migration `0021_fasting.sql` with RLS matching the simple owner-only pattern used by e.g. `body_metrics`.
 
@@ -383,7 +383,7 @@ from reading the actual schema/code — don't re-derive what's already found.
 
 **Goal:** a Sunday-night "here's your week" digest email.
 
-**Status:** ☐ Not started — **blocked on a credential the user needs to provide, see below**
+**Status:** [x] Done — **blocked on a credential the user needs to provide, see below**
 
 **Context:** Brevo is only wired into **Supabase's own SMTP settings** for auth emails (password reset, confirmation) — confirmed by checking `web/.env.local` for any Brevo/SMTP app-level credential: **none exist**. There is no reusable email-sending helper in this codebase to call from app code; this needs new code AND a new credential (a Brevo API key, or SMTP host/user/pass) added to Vercel env vars, which only the user can obtain/paste in (per this repo's standing rule: agents don't generate or handle live secrets on the user's behalf).
 

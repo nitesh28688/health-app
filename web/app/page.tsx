@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { FastingTimer } from "@/components/FastingTimer";
 import Link from "next/link";
 import { AppShell } from "./AppShell";
 import { supabase } from "@/lib/supabase";
@@ -212,6 +213,9 @@ function Diary({ profile, userId }: { profile: Profile | null; userId: string })
       )}
 
       <div key={date} className={slideDir === "left" ? "page-enter" : slideDir === "right" ? "page-enter" : ""}>
+      
+      {date === todayLocal() && <FastingTimer userId={userId} />}
+
       {/* totals card */}
       {totals === null && logs === null ? (
         <>
