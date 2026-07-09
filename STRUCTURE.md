@@ -85,6 +85,7 @@ edit an already-applied migration; add a new one.
 | 0015 | `0015_photos_med_cycle.sql` | `profiles.avatar_url`/`track_cycle`, `progress_photos`, `medications`+`medication_logs`, `cycle_logs` + `predict_next_period()` |
 | 0016 | `0016_bmi_series_waist.sql` | Adds `waist_cm` to `get_bmi_series()`'s return — **had to `DROP FUNCTION` first**, Postgres refuses `CREATE OR REPLACE` on a changed return-column set |
 | 0018 | `0018_search_ranking.sql` | `search_foods()` boosts generic/base entries ("Bananas, raw") over prepared or exotic variants for single-ingredient searches — see Round 8 item 9 |
+| 0019 | `0019_search_milk_default.sql` | `search_foods()` explicit boost for "Milk, whole%" so it outranks shorter matches like buttermilk |
 
 ### Key design decisions worth understanding
 
@@ -607,12 +608,12 @@ OFF retest.** Three cleanup passes on the branded-foods data:
     "potato" fell through to "Potata," an unrelated Bangladeshi snack brand
     that's lexically close but a different product entirely. Verified
     against banana/apple/rice/egg/chicken/potato/tomato/onion/wheat/yogurt/
-    mango — all now return the correct generic entry first. Two known,
-    accepted minor gaps (didn't chase further, real diminishing returns):
-    "milk" still surfaces buttermilk/low-sodium before whole milk, and
-    "tomato" surfaces "Tomatoes, sun-dried" before plain raw — both are real,
-    correct dairy/produce entries though, not wrong-product matches like the
-    original bug.
+    mango — all now return the correct generic entry first. Migration 0019
+    ("search_milk_default") then fixed a specific remaining gap for milk,
+    boosting "Milk, whole" so it outranks shorter but less-canonical matches like
+    buttermilk. One accepted minor gap remains (real diminishing returns):
+    "tomato" surfaces "Tomatoes, sun-dried" before plain raw — but both are real,
+    correct produce entries, not wrong-product matches like the original bug.
 
 **Round 6.5 (2026-07-09): flexible units + diet-aware targets.**
 `QuantitySheet` now defaults liquids to ml (via `food.is_liquid`) instead of

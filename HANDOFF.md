@@ -16,7 +16,7 @@ tracking, avatar + progress photos, Web Push reminders, admin panel.
 ~30s builds). Don't use `vercel deploy --prod` unless git is unavailable — git is now
 the standard path.
 
-**Database:** Supabase project `caqtjgruowpgujtmuwkf` (Mumbai), 16 migrations, all
+**Database:** Supabase project `caqtjgruowpgujtmuwkf` (Mumbai), 19 migrations, all
 live. Connect via the session pooler only — `aws-1-ap-south-1.pooler.supabase.com`,
 user `postgres.caqtjgruowpgujtmuwkf` (the direct host is IPv6-only, unreachable from
 this network).

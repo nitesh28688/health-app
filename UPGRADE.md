@@ -23,7 +23,7 @@ Never fabricate "tested in the UI and it works" — say what was actually checke
 **Goal:** `search_foods('milk')` should return plain whole milk first. Buttermilk
 etc. can still appear, just lower — don't exclude it outright.
 
-**Status:** ☐ Not started
+**Status:** [x] Done
 
 **Context:** Migration `0018_search_ranking.sql` already fixed the broader problem
 (generic ingredients losing to irrelevant/exotic matches — e.g. "banana" now
