@@ -150,17 +150,19 @@ function AddFood({ userId }: { userId: string }) {
   return (
     <main className="px-4 pt-4">
       <div className="flex items-center gap-3 mb-4">
-        <button onClick={() => router.back()} className="w-11 h-11 rounded-full border border-neutral-200 dark:border-neutral-800 text-lg">←</button>
+        <button onClick={() => router.back()} aria-label="Back" className="w-11 h-11 rounded-full border border-neutral-200 dark:border-neutral-800 text-lg">←</button>
         <h1 className="font-bold text-lg capitalize">Add to {meal}</h1>
       </div>
 
       <input autoFocus placeholder="Search foods… (e.g. dal, roti, poha)" value={q}
         onChange={(e) => setQ(e.target.value)}
         className="w-full rounded-xl border border-neutral-300 dark:border-neutral-700 bg-transparent px-4 py-3 text-base" />
-      <div className="flex items-center justify-between mt-2">
-        <Link href="/recipes" className="text-sm text-green-600 font-semibold">🍲 My recipes →</Link>
+      <div className="flex gap-2 mt-3">
+        <Link href="/recipes" className="flex-1 flex items-center justify-center gap-1.5 rounded-xl border border-green-200 dark:border-green-900/50 bg-green-50 dark:bg-green-900/10 text-sm text-green-600 font-semibold py-2.5 active:scale-[0.98]">
+          🍲 My recipes →
+        </Link>
         <button onClick={() => photoInput.current?.click()} disabled={photoBusy}
-          className="text-sm text-violet-600 font-semibold disabled:opacity-50 inline-flex items-center gap-1.5">
+          className="flex-1 flex items-center justify-center gap-1.5 rounded-xl border border-violet-200 dark:border-violet-900/50 bg-violet-50 dark:bg-violet-900/10 text-sm text-violet-600 font-semibold py-2.5 disabled:opacity-50 active:scale-[0.98]">
           {photoBusy ? (
             <>
               <Loader2 className="w-3.5 h-3.5 animate-spin" />

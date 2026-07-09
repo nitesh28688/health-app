@@ -735,8 +735,15 @@ Below is the verified audit based on line-by-line inspection of the 14 main page
 - **`ExerciseDemo.tsx`**:
   - No findings. Dark mode is explicitly covered on L23 (`dark:bg-neutral-800`), no interactive tap targets present.
 
-#### **Empty / Loading / Error States (General Audit)**
-- Empty states and Loading states (skeletons/text) are well-represented across all modules (Challenges, Trends, Friends, Recipes, Progress). Standard padding and messaging is utilized effectively. Spacer consistency is generally solid.
+#### **Empty / Loading / Error States (Verified during implementation)**
+- **Diary (`web/app/page.tsx`)**:
+  - Loading: L220 shows a clear `<Skeleton>` block while totals fetch.
+  - Empty: L310 shows "Nothing logged" text correctly when a meal has no entries.
+  - Error: L268 displays `mealIdeaError` in amber text (`text-amber-600`) if the AI fetch fails.
+- **Add (`web/app/add/page.tsx`)**:
+  - Loading: L179 displays `Searching…` (`text-neutral-400`) while fetching results.
+  - Empty: L203 explicitly states `No match in the food database.` or `Not the one you meant?` depending on search results.
+  - Error: L174 (`photoMsg`) and L214 (`aiMsg`) correctly handle API failures with visible amber text (`text-amber-600`).
 
 7. **Error states.** Anything that can fail (a network call, a validation
    check) needs a visible, clear message — not a silent no-op.
