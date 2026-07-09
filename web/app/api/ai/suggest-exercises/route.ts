@@ -32,7 +32,21 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "daily AI limit reached, try tomorrow" }, { status: 429 });
   }
 
-  const prompt = `Suggest 3-5 exercises for the ${muscle} muscle group.
+  // "yoga" isn't a muscle group — the workout page passes it as the `muscle`
+  // value when the user picks the Yoga entry in the picker (same picker grid,
+  // see workout/page.tsx), so branch the prompt instead of literally asking
+  // for "exercises for the yoga muscle group". Poses are hold-based, not
+  // sets x reps, so this path asks for a duration instead and the response
+  // schema carries an extra optional field for it.
+  const isYoga = muscle === "yoga";
+  const prompt = isYoga
+    ? `Suggest a themed sequence of 3-5 yoga poses for this goal or focus: "${equipment || "general practice"}".
+Return them in JSON format, in the order they should be practiced. For each pose, provide:
+- name: the pose's common English name (add the Sanskrit name in parentheses if well known)
+- met_value: estimated MET value for holding this pose (typical range 2.0 to 4.5)
+- instructions: 1-2 short sentences on how to get into and hold the pose
+- typical_duration_sec: a typical hold time in seconds (e.g. 30)`
+    : `Suggest 3-5 exercises for the ${muscle} muscle group.
 Equipment available: ${equipment || "Any"}.
 Return them in JSON format. For each exercise, provide:
 - name: clear name of the exercise
@@ -54,8 +68,11 @@ Return them in JSON format. For each exercise, provide:
             instructions: { type: "STRING" },
             typical_sets: { type: "NUMBER" },
             typical_reps: { type: "NUMBER" },
+            typical_duration_sec: { type: "NUMBER" },
           },
-          required: ["name", "met_value", "instructions", "typical_sets", "typical_reps"],
+          required: isYoga
+            ? ["name", "met_value", "instructions", "typical_duration_sec"]
+            : ["name", "met_value", "instructions", "typical_sets", "typical_reps"],
         },
       },
     },

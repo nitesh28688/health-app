@@ -24,11 +24,10 @@ export async function GET(req: NextRequest) {
     console.log("Skipping weekly digest send: BREVO_API_KEY is not set.");
   }
 
-  // Get all users who have an email (auth.users)
-  // We'll need to join or fetch profiles and then emails.
-  // Actually, auth.users is only accessible via supabase admin API or direct sql if we had an RPC, 
-  // but we have service_role key, so we can use supabase.auth.admin.listUsers()
-  
+  // auth.users isn't reachable via the client SDK's normal query interface —
+  // admin.listUsers() is the service-role path to it. Note: this paginates
+  // at Supabase's default (50/page); fine for this app's actual family/friend
+  // user count, would need explicit pagination if that ever changed materially.
   const { data: usersData, error } = await db.auth.admin.listUsers();
   if (error || !usersData?.users) {
     return NextResponse.json({ error: "failed to fetch users" }, { status: 500 });
@@ -40,14 +39,10 @@ export async function GET(req: NextRequest) {
   for (const user of usersData.users) {
     if (!user.email) continue;
 
-    // Fetch weekly totals
-    const { data: totalsData } = await db.rpc("get_daily_totals", { p_from: lastWeekStr, p_to: todayStr })
-      // RPC uses auth.uid() usually! Wait, get_daily_totals is:
-      // "where user_id = auth.uid()", since it's a security invoker function?
-      // Let's check how we can fetch it for a specific user using service role.
-      // If get_daily_totals is tied to auth.uid(), we can't call it easily without switching roles or calling a different RPC.
-      // Instead, we can just select directly from food_logs and workout logs since we are service_role and bypass RLS.
-      
+    // get_daily_totals() is security-invoker and keys off auth.uid(), so it
+    // can't be called per-arbitrary-user from a service-role cron context —
+    // query the underlying tables directly instead (service role bypasses
+    // RLS, so this is safe here even though app code never does this).
     const [ { data: foods }, { count: workoutDays }, { data: weightLogs } ] = await Promise.all([
       db.from("food_logs").select("log_date, kcal, protein_g").eq("user_id", user.id).gte("log_date", lastWeekStr).lte("log_date", todayStr),
       db.from("workout_logs").select("log_date", { count: 'exact', head: true }).eq("user_id", user.id).gte("log_date", lastWeekStr).lte("log_date", todayStr),

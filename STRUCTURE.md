@@ -87,6 +87,8 @@ edit an already-applied migration; add a new one.
 | 0018 | `0018_search_ranking.sql` | `search_foods()` boosts generic/base entries ("Bananas, raw") over prepared or exotic variants for single-ingredient searches — see Round 8 item 9 |
 | 0019 | `0019_search_milk_default.sql` | `search_foods()` explicit boost for "Milk, whole%" so it outranks shorter matches like buttermilk |
 | 0020 | `0020_workout_sets.sql` | `exercises.owner_id` (custom exercises), `workout_log_exercises` + `workout_log_sets` (per-set reps/weight/duration), RLS mirroring the `foods.owner_id` pattern |
+| 0021 | `0021_search_name_local.sql` | `search_foods()` adds `name_local ilike` (the prior version only had the trigram `%` operator, which has a similarity floor and can silently miss short/partial Hindi-name matches) |
+| 0022 | `0022_fasting.sql` | `fasting_sessions` table (start/stop fasting timer), simple owner-only RLS |
 
 ### Key design decisions worth understanding
 
@@ -704,10 +706,26 @@ prediction from cycle history.
 - `web/app/workout/page.tsx` updated to include "yoga" in the category picker and handle yoga exercise logging gracefully.
 - `web/components/SetTimer.tsx` provides a reusable live timer component that relies on `Date.now() - startedAt` instead of state increments to survive background tab throttling. Integrated into the workout session UI for timing sets/poses.
 
+**Batch 2 review (Fable, 2026-07-09):** two real gaps found and fixed. (1)
+`suggest-exercises/route.ts` was never actually extended for yoga despite
+that being the point of Phase 11's AI-suggest requirement — the "AI Suggest"
+button in the yoga picker was sending Gemini the literal prompt "exercises
+for the yoga muscle group" with no field for a pose's hold duration. Fixed:
+the route branches on `muscle === "yoga"` into a themed-sequence prompt with
+an optional `typical_duration_sec`, the workout page shows a focus/goal text
+input in yoga mode, and a suggested pose's duration now pre-fills its first
+set. (2) `SetTimer` was stopwatch-only with no countdown/completion feedback,
+despite that being the explicit ask — added an optional `targetSeconds` prop
+(countdown + progress ring + feature-detected vibration on completion, still
+records the real elapsed time if stopped early). Both test scripts
+(`test-challenges-rls.js`, `test-badges-rls.js`) were independently re-run
+and confirmed to actually work this time, including full cleanup
+(`auth.users`/`auth.identities`, not just app tables) — the Batch 1 lesson
+held. Full notes in `UPGRADE.md`.
+
 **Not yet built** (schema/RPCs already exist, just needs UI):
 - Offline queue (PWA currently caches the shell for offline *viewing*, but doesn't
   queue writes made while offline).
-- Hindi/regional name search (`foods.name_local` column exists, unpopulated).
 - More frequent reminders (needs Vercel Pro cron, or a different scheduling approach).
 
 ## 8. Candidate features not yet built (ideas for later)

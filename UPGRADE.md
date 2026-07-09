@@ -347,7 +347,10 @@ from reading the actual schema/code — don't re-derive what's already found.
 
 **Goal:** `foods.name_local` (exists, currently empty for every row) gets populated for INDB's 1,014 Indian recipes at minimum, so Hindi-name search actually returns something.
 
-**Status:** [x] Done
+**Status:** [x] Mostly done — 920/1014 (91%) populated. The remaining 94 (contiguous
+IDs, mostly Western soups) are blocked on Gemini's free-tier rate limit, not a
+bug — `scripts/seed-hindi-names.mjs` is idempotent (`WHERE name_local IS NULL`)
+and safe to re-run later to finish the rest.
 
 **Context:** `search_foods()` already checks `f.name_local % q` (trigram match) — the **search logic is already correct and ready**, it just has zero data to match against. This is a data-population task, not a code task. INDB (`source='indb'`, 1,014 rows) is the highest-value target — real Indian home cooking, most likely to be searched by Hindi name.
 
@@ -433,3 +436,76 @@ Same as Batch 1: update the memory file (Fable-only) and do an independent
 review pass against the live DB before trusting any "done" status — Batch 1's
 review caught a test script that had never actually run despite being
 reported as verified. Assume the same is possible here until checked.
+
+---
+
+## Review (Fable, 2026-07-09)
+
+Overall quality was solid again, and the cleanup lesson from Batch 1 was
+genuinely learned — `scripts/test-challenges-rls.js` and
+`scripts/test-badges-rls.js` both actually ran (verified independently by
+re-running them myself) and both correctly delete `auth.identities`/
+`auth.users`, not just `profiles`, this time. `challenge_won`'s known
+can't-award-yet gap was properly flagged in STRUCTURE.md rather than silently
+left broken, exactly as asked.
+
+`tsc --noEmit` clean throughout. Found and fixed:
+
+1. **Phase 11 (yoga) was only half-built.** The pose seed (12 real asanas,
+   correctly global/`owner_id null`) and the picker UI (yoga added as an
+   18th entry in the same muscle grid, branching to filter by `category`
+   instead of `primary_muscle` — a reasonable simplification of the spec's
+   "separate flow" suggestion) were done well. But `suggest-exercises/route.ts`
+   was never touched — the "AI Suggest" button in the yoga view would have
+   sent Gemini the literal prompt "Suggest 3-5 exercises for the yoga muscle
+   group," with a response schema that has no field for a pose's hold
+   duration at all. Fixed: the route now branches on `muscle === "yoga"` into
+   a themed-sequence prompt with an optional `typical_duration_sec` field;
+   the client now shows a "focus" text input in yoga mode (sent as the
+   `equipment` param, which the route treats as the goal/focus text for
+   yoga), and carries the suggested duration through to pre-fill the first
+   set when a suggested pose is added to a session.
+2. **`SetTimer` was stopwatch-only** — no target/countdown mode, no
+   completion feedback, despite that being explicitly requested (the whole
+   point of asking "how will the timer function" was the countdown-to-target
+   behavior for a pose hold or a plank). The elapsed-time computation itself
+   was correct (real `Date.now()` delta, not accumulated ticks — exactly as
+   specified). Extended it: an optional `targetSeconds` prop switches it into
+   a countdown with a progress ring, auto-completes with a feature-detected
+   `navigator.vibrate()` on reaching the target, and still lets a user stop
+   early with the real elapsed time recorded (not forced to hit the target).
+   Wired the workout page's timer button to pass the set's typed/pre-filled
+   `duration_sec` as the target, so an AI-suggested yoga hold now actually
+   counts down instead of just counting up from zero.
+3. Cleaned up leftover internal-monologue comments in
+   `weekly-digest/route.ts` ("We'll need to join... Wait, let's check...")
+   into a proper explanation of why it queries tables directly instead of
+   calling `get_daily_totals()` (that RPC is security-invoker and keyed off
+   `auth.uid()`, which doesn't work from a service-role cron iterating over
+   arbitrary users).
+4. Verified Vercel's actual Hobby-tier cron limits against their docs (100
+   jobs/project, once-daily per job) rather than assuming — two separate
+   cron entries (`reminders`, `weekly-digest`) is fine, no deploy risk.
+5. Resumed the interrupted Hindi-name seeding batch (was stuck at 920/1014,
+   contiguous IDs suggesting it just stopped mid-run) — hit Gemini's
+   free-tier rate limit again immediately (partly from my own testing this
+   session), stopped it rather than loop indefinitely. Left at 91% complete,
+   documented as resumable, not blocking anything else.
+
+One thing I checked and it turned out fine on re-inspection: a badges test
+script log line read "Stranger sees badge: true" which looked alarming out of
+context (sounds like a privacy leak) — it's just a confusingly-worded
+assertion (`rows.length === 0`, so `true` means correctly-zero-rows, not
+"stranger can see it"). Verified independently with a fresh from-scratch
+repro: a real stranger gets 0 rows. Not a bug, just a bad log message — not
+worth changing since the test script itself is disposable/one-off.
+
+Verification note, same as Batch 1: this app is auth-gated with no live
+click-testing available in this environment. Verification was `tsc --noEmit`,
+direct SQL against the live DB, actually re-running every test script rather
+than trusting its presence, one live Gemini API call (rate-limited before I
+could get a full response, but the code-level gap it was investigating didn't
+need the response to confirm), and hand-tracing the new SetTimer/yoga-route
+logic. Not a substitute for a human clicking through the actual flows on a
+phone, especially the new AI-suggest-yoga path and the countdown timer's feel
+in practice.

@@ -54,6 +54,7 @@ function Workout({ profile, setProfile, userId }: {
   const [aiSuggestBusy, setAiSuggestBusy] = useState(false);
   const [aiSuggestError, setAiSuggestError] = useState<string | null>(null);
   const [customAddOpen, setCustomAddOpen] = useState(false);
+  const [yogaGoal, setYogaGoal] = useState("");
   const [customAddName, setCustomAddName] = useState("");
 
   const activePlanId = profile?.active_plan_id ?? null;
@@ -154,35 +155,43 @@ function Workout({ profile, setProfile, userId }: {
 
   async function suggestExercises() {
     if (!selectedMuscle) return;
+    const isYoga = selectedMuscle === "yoga";
     setAiSuggestBusy(true); setAiSuggestError(null);
     const { data: { session } } = await supabase.auth.getSession();
     const res = await fetch("/api/ai/suggest-exercises", {
       method: "POST", headers: { Authorization: `Bearer ${session?.access_token}` },
-      body: JSON.stringify({ muscle: selectedMuscle, equipment: "Any" })
+      // For yoga the "equipment" field carries the goal/focus text instead
+      // (e.g. "morning energizer", "stress relief") — the route branches on
+      // muscle === "yoga" and prompts for a themed pose sequence.
+      body: JSON.stringify({ muscle: selectedMuscle, equipment: isYoga ? (yogaGoal.trim() || undefined) : "Any" })
     });
     setAiSuggestBusy(false);
     const body = await res.json().catch(() => ({}));
     if (!res.ok) { setAiSuggestError(body.error ?? "Failed"); return; }
-    
+
     const existingLower = new Set(muscleExercises.map(e => e.name.toLowerCase()));
     const newExs = (body.suggestions || []).filter((s: any) => !existingLower.has(s.name.toLowerCase()));
-    
-    const isYoga = selectedMuscle === "yoga";
 
     if (newExs.length > 0) {
       const { data: inserted } = await supabase.from("exercises").insert(
         newExs.map((s: any) => ({
-          name: s.name, 
-          category: isYoga ? "yoga" : "strength", 
-          equipment: "none", 
+          name: s.name,
+          category: isYoga ? "yoga" : "strength",
+          equipment: "none",
           primary_muscle: isYoga ? "full body" : selectedMuscle,
-          met_value: s.met_value || (isYoga ? 2.5 : 5.0), 
-          instructions: s.instructions, 
+          met_value: s.met_value || (isYoga ? 2.5 : 5.0),
+          instructions: s.instructions,
           owner_id: userId
         }))
       ).select("id, name, met_value, instructions, category");
       if (inserted) {
-        setMuscleExercises(prev => [...prev, ...inserted].sort((a, b) => a.name.localeCompare(b.name)));
+        // exercises has no duration column (durations vary per set/session),
+        // so carry the AI's suggested hold time as a client-only field,
+        // matched back by name, to pre-fill the first set when this
+        // suggestion gets added to the session (see addExerciseToSession).
+        const durationByName = new Map(newExs.map((s: any) => [s.name.toLowerCase(), s.typical_duration_sec]));
+        const withDuration = inserted.map((ex) => ({ ...ex, suggestedDurationSec: durationByName.get(ex.name.toLowerCase()) }));
+        setMuscleExercises(prev => [...prev, ...withDuration].sort((a, b) => a.name.localeCompare(b.name)));
       }
     }
   }
@@ -206,8 +215,14 @@ function Workout({ profile, setProfile, userId }: {
   }
 
   function addExerciseToSession(exercise: any) {
+    // If this came from an AI yoga suggestion with a typical hold time,
+    // pre-fill one set with it instead of starting from a blank set list —
+    // the user can still edit or add more.
+    const initialSets = exercise.suggestedDurationSec
+      ? [{ id: Math.random().toString(), reps: "", weight_kg: "", duration_sec: String(exercise.suggestedDurationSec) }]
+      : [];
     setActiveExercises(prev => [...prev, {
-      id: Math.random().toString(), exercise, sets: []
+      id: Math.random().toString(), exercise, sets: initialSets
     }]);
     setSelectedMuscle(null);
   }
@@ -389,11 +404,14 @@ function Workout({ profile, setProfile, userId }: {
                         <input inputMode="numeric" placeholder="sec" value={set.duration_sec} onChange={(e) => {
                           const n = [...activeExercises]; n[exIdx].sets[setIdx].duration_sec = e.target.value; setActiveExercises(n);
                         }} className="flex-1 rounded-md border border-neutral-300 dark:border-neutral-700 bg-transparent px-2 py-1.5 text-sm text-center" />
-                        <SetTimer onStop={(secs) => {
-                          const n = [...activeExercises];
-                          n[exIdx].sets[setIdx].duration_sec = secs.toString();
-                          setActiveExercises(n);
-                        }} />
+                        <SetTimer
+                          targetSeconds={parseInt(set.duration_sec) || undefined}
+                          onStop={(secs) => {
+                            const n = [...activeExercises];
+                            n[exIdx].sets[setIdx].duration_sec = secs.toString();
+                            setActiveExercises(n);
+                          }}
+                        />
                         <button onClick={() => {
                           const n = [...activeExercises]; n[exIdx].sets = n[exIdx].sets.filter((_, i) => i !== setIdx); setActiveExercises(n);
                         }} className="text-neutral-400 px-1">✕</button>
@@ -437,8 +455,14 @@ function Workout({ profile, setProfile, userId }: {
       {selectedMuscle && (
         <div className="fixed inset-0 z-[70] flex flex-col justify-end bg-black/40" onClick={() => setSelectedMuscle(null)}>
           <div onClick={(e) => e.stopPropagation()} className="rounded-t-3xl bg-white dark:bg-neutral-950 p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] max-w-md w-full mx-auto max-h-[80vh] overflow-y-auto flex flex-col">
-            <h2 className="font-bold text-lg mb-3 capitalize">{selectedMuscle} Exercises</h2>
-            
+            <h2 className="font-bold text-lg mb-3 capitalize">{selectedMuscle === "yoga" ? "Yoga" : `${selectedMuscle} Exercises`}</h2>
+
+            {selectedMuscle === "yoga" && (
+              <input placeholder="Focus for AI Suggest (e.g. morning energizer, stress relief) — optional"
+                value={yogaGoal} onChange={e => setYogaGoal(e.target.value)}
+                className="w-full mb-3 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-transparent px-3 py-2 text-sm" />
+            )}
+
             <div className="flex gap-2 mb-4">
               <button onClick={() => setCustomAddOpen(!customAddOpen)} className="flex-1 text-sm border border-neutral-200 dark:border-neutral-800 rounded-xl py-2 font-medium">
                 + Custom
