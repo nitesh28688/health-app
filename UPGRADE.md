@@ -744,6 +744,14 @@ Below is the verified audit based on line-by-line inspection of the 14 main page
   - Loading: L179 displays `Searching…` (`text-neutral-400`) while fetching results.
   - Empty: L203 explicitly states `No match in the food database.` or `Not the one you meant?` depending on search results.
   - Error: L174 (`photoMsg`) and L214 (`aiMsg`) correctly handle API failures with visible amber text (`text-amber-600`).
+- **Workout (`web/app/workout/page.tsx`)**:
+  - Loading: L298 correctly returns `<PageSkeleton />` while fetching plans.
+  - Empty: L357 handles empty recent workouts with "Nothing yet — smash Day 1! 💪".
+  - Error: L376 (`aiError`) and L485 (`aiSuggestError`) handle API failures cleanly with amber/red text respectively.
+- **Goals (`web/app/goals/page.tsx`)**:
+  - Loading: L29 returns `<PageSkeleton />` while loading.
+  - Empty: L38 handles missing goal explicitly ("You haven't set a goal weight yet.").
+  - Empty (no data): L45 handles lack of progress data explicitly ("Not enough check-ins yet to estimate progress.").
 
 7. **Error states.** Anything that can fail (a network call, a validation
    check) needs a visible, clear message — not a silent no-op.

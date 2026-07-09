@@ -31,14 +31,14 @@ function Goals({ profile }: { profile: Profile }) {
   return (
     <main className="px-5 pt-6">
       <div className="flex items-center gap-3 mb-6">
-        <button onClick={() => router.back()} className="w-11 h-11 rounded-full border border-neutral-200 dark:border-neutral-800 text-lg">←</button>
+        <button onClick={() => router.back()} aria-label="Back" className="w-11 h-11 rounded-full border border-neutral-200 dark:border-neutral-800 text-lg">←</button>
         <h1 className="text-2xl font-bold">Goal Progress</h1>
       </div>
 
       {!profile.target_weight_kg ? (
         <div className="text-center mt-10">
           <p className="text-neutral-500 mb-4">You haven't set a goal weight yet.</p>
-          <button onClick={() => router.push("/profile")} className="text-blue-600 font-semibold underline">
+          <button onClick={() => router.push("/profile")} className="text-blue-600 dark:text-blue-400 font-semibold underline">
             Set it in Profile
           </button>
         </div>
@@ -74,11 +74,11 @@ function Goals({ profile }: { profile: Profile }) {
           <div className="rounded-2xl border border-neutral-200 dark:border-neutral-800 p-5">
             <h2 className="text-lg font-bold mb-4">Projection</h2>
             {progress.reached ? (
-              <p className="text-green-600 font-bold text-lg">🎉 You've reached your goal!</p>
+              <p className="text-green-600 dark:text-green-400 font-bold text-lg">🎉 You've reached your goal!</p>
             ) : progress.estimatedDate ? (
               <>
                 <p className="text-sm text-neutral-500 mb-1">Estimated date to reach goal:</p>
-                <p className="text-2xl font-bold text-blue-600 mb-4">
+                <p className="text-2xl font-bold text-blue-600 dark:text-blue-400 mb-4">
                   {new Date(progress.estimatedDate + "T12:00:00").toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}
                 </p>
                 <p className="text-sm text-neutral-500">

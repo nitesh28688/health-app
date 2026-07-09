@@ -386,9 +386,9 @@ function Workout({ profile, setProfile, userId }: {
         <div className="fixed inset-0 z-[50] flex flex-col bg-white dark:bg-neutral-950 overflow-y-auto pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
           <div className="p-4 flex flex-col min-h-full">
             <div className="flex items-center justify-between mb-4">
-              <button onClick={() => setSessionOpen(false)} className="text-neutral-500 text-sm font-semibold">Cancel</button>
+              <button onClick={() => setSessionOpen(false)} className="text-neutral-500 text-sm font-semibold px-2 py-2 -ml-2">Cancel</button>
               <input value={sessionTitle} onChange={e => setSessionTitle(e.target.value)} className="bg-transparent text-center font-bold text-lg max-w-[200px]" />
-              <button onClick={logStructuredSession} disabled={logging || activeExercises.length === 0} className="text-green-600 text-sm font-semibold disabled:opacity-50">Save</button>
+              <button onClick={logStructuredSession} disabled={logging || activeExercises.length === 0} className="text-green-600 text-sm font-semibold disabled:opacity-50 px-2 py-2 -mr-2">Save</button>
             </div>
             
             <div className="flex-1 flex flex-col gap-4">
@@ -399,7 +399,7 @@ function Workout({ profile, setProfile, userId }: {
                       <ExerciseDemo urls={ae.exercise.image_urls} size={44} />
                       <h3 className="font-bold truncate">{ae.exercise.name}</h3>
                     </div>
-                    <button onClick={() => setActiveExercises(prev => prev.filter(x => x.id !== ae.id))} className="text-red-500 text-xs shrink-0">remove</button>
+                    <button onClick={() => setActiveExercises(prev => prev.filter(x => x.id !== ae.id))} className="text-red-500 text-xs font-semibold px-3 py-2 bg-red-50 dark:bg-red-950/30 rounded-lg active:scale-[0.98] shrink-0">remove</button>
                   </div>
                   
                   <div className="flex flex-col gap-2">
@@ -425,7 +425,7 @@ function Workout({ profile, setProfile, userId }: {
                         />
                         <button onClick={() => {
                           const n = [...activeExercises]; n[exIdx].sets = n[exIdx].sets.filter((_, i) => i !== setIdx); setActiveExercises(n);
-                        }} className="text-neutral-400 px-1">✕</button>
+                        }} aria-label="Delete set" className="text-neutral-400 w-11 h-11 flex items-center justify-center shrink-0">✕</button>
                       </div>
                     ))}
                     <button onClick={() => {
@@ -433,7 +433,7 @@ function Workout({ profile, setProfile, userId }: {
                       const prev = n[exIdx].sets[n[exIdx].sets.length - 1];
                       n[exIdx].sets.push({ id: Math.random().toString(), reps: prev?.reps ?? "", weight_kg: prev?.weight_kg ?? "", duration_sec: prev?.duration_sec ?? "" });
                       setActiveExercises(n);
-                    }} className="mt-2 text-sm text-neutral-500 border border-dashed border-neutral-300 dark:border-neutral-700 rounded-md py-1.5">+ Add set</button>
+                    }} className="mt-2 text-sm text-neutral-500 border border-dashed border-neutral-300 dark:border-neutral-700 rounded-lg py-2.5 active:bg-neutral-50 dark:active:bg-neutral-900">+ Add set</button>
                   </div>
                 </div>
               ))}
