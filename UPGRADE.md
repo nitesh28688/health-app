@@ -413,7 +413,7 @@ Also relevant: `workout_log_sets.duration_sec` (from Phase 4's `0020_workout_set
 
 **Goal:** a set with a duration component gets an actual running countdown/stopwatch, not just a number the user types in after the fact.
 
-**Status:** ☐ Not started
+**Status:** [x] Done
 
 **Context:** Today (post-Phase 4), a timed set is just a plain text input labeled "sec" — the user does the exercise, then guesses/remembers how long it took and types a number. This applies to any timed set, not just yoga: plank holds, wall sits, cardio intervals all have the same gap. This phase is generic infrastructure that Phase 11 (yoga) also depends on for a good experience, but should be built as a standalone reusable piece, not yoga-specific.
 

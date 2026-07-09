@@ -690,7 +690,7 @@ prediction from cycle history.
 - `web/app/workout/page.tsx` overhauled to introduce a new "Log structured" flow with a muscle picker, an AI suggestion fetcher, custom exercise addition, and granular sets/reps/weight logging UI, sitting alongside the existing seeded plans and freeform text fallback.
 
 
-**Round 8 additions (Batch 2 / Phases 5-11):** Group Challenges UI, Badges, Hindi Search, Daily AI Tips, Fasting Timer, Weekly Digest, and Yoga.
+**Round 8 additions (Batch 2 / Phases 5-12):** Group Challenges UI, Badges, Hindi Search, Daily AI Tips, Fasting Timer, Weekly Digest, Yoga, and SetTimer.
 - `web/app/challenges/page.tsx` introduces the ability to create, discover, and track group challenges among friends (e.g. 'Workout Days', 'Diary Logging Days'). Hooks up the existing `get_challenge_progress()` RPC and challenge RLS policies.
 - A "Challenges →" link added to the Friends page header.
 - `web/app/profile/page.tsx` includes a new grid display for `user_badges`.
@@ -702,6 +702,7 @@ prediction from cycle history.
 - `web/app/api/cron/weekly-digest/route.ts` added to calculate and send a Sunday weekly digest email via Brevo, gated behind a check for `BREVO_API_KEY`.
 - `scripts/seed-yoga.js` populated the `exercises` table with 12 standard yoga poses.
 - `web/app/workout/page.tsx` updated to include "yoga" in the category picker and handle yoga exercise logging gracefully.
+- `web/components/SetTimer.tsx` provides a reusable live timer component that relies on `Date.now() - startedAt` instead of state increments to survive background tab throttling. Integrated into the workout session UI for timing sets/poses.
 
 **Not yet built** (schema/RPCs already exist, just needs UI):
 - Offline queue (PWA currently caches the shell for offline *viewing*, but doesn't

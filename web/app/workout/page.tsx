@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase";
 import { todayLocal, kcalBurned } from "@/lib/nutrition";
 import type { Profile } from "@/lib/useUser";
 import { PageSkeleton } from "@/lib/Skeleton";
+import { SetTimer } from "@/components/SetTimer";
 
 interface Plan { id: number; name: string; goal: string | null; level: string | null; days_per_week: number | null; description: string | null; owner_id: string | null; }
 interface PlanDay { id: number; day_number: number; title: string; }
@@ -388,6 +389,11 @@ function Workout({ profile, setProfile, userId }: {
                         <input inputMode="numeric" placeholder="sec" value={set.duration_sec} onChange={(e) => {
                           const n = [...activeExercises]; n[exIdx].sets[setIdx].duration_sec = e.target.value; setActiveExercises(n);
                         }} className="flex-1 rounded-md border border-neutral-300 dark:border-neutral-700 bg-transparent px-2 py-1.5 text-sm text-center" />
+                        <SetTimer onStop={(secs) => {
+                          const n = [...activeExercises];
+                          n[exIdx].sets[setIdx].duration_sec = secs.toString();
+                          setActiveExercises(n);
+                        }} />
                         <button onClick={() => {
                           const n = [...activeExercises]; n[exIdx].sets = n[exIdx].sets.filter((_, i) => i !== setIdx); setActiveExercises(n);
                         }} className="text-neutral-400 px-1">✕</button>
