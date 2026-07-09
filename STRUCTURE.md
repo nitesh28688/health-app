@@ -545,6 +545,18 @@ OFF retest.** Three cleanup passes on the branded-foods data:
    kept in sync across `seed-off.mjs`, `seed-off-bulk.mjs`, and
    `scripts/fix-liquid-round3.mjs` (the idempotent recompute-and-correct pass
    that fixed 57 existing rows; safe to re-run any time).
+8. **Gemini fallback chain had no per-model timeout — a hang, not just a 503,
+   could eat the whole request (2026-07-09).** Confirmed directly against the
+   live API: `gemini-flash-latest` is genuinely flaky, not just occasionally
+   503ing as originally documented — in 3 back-to-back test calls it
+   succeeded once (5.8s) and hung with no response at all twice. Without a
+   timeout, `generateWithFallback` (`lib/gemini.ts`) would just sit on that
+   fetch until the *client's* 30s abort killed the whole request, never
+   reaching the healthy `gemini-2.5-flash` fallback (confirmed ~2s response
+   every time). Added a 9s per-model `AbortController` timeout, treated
+   identically to a 503 (try the next model) rather than left to throw
+   uncaught — worst case is now ~9s + ~2s ≈ 11s to a working answer instead
+   of a 30s dead end.
 
 **Round 6.5 (2026-07-09): flexible units + diet-aware targets.**
 `QuantitySheet` now defaults liquids to ml (via `food.is_liquid`) instead of
