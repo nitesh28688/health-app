@@ -84,6 +84,7 @@ edit an already-applied migration; add a new one.
 | 0014 | `0014_push.sql` | `push_subscriptions` (Web Push endpoints, RLS-owned, no admin policy needed since the cron sender uses the service-role key) |
 | 0015 | `0015_photos_med_cycle.sql` | `profiles.avatar_url`/`track_cycle`, `progress_photos`, `medications`+`medication_logs`, `cycle_logs` + `predict_next_period()` |
 | 0016 | `0016_bmi_series_waist.sql` | Adds `waist_cm` to `get_bmi_series()`'s return — **had to `DROP FUNCTION` first**, Postgres refuses `CREATE OR REPLACE` on a changed return-column set |
+| 0018 | `0018_search_ranking.sql` | `search_foods()` boosts generic/base entries ("Bananas, raw") over prepared or exotic variants for single-ingredient searches — see Round 8 item 9 |
 
 ### Key design decisions worth understanding
 
@@ -570,7 +571,7 @@ OFF retest.** Three cleanup passes on the branded-foods data:
    (the new rows introduced their own duplicates/ambiguous groups, same
    pattern as before) → **2,908 final**. Amul 83, Britannia 86, Parle 62,
    Haldiram's 192, Everest 40.
-8. **Gemini fallback chain had no per-model timeout — a hang, not just a 503,
+9. **Gemini fallback chain had no per-model timeout — a hang, not just a 503,
    could eat the whole request (2026-07-09).** Confirmed directly against the
    live API: `gemini-flash-latest` is genuinely flaky, not just occasionally
    503ing as originally documented — in 3 back-to-back test calls it
@@ -587,6 +588,31 @@ OFF retest.** Three cleanup passes on the branded-foods data:
    reliable), with `gemini-flash-latest` demoted to a fallback attempt
    instead of the default first hop, `gemini-2.0-flash` still the
    last-resort.
+10. **Search ranking audit (2026-07-09): generic ingredients were losing to
+    irrelevant or exotic matches on plain single-word searches.** Prompted by
+    "is the database strong now" — spot-checked common searches and found
+    trigram `similarity()` structurally favors shorter strings, so "banana"
+    surfaced "Tana-bana" (an unrelated snack) and "Banana Chips" ahead of
+    "Bananas, raw" (USDA, 89 kcal — what most people mean). Same pattern hit
+    apple, rice, egg, milk, chicken. Migration `0018_search_ranking.sql` adds
+    a ranking tier ahead of similarity: USDA's own naming convention
+    ("Bananas, raw", "Apples, raw, without skin" — ingredient, comma,
+    descriptors) reliably flags the generic/base entry, so rows matching that
+    shape are boosted first, with a veto for non-generic descriptors
+    ("meatless", "imitation", "vegetarian", "vegan", plus "sheep"/"human"
+    milk specifically) that would otherwise win the boosted tier on trigram
+    length alone (e.g. "Chicken, meatless" beating "Chicken, ground, raw").
+    Also caught mid-fix: the boost only matched "+s" plurals ("bananas,"),
+    missing "+es" ("potatoes,", "tomatoes,", "mangos,") — without it,
+    "potato" fell through to "Potata," an unrelated Bangladeshi snack brand
+    that's lexically close but a different product entirely. Verified
+    against banana/apple/rice/egg/chicken/potato/tomato/onion/wheat/yogurt/
+    mango — all now return the correct generic entry first. Two known,
+    accepted minor gaps (didn't chase further, real diminishing returns):
+    "milk" still surfaces buttermilk/low-sodium before whole milk, and
+    "tomato" surfaces "Tomatoes, sun-dried" before plain raw — both are real,
+    correct dairy/produce entries though, not wrong-product matches like the
+    original bug.
 
 **Round 6.5 (2026-07-09): flexible units + diet-aware targets.**
 `QuantitySheet` now defaults liquids to ml (via `food.is_liquid`) instead of
