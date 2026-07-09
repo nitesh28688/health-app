@@ -337,15 +337,22 @@ function Workout({ profile, setProfile, userId }: {
         </section>
       )}
 
+      {/* log a workout — real buttons, not text links, so they're not
+          confusable with each other or with body text at a glance */}
+      <div className="mt-6 flex gap-3">
+        <button onClick={() => setSessionOpen(true)}
+          className="flex-1 rounded-xl bg-green-600 text-white py-3 font-semibold active:scale-[0.98]">
+          + Log Workout
+        </button>
+        <button onClick={() => setCustomOpen(true)}
+          className="flex-1 rounded-xl border-2 border-neutral-300 dark:border-neutral-700 text-neutral-700 dark:text-neutral-300 py-3 font-semibold active:scale-[0.98]">
+          + Freeform
+        </button>
+      </div>
+
       {/* recent logs */}
       <section className="mt-6">
-        <div className="flex items-center justify-between mb-2">
-          <h2 className="font-bold">Recent workouts</h2>
-          <div className="flex gap-2">
-            <button onClick={() => setSessionOpen(true)} className="text-sm text-green-600 font-semibold">+ Log structured</button>
-            <button onClick={() => setCustomOpen(true)} className="text-sm text-neutral-500 font-semibold">+ Freeform</button>
-          </div>
-        </div>
+        <h2 className="font-bold mb-2">Recent workouts</h2>
         {recent.length === 0 ? (
           <p className="text-sm text-neutral-400">Nothing yet — smash Day 1! 💪</p>
         ) : (
