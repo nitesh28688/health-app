@@ -1,16 +1,19 @@
-// Shared Gemini call with a model fallback chain. "gemini-flash-latest" occasionally
-// 503s under Google's "high demand" throttling (confirmed 2026-07-09) — falling back
-// to pinned, separately-deployed model versions means a spike on the newest model
-// doesn't take down AI logging entirely. All three are free-tier on the same
+// Shared Gemini call with a model fallback chain, all free-tier on the same
 // GEMINI_API_KEY, no extra setup.
 //
-// Per-model timeout (2026-07-09): a 503 fails fast, but an overloaded model can also
-// just hang without ever responding — confirmed "keeps waiting, then falls back to
-// 2.5" on gemini-flash-latest. Without a timeout that hang ate the caller's entire
-// budget before the chain ever reached a healthy model. 9s/model keeps 3 attempts
-// under the client's 30s abort (app/add/page.tsx) with room to spare. A timeout must
-// be treated the same as a 503 (try the next model), not left to throw uncaught.
-const MODEL_FALLBACK_CHAIN = ["gemini-flash-latest", "gemini-2.5-flash", "gemini-2.0-flash"];
+// gemini-2.5-flash goes first (2026-07-09): confirmed live that gemini-flash-latest
+// (Google's rolling "newest" alias) is genuinely flaky — 2 of 3 test calls hung with
+// no response at all, 1 succeeded in 5.8s — while gemini-2.5-flash answered in ~2s
+// on 3 of 3 calls. Nutrition estimation doesn't need the newest model, it needs a
+// reliable one; "latest" is now the fallback instead of the first attempt, kept
+// around for whenever it's actually up. gemini-2.0-flash is the last-resort fallback.
+//
+// Per-model timeout: a 503 fails fast, but an overloaded model can also just hang
+// without ever responding. Without a timeout that hang ate the caller's entire budget
+// before the chain ever reached a healthy model. 9s/model keeps 3 attempts under the
+// client's 30s abort (app/add/page.tsx) with room to spare. A timeout must be treated
+// the same as a 503 (try the next model), not left to throw uncaught.
+const MODEL_FALLBACK_CHAIN = ["gemini-2.5-flash", "gemini-flash-latest", "gemini-2.0-flash"];
 const PER_MODEL_TIMEOUT_MS = 9000;
 
 export async function generateWithFallback(parts: object[], responseSchema?: object) {

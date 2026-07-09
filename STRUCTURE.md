@@ -556,7 +556,12 @@ OFF retest.** Three cleanup passes on the branded-foods data:
    every time). Added a 9s per-model `AbortController` timeout, treated
    identically to a 503 (try the next model) rather than left to throw
    uncaught — worst case is now ~9s + ~2s ≈ 11s to a working answer instead
-   of a 30s dead end.
+   of a 30s dead end. Then reconsidered the chain order entirely: nutrition
+   estimation doesn't need Google's newest model, it needs a reliable one.
+   `gemini-2.5-flash` now goes **first** (3 of 3 test calls, ~2s each,
+   reliable), with `gemini-flash-latest` demoted to a fallback attempt
+   instead of the default first hop, `gemini-2.0-flash` still the
+   last-resort.
 
 **Round 6.5 (2026-07-09): flexible units + diet-aware targets.**
 `QuantitySheet` now defaults liquids to ml (via `food.is_liquid`) instead of
