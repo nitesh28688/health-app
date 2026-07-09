@@ -743,6 +743,36 @@ without a different source). Yoga poses and AI-suggested/custom exercises
 stay text-only — no source photos exist for those. `exercises.image_urls
 text[]` added via migration `0023`.
 
+**Batch 3 (2026-07-09): UI/UX consistency pass, no schema changes.** Triggered
+by a real bug — the workout page's "log your own workout" entry point was a
+plain text link for a primary, frequent action (fixed directly, commit
+`017d213`). That prompted a full page-by-page audit (all 14 routes plus
+`SetTimer`/`ExerciseDemo`) against a checklist: button/link visual weight vs.
+actual importance, tap target sizing (~44px minimum, mobile-first hard rule),
+dark mode coverage, and empty/loading/error state handling. First audit
+attempt had fabricated findings (line numbers and UI elements that didn't
+exist — caught on review, sent back); the corrected second pass was verified
+against the real files and held up. 13 commits, one per page/component:
+- Tap targets brought to ~44px on icon-only buttons across Diary, Add,
+  Workout, Recipes, Progress, Medications, Cycle, Friends, and `SetTimer`
+  (was `w-8 h-8`/32px on the start/stop timer buttons).
+- Bare-text primary actions given real button chrome: Diary's "Suggest a
+  meal" AI button, Challenges' back button (was a plain `←` link, now matches
+  the `w-11 h-11` circular pattern used everywhere else), Friends' "unfriend"
+  action.
+- `aria-label`s added to icon-only buttons throughout (back buttons, delete/
+  remove ✕ buttons) that had none.
+- Dark mode variants added where missing (Goals page's status text colors,
+  Login's "Create account" link).
+- Empty/loading/error states audited page-by-page with specific citations
+  (not a blanket "looks fine" claim) — confirmed every list/data view already
+  had a real empty-state message and every async fetch already showed
+  `<Skeleton>`/`<PageSkeleton />`, so no code changes were needed there, only
+  documentation confirming it was actually checked.
+- Deliberately did **not** touch anything outside the checklist — this was a
+  consistency pass within the existing design system (green-600 primary
+  color, `rounded-xl` scale, existing card patterns), not a redesign.
+
 **Not yet built** (schema/RPCs already exist, just needs UI):
 - Offline queue (PWA currently caches the shell for offline *viewing*, but doesn't
   queue writes made while offline).
