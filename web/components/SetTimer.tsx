@@ -61,7 +61,7 @@ export function SetTimer({
     return (
       <button
         onClick={() => { setStartedAt(Date.now()); setNow(Date.now()); }}
-        className="w-8 h-8 flex items-center justify-center rounded-md bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 shrink-0"
+        className="w-11 h-11 flex items-center justify-center rounded-lg bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 shrink-0"
         title="Start Timer"
       >
         <Play className="w-4 h-4 ml-0.5" />
@@ -77,7 +77,7 @@ export function SetTimer({
   return (
     <button
       onClick={() => stop(elapsedSecs)}
-      className="flex items-center gap-1.5 h-8 px-2 rounded-md bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 font-mono text-sm font-bold shrink-0"
+      className="flex items-center gap-1.5 h-11 px-3 rounded-lg bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 font-mono text-sm font-bold shrink-0"
       title="Stop Timer"
     >
       {hasTarget ? (

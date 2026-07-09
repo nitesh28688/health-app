@@ -647,6 +647,97 @@ part:**
 6. **Spacing/hierarchy consistency.** Section spacing, card padding, heading
    sizes should match the established scale already used throughout — flag
    anything that looks like a one-off.
+
+### Batch 3: Consistency & Mobile Polish Audit (CORRECTED)
+
+Below is the verified audit based on line-by-line inspection of the 14 main pages and shared components.
+
+#### **1. Diary (`web/app/page.tsx`)**
+- **L190, 198 (Prev/Next buttons):** Tap target size is good (`w-11 h-11`), but both are **missing `aria-label`** for accessibility.
+  - ` <button onClick={prev} className="w-11 h-11 rounded-full border border-neutral-200 dark:border-neutral-800 active:scale-95 flex items-center justify-center shrink-0">←</button>`
+- **L263 (Suggest a meal):** Primary AI action styled as a bare text link. Very small tap target.
+  - `<button onClick={suggestMeal} disabled={aiBusy} className="text-xs text-violet-600 font-semibold disabled:opacity-50 mt-1">✨ Suggest a meal</button>`
+- **L307 ("Add" meal button):** Button is `w-9 h-9` (36px). Slightly below the 44px mobile minimum tap target.
+  - `<Link href={\`/add?meal=\${meal.name}\`} className="w-9 h-9 rounded-full bg-green-600 text-white flex items-center justify-center text-lg active:scale-95">+</Link>`
+- **L311 (Repeat yesterday):** Small text button tap target.
+  - `<button onClick={() => repeatYesterday(meal.name)} disabled={repeatBusy} className="text-xs text-green-600 font-semibold disabled:opacity-50">↻ Repeat yesterday</button>`
+
+#### **2. Add (`web/app/add/page.tsx`)**
+- **L153 (Back button):** Standard button, but **missing `aria-label="Back"`**.
+  - `<button onClick={() => router.back()} className="w-11 h-11 rounded-full border border-neutral-200 dark:border-neutral-800 text-lg">←</button>`
+- **L161 (My recipes):** Styled as a bare text link instead of a button/list-item.
+  - `<Link href="/recipes" className="text-sm text-green-600 font-semibold">🍲 My recipes →</Link>`
+- **L162 (Snap a photo):** Actionable item styled as bare text.
+  - `<button onClick={() => photoInput.current?.click()} disabled={busy} className="text-sm text-violet-600 font-semibold disabled:opacity-50 inline-flex items-center gap-1.5">`
+
+#### **3. Workout (`web/app/workout/page.tsx`)**
+- **L389, 391 (Cancel/Save):** Top bar sheet actions. They are bare text, tap target might be small.
+  - `<button onClick={() => setSheet(null)} className="text-neutral-500 text-sm font-semibold">Cancel</button>`
+- **L402 (Remove exercise):** Extremely small text link tap target.
+  - `<button onClick={() => setSheet({ ...sheet, exercises: sheet.exercises.filter((_, j) => j !== i) })} className="text-red-500 text-xs shrink-0">remove</button>`
+- **L426 (Delete set ✕):** Tap target is essentially just `px-1` text.
+  - `<button onClick={() => updateSet(i, j, { delete: true })} className="text-neutral-400 px-1">✕</button>`
+
+#### **4. Goals (`web/app/goals/page.tsx`)**
+- **L34 (Back button):** **Missing `aria-label="Back"`**.
+  - `<button onClick={() => router.back()} className="w-11 h-11 rounded-full border border-neutral-200 dark:border-neutral-800 text-lg">←</button>`
+- **L41 (Set it in Profile):** Missing dark mode variant (`dark:text-blue-400`).
+  - `<button onClick={() => router.push("/profile")} className="text-blue-600 font-semibold underline">`
+- **L77, L81 (Goal states):** Text colors lack dark mode variants (`dark:text-green-400`, `dark:text-blue-400`).
+  - L77: `<p className="text-green-600 font-bold text-lg">🎉 You've reached your goal!</p>`
+  - L81: `<p className="text-2xl font-bold text-blue-600 mb-4">`
+
+#### **5. Challenges (`web/app/challenges/page.tsx`)**
+- **L103 (Back link):** Inconsistent with other pages. Uses a plain text `←` link instead of the `w-11 h-11` circular button pattern.
+  - `<Link href="/friends" className="text-neutral-500 text-xl leading-none">←</Link>`
+
+#### **6. Trends (`web/app/trends/page.tsx`)**
+- **L161 (Log button):** Missing vertical padding (needs `py-3` to match adjacent input on L159) and missing `active:scale-[0.98]`.
+  - `<button onClick={logWeight} disabled={!(parseFloat(weight) > 0)} className="rounded-xl bg-green-600 text-white px-5 font-semibold disabled:opacity-40">`
+
+#### **7. Profile (`web/app/profile/page.tsx`)**
+- **L200, 201 (Links):** "Progress photos" and "Goal progress" are plain text links.
+  - `<Link href="/progress" className="text-sm text-green-600 font-semibold">📸 Progress photos →</Link>`
+
+#### **8. Recipes (`web/app/recipes/page.tsx`)**
+- **L131 (Back button):** **Missing `aria-label="Back"`**.
+- **L71, L159 (Remove buttons ✕):** `w-9 h-9` (36px). Small tap targets, missing `aria-label`.
+  - `<button onClick={() => remove(r)} className="w-9 h-9 text-neutral-400">✕</button>`
+- **L154 (Share button):** Missing `active:scale-[0.98]` interaction feedback.
+  - `<button onClick={() => toggleShare(r)} className={\`text-xs rounded-lg px-3 py-2 font-semibold border \${r.shared ? "border-green-600 text-green-600" : "border-neutral-300 dark:border-neutral-700 text-neutral-500"}\`}>`
+
+#### **9. Progress (`web/app/progress/page.tsx`)**
+- **L73 (Back button):** **Missing `aria-label="Back"`**.
+- **L116 (Delete photo ✕):** `w-6 h-6` (24px) is extremely small for a destructive action on mobile. Missing full `aria-label`.
+  - `<button onClick={() => remove(p.id)} aria-label="Delete" className="absolute top-1 right-1 w-6 h-6 rounded-full bg-black/60 text-white text-xs flex items-center justify-center">✕</button>`
+
+#### **10. Medications (`web/app/medications/page.tsx`)**
+- **L46 (Back button):** **Missing `aria-label="Back"`**.
+- **L102 (Delete medication ✕):** `w-9 h-9`. Small tap target, missing `aria-label`.
+  - `<button onClick={() => remove(m.id)} className="w-9 h-9 text-neutral-400">✕</button>`
+
+#### **11. Cycle (`web/app/cycle/page.tsx`)**
+- **L51 (Back button):** **Missing `aria-label="Back"`**.
+- **L103 (Delete log ✕):** `w-9 h-9`. Small tap target, missing `aria-label`.
+  - `<button onClick={() => remove(l.id)} className="w-9 h-9 text-neutral-400">✕</button>`
+
+#### **12. Friends (`web/app/friends/page.tsx`)**
+- **L204 (Unfriend):** Bare text button. Very small tap target for a destructive action.
+  - `<button onClick={() => unfriend(f)} className="text-xs text-neutral-400">unfriend</button>`
+
+#### **13. Auth (`web/app/login/page.tsx`, `signup`, `reset`)**
+- General: Text links for "Forgot password?" and "Create account" could be clearer buttons, but are standard web patterns. Nothing critically broken.
+
+#### **14. Shared Components**
+- **`SetTimer.tsx`**:
+  - **L62, L78:** `w-8 h-8` and `h-8`. 32px is below the 44px recommended mobile tap target.
+    - `<button onClick={() => { setStartedAt(Date.now()); setNow(Date.now()); }} className="w-8 h-8 flex items-center justify-center rounded-md bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 shrink-0" title="Start Timer">`
+- **`ExerciseDemo.tsx`**:
+  - No findings. Dark mode is explicitly covered on L23 (`dark:bg-neutral-800`), no interactive tap targets present.
+
+#### **Empty / Loading / Error States (General Audit)**
+- Empty states and Loading states (skeletons/text) are well-represented across all modules (Challenges, Trends, Friends, Recipes, Progress). Standard padding and messaging is utilized effectively. Spacer consistency is generally solid.
+
 7. **Error states.** Anything that can fail (a network call, a validation
    check) needs a visible, clear message — not a silent no-op.
 8. **Accessibility basics.** Interactive elements need a visible
