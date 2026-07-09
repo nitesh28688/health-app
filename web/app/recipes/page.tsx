@@ -68,8 +68,8 @@ function RecipeBuilder({ userId, onDone }: { userId: string; onDone: () => void 
           <input inputMode="decimal" placeholder="g" value={i.qty}
             onChange={(e) => setIngs(ings.map((x, j) => j === idx ? { ...x, qty: e.target.value } : x))}
             className="w-20 rounded-lg border border-neutral-300 dark:border-neutral-700 bg-transparent px-2 py-2 text-base text-center" />
-          <button onClick={() => setIngs(ings.filter((_, j) => j !== idx))}
-            className="w-9 h-9 text-neutral-400">✕</button>
+          <button onClick={() => setIngs(ings.filter((_, j) => j !== idx))} aria-label="Remove ingredient"
+            className="w-11 h-11 flex items-center justify-center text-neutral-400 shrink-0">✕</button>
         </div>
       ))}
       <input placeholder="Search ingredient to add…" value={q} onChange={(e) => setQ(e.target.value)}
@@ -128,10 +128,10 @@ function Recipes({ userId }: { userId: string }) {
   return (
     <main className="px-4 pt-6">
       <div className="flex items-center gap-3 mb-4">
-        <button onClick={() => router.back()} className="w-11 h-11 rounded-full border border-neutral-200 dark:border-neutral-800 text-lg">←</button>
+        <button onClick={() => router.back()} aria-label="Back" className="w-11 h-11 rounded-full border border-neutral-200 dark:border-neutral-800 text-lg flex items-center justify-center">←</button>
         <h1 className="text-2xl font-bold flex-1">My recipes</h1>
         <button onClick={() => setBuilding(!building)}
-          className="rounded-xl bg-green-600 text-white px-4 py-2.5 font-semibold text-sm">
+          className="rounded-xl bg-green-600 text-white px-4 py-2.5 font-semibold text-sm active:scale-[0.98]">
           {building ? "Close" : "+ New"}
         </button>
       </div>
@@ -156,7 +156,7 @@ function Recipes({ userId }: { userId: string }) {
                     r.shared ? "border-green-600 text-green-600" : "border-neutral-300 dark:border-neutral-700 text-neutral-500"}`}>
                   {r.shared ? "Shared ✓" : "Share"}
                 </button>
-                <button onClick={() => remove(r)} className="w-9 h-9 text-neutral-400">✕</button>
+                <button onClick={() => remove(r)} aria-label="Delete recipe" className="w-11 h-11 flex items-center justify-center text-neutral-400 shrink-0">✕</button>
               </div>
             </li>
           ))}
