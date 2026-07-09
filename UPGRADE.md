@@ -756,6 +756,10 @@ Below is the verified audit based on line-by-line inspection of the 14 main page
   - Loading: L90 shows two `<Skeleton>` blocks while loading challenges. L137 shows "Loading..." while scores fetch.
   - Empty (Active): L121 clearly explains "You haven't joined any challenges".
   - Empty (Discover): L161 explicitly states "No new challenges from friends right now".
+- **Trends (`web/app/trends/page.tsx`)**:
+  - Loading: L127 correctly returns `<PageSkeleton />` while data fetches.
+  - Empty: L21 shows "No data yet — log your weight below." when the line chart has no points.
+  - Empty (Food in history): L191 properly says "no food logged" when a check-in day has 0 kcal.
 
 7. **Error states.** Anything that can fail (a network call, a validation
    check) needs a visible, clear message — not a silent no-op.

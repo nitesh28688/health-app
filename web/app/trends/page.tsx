@@ -159,13 +159,13 @@ function Trends({ profile, userId }: { profile: Profile | null; userId: string }
             onChange={(e) => setWeight(e.target.value)}
             className="flex-1 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-transparent px-4 py-3 text-base" />
           <button onClick={logWeight} disabled={!(parseFloat(weight) > 0)}
-            className="rounded-xl bg-green-600 text-white px-5 font-semibold disabled:opacity-40">
+            className="rounded-xl bg-green-600 text-white px-5 py-3 font-semibold disabled:opacity-40 active:scale-[0.98]">
             {savedMsg ? "✓" : "Log"}
           </button>
         </div>
         <p className="mt-2 text-xs text-neutral-400">
           Log waist &amp; body fat % in <Link href="/profile" className="underline">Profile</Link>.
-          See <Link href="/goals" className="underline text-blue-600">Goal Progress</Link>.
+          See <Link href="/goals" className="underline text-blue-600 dark:text-blue-400">Goal Progress</Link>.
         </p>
 
         {weightHistory.length > 0 && (
