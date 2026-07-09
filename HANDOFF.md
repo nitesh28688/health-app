@@ -31,14 +31,19 @@ this network).
    by USDA Branded Foods for the global-brand gap OFF was mainly filling.
    `seed-off.mjs` now takes a country arg for when this gets picked back up:
    `node scripts/seed-off.mjs <pages> <startPage> <pageSize> <india|uae>`.
-2. **USDA Branded Foods — 16,244 products live** (trimmed + deduped 2026-07-08,
-   down from an original 80,820 seeded 2026-07-09). `scripts/trim-usda-branded.mjs`
-   cut US-only SKUs to an India/UAE brand allowlist (removed 41,875 rows), then
-   `scripts/dedupe-branded.mjs` collapsed pack-size duplicates — USDA gives every
-   UPC its own row, so one product could have 100+ near-identical rows (removed
-   22,701 more). Both dry-run by default, `--apply` to execute, skip anything
-   already in a user's `food_logs`. `is_liquid` is name+brand keyword-based —
-   two correction rounds so far: `scripts/fix-branded-liquid.mjs` (Round 7,
+2. **USDA Branded Foods — 12,467 products live** (trimmed/deduped/de-ambiguated
+   2026-07-08 to 2026-07-09, down from an original 80,820 seeded 2026-07-09).
+   `scripts/trim-usda-branded.mjs` cut US-only SKUs to an India/UAE brand
+   allowlist (removed 41,875 rows), `scripts/dedupe-branded.mjs` collapsed
+   pack-size duplicates — USDA gives every UPC its own row, so one product could
+   have 100+ near-identical rows (removed 22,701 more) — then
+   `scripts/remove-ambiguous-branded.mjs` removed rows where brand+name is
+   identical across multiple entries but the macros differ and there's no
+   flavor/variant text to tell them apart (32 rows all named "Coffee Creamer"
+   under Nestle, 67-600 kcal/100g, zero way to know which is right — removed
+   3,777 more). All three dry-run by default, `--apply` to execute, skip
+   anything already in a user's `food_logs`. `is_liquid` is name+brand
+   keyword-based — two correction rounds so far: `scripts/fix-branded-liquid.mjs` (Round 7,
    USDA's category field was unreliable) and `scripts/fix-liquid-round2.mjs`
    (Round 8, brand-only product names like "Sprite"/"Thums Up"/"Bisleri" had no
    generic keyword to match on, corrected 1,412 rows). Real gap remaining:

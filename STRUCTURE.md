@@ -17,10 +17,11 @@ workouts, and cheer each other on. Food data comes from three seeded sources plu
   serving sizes.
 - **Open Food Facts India** ('off' source, ODbL) — packaged/branded groceries with a
   `brand` column. Only 172 products in, parked — see "Known gap" below.
-- **USDA Branded Foods** ('usda' source, `indb_code` prefix `USDABR-`) — 16,244
+- **USDA Branded Foods** ('usda' source, `indb_code` prefix `USDABR-`) — 12,467
   global-brand packaged products (Coca-Cola, Red Bull, Starbucks, Cadbury, protein
-  brands), trimmed from an original 80,820 to India/UAE-relevant brands with
-  pack-size duplicates collapsed. Offline bulk CSV, not a live API — see Round 7/8 below.
+  brands), trimmed from an original 80,820 to India/UAE-relevant brands, with
+  pack-size duplicates and unlabeled ambiguous-variant rows removed. Offline
+  bulk CSV, not a live API — see Round 7/8 below.
 - **Gemini AI fallback** for anything not found — estimates get an "AI" badge and an
   admin moderation queue.
 - Search ranks by text similarity across name/local-name/brand, with substring matching
@@ -484,6 +485,23 @@ OFF retest.** Three cleanup passes on the branded-foods data:
    that did succeed were entirely products already in the DB, so **172 total OFF
    rows, no net change**. Conclusion unchanged from Round 6: OFF's throttle is
    real and still active, not solved by patience alone yet.
+5. **`scripts/remove-ambiguous-branded.mjs` (2026-07-09): deleted 3,777 more
+   rows for a different reason than dedupe.** Spot-checking after the above
+   cleanup surfaced a case dedupe's exact-macro-match rule doesn't catch: 32
+   rows all literally named "COFFEE CREAMER" under Nestle brands, each a
+   genuinely different product (different flavors/recipes, 67-600 kcal/100g)
+   but with zero distinguishing text — USDA's `description` field just doesn't
+   carry the flavor/variant for these SKUs. A user has no way to know which
+   numbers correspond to which real product, so keeping any of them risks
+   silent wrong logging. Checked how widespread this pattern was: **3,778 of
+   16,244 rows (23%) sat in a `(brand, name)` group of 2+ with differing
+   macros** — Mars "Chocolate Candies" had 49 such rows, Hershey's "Milk
+   Chocolate" had 25. Deleted the lot (skipping anything in `food_logs`,
+   same guard as the other cleanup scripts) rather than trying to arbitrarily
+   pick a survivor per group — a survivor would still just be a guess. AI
+   fallback (reads the user's actual search text, e.g. "coffee mate french
+   vanilla creamer") is the replacement for these, same mitigation as the
+   India-brand gap. **Net across Round 8: 80,820 → 12,467 USDA branded rows.**
 
 **Round 6.5 (2026-07-09): flexible units + diet-aware targets.**
 `QuantitySheet` now defaults liquids to ml (via `food.is_liquid`) instead of
