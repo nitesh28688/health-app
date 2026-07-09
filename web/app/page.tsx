@@ -187,7 +187,7 @@ function Diary({ profile, userId }: { profile: Profile | null; userId: string })
     <main className="px-4 pt-4">
       {/* date nav */}
       <div className="flex items-center justify-between mb-1">
-        <button onClick={() => go(-1)}
+        <button onClick={() => go(-1)} aria-label="Previous Day"
           className="w-11 h-11 rounded-full flex items-center justify-center text-lg border border-neutral-200 dark:border-neutral-800 active:scale-95 transition-transform">←</button>
         <label className="relative font-bold text-lg px-3 py-1 rounded-lg active:bg-neutral-100 dark:active:bg-neutral-900">
           {dateLabel(date)} 📅
@@ -195,7 +195,7 @@ function Diary({ profile, userId }: { profile: Profile | null; userId: string })
             onChange={(e) => e.target.value && setDate(e.target.value)}
             className="absolute inset-0 opacity-0 w-full h-full cursor-pointer" />
         </label>
-        <button onClick={() => go(1)} disabled={date >= todayLocal()}
+        <button onClick={() => go(1)} disabled={date >= todayLocal()} aria-label="Next Day"
           className="w-11 h-11 rounded-full flex items-center justify-center text-lg border border-neutral-200 dark:border-neutral-800 disabled:opacity-30 active:scale-95 transition-transform">→</button>
       </div>
       {date !== todayLocal() && (
@@ -261,7 +261,7 @@ function Diary({ profile, userId }: { profile: Profile | null; userId: string })
               {" "}Fat {Math.max(0, Math.round((profile?.target_fat ?? 65) - Number(totals?.fat_g ?? 0)))}g
             </p>
             <button onClick={askMealIdea} disabled={mealIdeaBusy}
-              className="mt-2 text-xs text-violet-600 font-semibold disabled:opacity-50">
+              className="mt-2 text-sm text-violet-600 font-semibold disabled:opacity-50 bg-violet-100 dark:bg-violet-900/30 px-4 py-2.5 rounded-xl border border-violet-200 dark:border-violet-900 w-full active:scale-[0.98]">
               {mealIdeaBusy ? "Thinking…" : "🤖 Suggest a meal for what's left"}
             </button>
             <AnimatePresence>
@@ -305,12 +305,12 @@ function Diary({ profile, userId }: { profile: Profile | null; userId: string })
                 {mealKcal > 0 && <span className="text-sm font-normal text-neutral-500"> · {Math.round(mealKcal)} kcal</span>}
               </h2>
               <Link href={`/add?meal=${m.key}&date=${date}`}
-                className="w-9 h-9 rounded-full bg-green-600 text-white flex items-center justify-center text-xl leading-none pb-0.5">+</Link>
+                className="w-11 h-11 rounded-full bg-green-600 text-white flex items-center justify-center text-xl leading-none pb-0.5">+</Link>
             </div>
             {items.length === 0 ? (
               <div className="flex items-center justify-between pl-1">
                 <p className="text-sm text-neutral-400">Nothing logged</p>
-                <button onClick={() => copyMeal(m.key)} className="text-xs text-green-600 font-semibold">
+                <button onClick={() => copyMeal(m.key)} className="text-xs text-green-600 font-semibold bg-green-50 dark:bg-green-950/30 px-3 py-2 rounded-lg border border-green-200 dark:border-green-900 active:scale-[0.98]">
                   ↻ Repeat yesterday
                 </button>
               </div>
