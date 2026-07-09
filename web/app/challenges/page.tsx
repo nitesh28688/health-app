@@ -100,7 +100,7 @@ function Challenges({ userId }: { userId: string }) {
   return (
     <main className="px-4 pt-6 pb-24">
       <div className="flex items-center gap-2 mb-3">
-        <Link href="/friends" className="text-neutral-500 text-xl leading-none">←</Link>
+        <Link href="/friends" aria-label="Back" className="w-11 h-11 rounded-full border border-neutral-200 dark:border-neutral-800 text-lg flex items-center justify-center">←</Link>
         <h1 className="text-2xl font-bold">Challenges</h1>
       </div>
 

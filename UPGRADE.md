@@ -752,6 +752,10 @@ Below is the verified audit based on line-by-line inspection of the 14 main page
   - Loading: L29 returns `<PageSkeleton />` while loading.
   - Empty: L38 handles missing goal explicitly ("You haven't set a goal weight yet.").
   - Empty (no data): L45 handles lack of progress data explicitly ("Not enough check-ins yet to estimate progress.").
+- **Challenges (`web/app/challenges/page.tsx`)**:
+  - Loading: L90 shows two `<Skeleton>` blocks while loading challenges. L137 shows "Loading..." while scores fetch.
+  - Empty (Active): L121 clearly explains "You haven't joined any challenges".
+  - Empty (Discover): L161 explicitly states "No new challenges from friends right now".
 
 7. **Error states.** Anything that can fail (a network call, a validation
    check) needs a visible, clear message — not a silent no-op.
