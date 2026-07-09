@@ -107,7 +107,7 @@ export default function LoginPage() {
                 {busy ? "Verifying…" : "Verify & sign in"}
               </button>
               <button type="button" onClick={() => { setOtpPhone(null); setOtpCode(""); }}
-                className="text-sm text-neutral-500">← Different number</button>
+                className="text-sm text-neutral-500 py-2">← Different number</button>
             </>
           )}
         </div>
@@ -133,7 +133,7 @@ export default function LoginPage() {
             <button onClick={forgot} disabled={!email} className="text-neutral-500 disabled:opacity-40">
               Forgot password?
             </button>
-            <Link href="/signup" className="text-green-600 font-semibold">Create account</Link>
+            <Link href="/signup" className="text-green-600 dark:text-green-400 font-semibold">Create account</Link>
           </div>
         </>
       )}

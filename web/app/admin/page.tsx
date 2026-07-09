@@ -196,10 +196,10 @@ export default function AdminPage() {
                         </div>
                         {!f.is_verified && (
                           <button onClick={() => verify(f.id)}
-                            className="rounded-lg bg-green-600 text-white text-xs px-3 py-2 font-semibold">Verify</button>
+                            className="rounded-lg bg-green-600 text-white text-xs px-3 py-2 font-semibold active:scale-[0.98]">Verify</button>
                         )}
                         <button onClick={() => remove(f.id)}
-                          className="rounded-lg border border-red-300 text-red-600 text-xs px-3 py-2 font-semibold">Delete</button>
+                          className="rounded-lg border border-red-300 text-red-600 text-xs px-3 py-2 font-semibold active:scale-[0.98]">Delete</button>
                       </li>
                     ))}
                   </ul>
@@ -231,7 +231,7 @@ export default function AdminPage() {
                   </div>
                   <button onClick={() => deleteUser(selected.id, selected.profile.display_name as string)}
                     disabled={busyId !== null}
-                    className="w-full rounded-xl border border-red-300 text-red-600 py-3 font-semibold disabled:opacity-50 mb-6 mt-2">
+                    className="w-full rounded-xl border border-red-300 text-red-600 py-3 font-semibold disabled:opacity-50 mb-6 mt-2 active:scale-[0.98]">
                     {busyId ? "Deleting…" : "Delete this user"}
                   </button>
                 </div>

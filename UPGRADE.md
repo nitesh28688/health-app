@@ -782,6 +782,12 @@ Below is the verified audit based on line-by-line inspection of the 14 main page
   - Loading (Feed): L112 renders 3 full-width `<Skeleton>` blocks while fetching.
   - Empty (Feed): L119 handles empty feed ("No activity yet.").
   - Empty (People): L195 states "Search a username above to add family & friends." when friend list is empty.
+- **Auth (`web/app/login/page.tsx`, `web/app/signup/page.tsx`)**:
+  - Error: Login L88/L104/L125 handles API errors natively with `text-red-500`. Signup L90 handles API and validation errors identically.
+- **Admin (`web/app/admin/page.tsx`)**:
+  - Loading: Overview L130 uses 9 skeleton tiles, Users L151 uses 4 skeleton rows.
+  - Empty (AI): L186 explicitly states "No AI-estimated foods yet." when `aiFoods.length === 0`.
+  - Error: L115 handles data fetching/action errors via `text-red-500`.
 
 7. **Error states.** Anything that can fail (a network call, a validation
    check) needs a visible, clear message — not a silent no-op.

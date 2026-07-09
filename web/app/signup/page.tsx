@@ -61,7 +61,7 @@ export default function SignupPage() {
         <p className="text-neutral-500">
           We sent a confirmation link to <b>{email}</b>. Tap it, then sign in.
         </p>
-        <Link href="/login" className="mt-6 text-green-600 font-semibold">Go to sign in</Link>
+        <Link href="/login" className="mt-6 text-green-600 dark:text-green-400 font-semibold">Go to sign in</Link>
       </main>
     );
   }
@@ -95,7 +95,7 @@ export default function SignupPage() {
       </form>
       <p className="mt-6 text-center text-neutral-500">
         Already have an account?{" "}
-        <Link href="/login" className="text-green-600 font-semibold">Sign in</Link>
+        <Link href="/login" className="text-green-600 dark:text-green-400 font-semibold">Sign in</Link>
       </p>
     </main>
   );
