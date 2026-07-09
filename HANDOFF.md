@@ -52,12 +52,14 @@ this network).
 2. **Challenges UI, badges UI, AI daily suggestions, offline write queue, Hindi
    `name_local` search data** — schema/RPCs already exist for the first three, just
    need screens. See STRUCTURE.md § "Not yet built" for specifics.
-3. **Candidate v2 features** (not started, ideas only): barcode scanner (real
-   payoff once OFF has more products — `BarcodeDetector` browser API, no library
-   needed), fasting timer, weekly email digest (Brevo SMTP already set up, unused
-   beyond auth mail). Step counting was deliberately **not** attempted — no
-   standard browser API exists; would need native HealthKit/Google Fit integration,
-   a distinct project, not an incremental feature.
+3. **Candidate v2 features** (not started, ideas only): fasting timer, weekly
+   email digest (Brevo SMTP already set up, unused beyond auth mail). Barcode
+   scanner was considered and **rejected as a product call (2026-07-09)**: nobody
+   actually scans barcodes — people type and expect results to appear. Effort
+   goes to search quality instead. Step counting was deliberately **not**
+   attempted — no standard browser API exists; would need native
+   HealthKit/Google Fit integration, a distinct project, not an incremental
+   feature.
 
 ## Critical gotchas (don't relearn these the hard way)
 

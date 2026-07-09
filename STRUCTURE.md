@@ -622,11 +622,13 @@ prediction from cycle history.
 
 ## 8. Candidate features not yet built (ideas for later)
 
-- **Barcode scanner** for packaged foods — the highest-value remaining addition once
-  Open Food Facts is seeded: `BarcodeDetector` is a real browser API (Chrome/Edge/
-  Android, no library needed) that reads a camera feed and returns an EAN/UPC code,
-  which maps directly to the `off` source's `indb_code` (`OFF-<barcode>`). iOS Safari
-  lacks `BarcodeDetector` and would need a JS fallback library.
+- ~~**Barcode scanner**~~ — **rejected as a product call (2026-07-09), don't
+  re-propose.** User's reasoning: nobody actually scans barcodes; people type a
+  name and expect results to appear. Effort goes to search quality (ranking,
+  synonyms, Hindi names) instead. (For the record, the technical path existed:
+  `BarcodeDetector` browser API on Chrome/Edge/Android mapping to the `off`
+  source's `OFF-<barcode>` codes — iOS Safari would have needed a JS fallback
+  library. Kept here only so the idea isn't re-researched from scratch.)
 - **Fasting timer** — cheap to build (a start/stop timestamp + a countdown UI), no
   new infrastructure.
 - **Weekly summary email** — the Brevo SMTP is already paid for (as in, already set
