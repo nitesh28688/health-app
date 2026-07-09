@@ -606,7 +606,7 @@ patterns already used throughout) rather than introducing new visual
 language. The point is consistency and correctness of what's already there,
 not a new look.
 
-**Status:** ☐ Not started
+**Status:** [x] Done
 
 **Scope — audit every page**, not just the newest ones (though the newest are
 highest-risk): `web/app/page.tsx` (Diary), `add`, `workout`, `trends`,

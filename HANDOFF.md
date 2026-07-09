@@ -26,6 +26,7 @@ tracking, avatar + progress photos, Web Push reminders + daily AI tips, admin pa
 3. Exercise demo images — 874 of 879 exercises (99.4%) now show two real
    crossfading photos, self-hosted on R2, sourced from the already-seeded
    free-exercise-db data (public domain) that just never got imported before.
+4. UI/UX Consistency Overhaul (Batch 3) — Systematically fixed button/link visual weights, tap target sizes (~44px minimum for mobile), dark mode coverage, and Empty/Loading/Error states across all 14 app routes.
 
 All built by Antigravity except Phase 13 (images), which Fable built directly.
 Every batch got an independent Fable review against the live DB rather than
