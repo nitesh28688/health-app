@@ -87,6 +87,8 @@ function Diary({ profile, userId }: { profile: Profile | null; userId: string })
   const [mealIdeaBusy, setMealIdeaBusy] = useState(false);
   const [mealIdeaError, setMealIdeaError] = useState<string | null>(null);
   const [editingLog, setEditingLog] = useState<{ log: LogRow; food: any } | null>(null);
+  const [dailyTip, setDailyTip] = useState<string | null>(null);
+  const [showDailyTip, setShowDailyTip] = useState(true);
 
   const load = useCallback(async () => {
     const [logsRes, totalsRes] = await Promise.all([
@@ -97,7 +99,19 @@ function Diary({ profile, userId }: { profile: Profile | null; userId: string })
     setLogs((logsRes.data as unknown as LogRow[]) ?? []);
     setTotals(totalsRes.data?.[0] ?? null);
   }, [userId, date]);
-  useEffect(() => { load(); }, [load]);
+  
+  useEffect(() => { 
+    load(); 
+    if (date === todayLocal()) {
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session) fetch("/api/ai/daily-tip", {
+          method: "POST", headers: { Authorization: `Bearer ${session.access_token}` }
+        }).then(r => r.json()).then(b => { if (b.tip) setDailyTip(b.tip); });
+      });
+    } else {
+      setDailyTip(null);
+    }
+  }, [load, date]);
   useEffect(() => { setMicros(null); setShowMicros(false); }, [date]);
 
   async function loadMicros() {
@@ -188,6 +202,14 @@ function Diary({ profile, userId }: { profile: Profile | null; userId: string })
           className="block mx-auto mb-4 text-xs text-green-600 font-semibold">Jump to today</button>
       )}
       {date === todayLocal() && <div className="mb-4" />}
+      
+      {date === todayLocal() && dailyTip && showDailyTip && (
+        <div className="mb-4 rounded-xl border border-violet-200 dark:border-violet-900/50 bg-violet-50/50 dark:bg-violet-900/10 p-3 flex gap-3 relative">
+          <span className="text-xl">💡</span>
+          <p className="text-sm text-violet-800 dark:text-violet-200 pr-4">{dailyTip}</p>
+          <button onClick={() => setShowDailyTip(false)} className="absolute top-2 right-2 w-6 h-6 flex items-center justify-center text-violet-400 hover:text-violet-600">✕</button>
+        </div>
+      )}
 
       <div key={date} className={slideDir === "left" ? "page-enter" : slideDir === "right" ? "page-enter" : ""}>
       {/* totals card */}

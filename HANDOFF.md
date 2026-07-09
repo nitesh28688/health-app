@@ -71,9 +71,8 @@ this network).
    OFF (parked, 172 India products) and the AI fallback (permanently
    self-saving, reads the user's actual search text) are what's left covering
    packaged/branded foods now.
-2. **AI daily suggestions, offline write queue, Hindi
-   `name_local` search data** — schema/RPCs already exist for the first one, just
-   need screens. See STRUCTURE.md § "Not yet built" for specifics.
+2. **Offline write queue** — PWA currently caches the shell for offline *viewing*, but doesn't
+   queue writes made while offline. See STRUCTURE.md § "Not yet built" for specifics.
 3. **Candidate v2 features** (not started, ideas only): fasting timer, weekly
    email digest (Brevo SMTP already set up, unused beyond auth mail). Barcode
    scanner was considered and **rejected as a product call (2026-07-09)**: nobody

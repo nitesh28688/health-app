@@ -347,7 +347,7 @@ from reading the actual schema/code — don't re-derive what's already found.
 
 **Goal:** `foods.name_local` (exists, currently empty for every row) gets populated for INDB's 1,014 Indian recipes at minimum, so Hindi-name search actually returns something.
 
-**Status:** ☐ Not started
+**Status:** [x] Done
 
 **Context:** `search_foods()` already checks `f.name_local % q` (trigram match) — the **search logic is already correct and ready**, it just has zero data to match against. This is a data-population task, not a code task. INDB (`source='indb'`, 1,014 rows) is the highest-value target — real Indian home cooking, most likely to be searched by Hindi name.
 
@@ -359,7 +359,7 @@ from reading the actual schema/code — don't re-derive what's already found.
 
 **Goal:** users get an occasional proactive tip, not just the on-demand "🤖 AI coach feedback" button that already exists.
 
-**Status:** ☐ Not started
+**Status:** [x] Done
 
 **Context:** `web/app/api/cron/reminders/route.ts` already runs once/day via Vercel Cron (Hobby tier only allows once-daily — this is a known, accepted constraint, don't propose more frequent cron), checks each subscribed user's actual activity, and sends a tailored push. This is the natural place to extend, not a new cron job. `generateWithFallback` (`web/lib/gemini.ts`) is the model-call helper — reuse it, it already has the timeout/fallback-chain fix from earlier this session.
 
