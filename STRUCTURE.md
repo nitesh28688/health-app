@@ -89,6 +89,7 @@ edit an already-applied migration; add a new one.
 | 0020 | `0020_workout_sets.sql` | `exercises.owner_id` (custom exercises), `workout_log_exercises` + `workout_log_sets` (per-set reps/weight/duration), RLS mirroring the `foods.owner_id` pattern |
 | 0021 | `0021_search_name_local.sql` | `search_foods()` adds `name_local ilike` (the prior version only had the trigram `%` operator, which has a similarity floor and can silently miss short/partial Hindi-name matches) |
 | 0022 | `0022_fasting.sql` | `fasting_sessions` table (start/stop fasting timer), simple owner-only RLS |
+| 0023 | `0023_exercise_images.sql` | `exercises.image_urls text[]` — demo photos, see Phase 13 in `UPGRADE.md` |
 
 ### Key design decisions worth understanding
 
@@ -722,6 +723,25 @@ records the real elapsed time if stopped early). Both test scripts
 and confirmed to actually work this time, including full cleanup
 (`auth.users`/`auth.identities`, not just app tables) — the Batch 1 lesson
 held. Full notes in `UPGRADE.md`.
+
+**Phase 13 — exercise demo images (Fable, 2026-07-09).** Prompted by "does
+the asana/exercise show a demo animated video?" — checked `data/exercises.json`
+(the free-exercise-db seed source, confirmed public domain / Unlicense) and
+found it already references two real photos per exercise (start/end
+position), just never imported. Not a true video, but crossfading the two
+photos (`web/components/ExerciseDemo.tsx`, ~900ms interval) approximates a
+demo without needing real video or a paid GIF API. `scripts/seed-exercise-images.mjs`
+downloads and re-uploads each pair to Cloudflare R2 (`exercise-demos/`
+prefix, same bucket already used for progress photos) rather than hotlinking
+GitHub's raw CDN. Hit and fixed a real bug mid-run: the script's single
+long-lived DB connection got dropped by the pooler during the slow
+network-bound work and crashed the process (twice) via an unhandled error
+event — fixed by using a fresh short-lived connection per write instead.
+**874 of 879 exercises (99.4%) now have demo images**; the remaining 6 have
+no matching entry in the source data at all (not a bug, no image available
+without a different source). Yoga poses and AI-suggested/custom exercises
+stay text-only — no source photos exist for those. `exercises.image_urls
+text[]` added via migration `0023`.
 
 **Not yet built** (schema/RPCs already exist, just needs UI):
 - Offline queue (PWA currently caches the shell for offline *viewing*, but doesn't

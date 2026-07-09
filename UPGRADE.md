@@ -509,3 +509,69 @@ need the response to confirm), and hand-tracing the new SetTimer/yoga-route
 logic. Not a substitute for a human clicking through the actual flows on a
 phone, especially the new AI-suggest-yoga path and the countdown timer's feel
 in practice.
+
+---
+
+## Phase 13 — Exercise demo images (Fable, 2026-07-09)
+
+**Goal:** show a demo of how to do an exercise, prompted by "does the asana/exercise show a demo animated video?"
+
+**Status:** [x] Done
+
+**Context:** `data/exercises.json` (the free-exercise-db seed source, confirmed
+public domain / Unlicense license) references two real photos per exercise
+(start/end position) already hosted on GitHub's raw CDN — the original seed
+never imported that field. Not a true video (only 2 stills per exercise), but
+crossfading between them approximates a demo without needing real video or a
+paid GIF API (the well-known animated-GIF exercise API is a paid/rate-limited
+third-party service — would break the zero-budget principle this whole app is
+built on). Yoga poses (Phase 11) have no source images — hand-curated with no
+photo reference — and stay text-only; AI-suggested/custom exercises
+(`owner_id` set) also have none, same reasoning.
+
+**Did:**
+- Migration `0023_exercise_images.sql`: `exercises.image_urls text[]`.
+- `scripts/seed-exercise-images.mjs`: downloads each exercise's 2 photos from
+  GitHub's raw CDN, re-uploads to Cloudflare R2 (`exercise-demos/` prefix,
+  same bucket/credentials as `web/app/api/upload/photo/route.ts` already uses
+  for progress photos) — self-hosted so the live app doesn't depend on
+  GitHub's raw CDN staying up/unthrottled. Matches DB rows to JSON entries by
+  exact `name` (confirmed zero duplicate names across all 873 entries — safe,
+  unambiguous join, no need for a stored slug column). Idempotent both at the
+  DB level (skips rows with `image_urls` already set) and the R2 level (skips
+  re-uploading an object that already exists) — safe to interrupt and resume,
+  which mattered: the first full run silently died partway (215 of 879 done,
+  no error logged) and had to be resumed to completion.
+- Credential note: R2 access keys are Cloudflare's write-once-shown secrets
+  (same class of thing as Vercel's "Sensitive" env vars — visible only at
+  creation, permanently unreadable after, even to the account owner via
+  Vercel's CLI). The existing production R2 credential set turned out to
+  already be present and working in `web/.env.local`; a fresh scoped token was
+  also created as a backup path but wasn't needed in the end.
+- `web/components/ExerciseDemo.tsx`: renders nothing if `image_urls` is
+  null/empty (yoga, custom, AI-suggested exercises) — callers don't need to
+  check first. Crossfades the two images every ~900ms via a plain `<img>` (not
+  `next/image`, to avoid needing `remotePatterns` config for an R2 domain for
+  what's just small thumbnails).
+- Wired into both the exercise-picker list (`workout/page.tsx`) and the
+  active-session exercise card, `image_urls` added to the relevant `.select()`
+  calls.
+
+**Verify:** `tsc --noEmit` clean. Tested the full pipeline end to end before
+the bulk run: uploaded a 5-row test batch, confirmed the stored R2 public
+URLs are actually publicly fetchable (`curl -I` → 200, correct
+`Content-Type: image/jpeg`), then ran the full batch. Hit a real bug mid-run:
+the script's single long-lived `pg.Client` sat idle too long between
+network-bound download/upload work and got dropped by the connection pooler,
+crashing the whole process twice via an unhandled `'error'` event (once at
+215/879, again after a resume at 235/879 — same root cause both times).
+Fixed by switching to a fresh short-lived connection per DB write instead of
+one held open for the whole run; the retry then completed cleanly (one
+single-file GitHub 429 along the way, resolved by re-running just that one
+row — the script is idempotent at both the DB and R2 level, safe to
+interrupt/resume/retry at any point). **Final: 874 of 879 exercises (99.4%)
+now have demo images.** The remaining 6 (Jumping Jacks, Burpees, High Knees,
+Bird Dog, Cobra Stretch, Seated Spinal Twist) simply have no matching entry
+in the source JSON at all — added to this app's `exercises` table from
+somewhere else during the original seed, not a bug, no fix available without
+sourcing a different image set for just those 6.

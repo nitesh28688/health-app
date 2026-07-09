@@ -6,6 +6,7 @@ import { todayLocal, kcalBurned } from "@/lib/nutrition";
 import type { Profile } from "@/lib/useUser";
 import { PageSkeleton } from "@/lib/Skeleton";
 import { SetTimer } from "@/components/SetTimer";
+import { ExerciseDemo } from "@/components/ExerciseDemo";
 
 interface Plan { id: number; name: string; goal: string | null; level: string | null; days_per_week: number | null; description: string | null; owner_id: string | null; }
 interface PlanDay { id: number; day_number: number; title: string; }
@@ -19,7 +20,7 @@ const MUSCLES = [
 ];
 
 interface ActiveSet { id: string; reps: string; weight_kg: string; duration_sec: string; }
-interface ActiveExercise { id: string; exercise: { id: number; name: string; met_value: number; instructions: string | null; }; sets: ActiveSet[]; }
+interface ActiveExercise { id: string; exercise: { id: number; name: string; met_value: number; instructions: string | null; image_urls?: string[] | null; }; sets: ActiveSet[]; }
 
 function Workout({ profile, setProfile, userId }: {
   profile: Profile | null; setProfile: (p: Profile) => void; userId: string;
@@ -143,7 +144,7 @@ function Workout({ profile, setProfile, userId }: {
   async function loadExercisesForMuscle(muscle: string) {
     setSelectedMuscle(muscle);
     setMusclePickerOpen(false);
-    let q = supabase.from("exercises").select("id, name, met_value, instructions, category");
+    let q = supabase.from("exercises").select("id, name, met_value, instructions, category, image_urls");
     if (muscle === "yoga") {
       q = q.eq("category", "yoga");
     } else {
@@ -387,8 +388,11 @@ function Workout({ profile, setProfile, userId }: {
               {activeExercises.map((ae, exIdx) => (
                 <div key={ae.id} className="rounded-xl border border-neutral-200 dark:border-neutral-800 p-4">
                   <div className="flex justify-between items-center mb-3">
-                    <h3 className="font-bold">{ae.exercise.name}</h3>
-                    <button onClick={() => setActiveExercises(prev => prev.filter(x => x.id !== ae.id))} className="text-red-500 text-xs">remove</button>
+                    <div className="flex items-center gap-3 min-w-0">
+                      <ExerciseDemo urls={ae.exercise.image_urls} size={44} />
+                      <h3 className="font-bold truncate">{ae.exercise.name}</h3>
+                    </div>
+                    <button onClick={() => setActiveExercises(prev => prev.filter(x => x.id !== ae.id))} className="text-red-500 text-xs shrink-0">remove</button>
                   </div>
                   
                   <div className="flex flex-col gap-2">
@@ -483,9 +487,12 @@ function Workout({ profile, setProfile, userId }: {
             <ul className="flex flex-col gap-2 overflow-y-auto">
               {muscleExercises.map(ex => (
                 <li key={ex.id}>
-                  <button onClick={() => addExerciseToSession(ex)} className="w-full text-left rounded-xl border border-neutral-200 dark:border-neutral-800 p-3 text-sm active:bg-neutral-50 dark:active:bg-neutral-900">
-                    <span className="font-medium">{ex.name}</span>
-                    {ex.instructions && <p className="text-xs text-neutral-500 mt-1 line-clamp-1">{ex.instructions}</p>}
+                  <button onClick={() => addExerciseToSession(ex)} className="w-full text-left rounded-xl border border-neutral-200 dark:border-neutral-800 p-3 text-sm active:bg-neutral-50 dark:active:bg-neutral-900 flex gap-3 items-center">
+                    <ExerciseDemo urls={ex.image_urls} />
+                    <div className="min-w-0">
+                      <span className="font-medium">{ex.name}</span>
+                      {ex.instructions && <p className="text-xs text-neutral-500 mt-1 line-clamp-1">{ex.instructions}</p>}
+                    </div>
                   </button>
                 </li>
               ))}

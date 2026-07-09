@@ -10,24 +10,37 @@ Short pointer document. For the deep "why is it built this way" reference, read
 WhatsApp OTP), food diary with Indian/western/branded search + AI fallback (text and
 photo), recipes, water, weight/BMI/waist/body-fat trends + a Goal Progress page
 (`/goals` — target weight, kg lost, ETA), workout plans + structured per-set logging
-(muscle picker, AI exercise suggestions, custom exercises) + freeform logging + AI
-coaching, friends/leaderboard/cheers, medications, menstrual cycle tracking, avatar +
-progress photos, Web Push reminders, admin panel.
+with demo photos (muscle picker, yoga, AI exercise/pose suggestions, custom
+exercises, a real countdown timer for holds) + freeform logging + AI coaching,
+friends/leaderboard/cheers/group challenges, badges, medications, menstrual cycle
+tracking, avatar + progress photos, Web Push reminders + daily AI tips, admin panel.
 
-**`UPGRADE.md` 4-phase batch (2026-07-09) — all done, reviewed, and verified live:**
-milk search ranking, the diary unit-display wiring bug (`qty_unit_label` now actually
-shown instead of always grams), the Goal Progress page, and the workout logging
-overhaul. Built by Antigravity, reviewed and two small bugs fixed by Fable (an
-`inputMode` mismatch on the weight-kg input, and a `parseInt(...) || null` pattern
-that was silently converting a genuine 0 rep/weight/duration to `null`) — see
-`UPGRADE.md` for the full phase-by-phase record and STRUCTURE.md for the technical
-detail on each.
+**`UPGRADE.md` — three batches done, reviewed, and verified live (2026-07-09):**
+1. Milk search ranking, the diary unit-display wiring bug (`qty_unit_label` now
+   actually shown instead of always grams), the Goal Progress page, and the
+   workout logging overhaul (per-set reps/weight, muscle picker).
+2. Group Challenges, Badges, Hindi/regional search, daily AI tips, a fasting
+   timer, a weekly digest email (built, gated on a `BREVO_API_KEY` you still
+   need to add), Yoga (12 curated poses + AI-suggested sequences), and a real
+   countdown/stopwatch `SetTimer` for any timed set.
+3. Exercise demo images — 874 of 879 exercises (99.4%) now show two real
+   crossfading photos, self-hosted on R2, sourced from the already-seeded
+   free-exercise-db data (public domain) that just never got imported before.
+
+All built by Antigravity except Phase 13 (images), which Fable built directly.
+Every batch got an independent Fable review against the live DB rather than
+trusting "done" status — each one turned up at least one real gap (see
+`UPGRADE.md`'s review sections for the specifics: an RLS test script that had
+never actually run, a `parseInt(...) || null` silently eating genuine zeros,
+an AI-suggest endpoint that was never actually extended for yoga, a timer with
+no countdown mode despite that being the ask). Full phase-by-phase record in
+`UPGRADE.md`, technical detail in `STRUCTURE.md`.
 
 **Deploy pipeline:** `git push origin master` → Vercel auto-deploys (confirmed real,
 ~30s builds). Don't use `vercel deploy --prod` unless git is unavailable — git is now
 the standard path.
 
-**Database:** Supabase project `caqtjgruowpgujtmuwkf` (Mumbai), 22 migrations, all
+**Database:** Supabase project `caqtjgruowpgujtmuwkf` (Mumbai), 23 migrations, all
 live. Connect via the session pooler only — `aws-1-ap-south-1.pooler.supabase.com`,
 user `postgres.caqtjgruowpgujtmuwkf` (the direct host is IPv6-only, unreachable from
 this network).
