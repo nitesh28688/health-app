@@ -395,7 +395,7 @@ from reading the actual schema/code — don't re-derive what's already found.
 
 **Goal:** yoga is a real, structured, loggable practice — not just a text title typed into freeform logging.
 
-**Status:** ☐ Not started
+**Status:** [x] Done
 
 **Context:** Checked the seeded exercise data (`data/exercises.json`, the free-exercise-db/wger source `exercises` was seeded from) for yoga content — confirmed 2026-07-09: **it has essentially none.** 873 entries, categories are `strength`(581)/`stretching`(123)/`plyometrics`(61)/`strongman`(21)/`powerlifting`(38)/`cardio`(14)/`olympic weightlifting`(35) — zero `yoga`. A name search for yoga-adjacent terms found exactly one accidental match ("Child's Pose", filed under `stretching`, not yoga). Live DB confirms the same: `select count(*) from exercises where category='yoga'` → **0**, despite `category` already allowing `'yoga'` in its check constraint (`0003_workouts.sql`) — this was always a valid category, just never populated. **No migration needed for this** — the schema already supports it.
 

@@ -14,7 +14,7 @@ interface WLog { id: number; log_date: string; title: string; duration_min: numb
 const MUSCLES = [
   "quadriceps", "shoulders", "abdominals", "chest", "hamstrings", "triceps",
   "biceps", "lats", "middle back", "lower back", "calves", "forearms",
-  "glutes", "traps", "adductors", "abductors", "neck", "full body"
+  "glutes", "traps", "adductors", "abductors", "neck", "full body", "yoga"
 ];
 
 interface ActiveSet { id: string; reps: string; weight_kg: string; duration_sec: string; }
@@ -141,9 +141,13 @@ function Workout({ profile, setProfile, userId }: {
   async function loadExercisesForMuscle(muscle: string) {
     setSelectedMuscle(muscle);
     setMusclePickerOpen(false);
-    const { data } = await supabase.from("exercises")
-      .select("id, name, met_value, instructions")
-      .eq("primary_muscle", muscle).order("name");
+    let q = supabase.from("exercises").select("id, name, met_value, instructions, category");
+    if (muscle === "yoga") {
+      q = q.eq("category", "yoga");
+    } else {
+      q = q.eq("primary_muscle", muscle);
+    }
+    const { data } = await q.order("name");
     setMuscleExercises(data ?? []);
   }
 
@@ -162,13 +166,20 @@ function Workout({ profile, setProfile, userId }: {
     const existingLower = new Set(muscleExercises.map(e => e.name.toLowerCase()));
     const newExs = (body.suggestions || []).filter((s: any) => !existingLower.has(s.name.toLowerCase()));
     
+    const isYoga = selectedMuscle === "yoga";
+
     if (newExs.length > 0) {
       const { data: inserted } = await supabase.from("exercises").insert(
         newExs.map((s: any) => ({
-          name: s.name, category: "strength", equipment: "none", primary_muscle: selectedMuscle,
-          met_value: s.met_value || 5.0, instructions: s.instructions, owner_id: userId
+          name: s.name, 
+          category: isYoga ? "yoga" : "strength", 
+          equipment: "none", 
+          primary_muscle: isYoga ? "full body" : selectedMuscle,
+          met_value: s.met_value || (isYoga ? 2.5 : 5.0), 
+          instructions: s.instructions, 
+          owner_id: userId
         }))
-      ).select("id, name, met_value, instructions");
+      ).select("id, name, met_value, instructions, category");
       if (inserted) {
         setMuscleExercises(prev => [...prev, ...inserted].sort((a, b) => a.name.localeCompare(b.name)));
       }
@@ -177,10 +188,15 @@ function Workout({ profile, setProfile, userId }: {
 
   async function addCustomExercise() {
     if (!selectedMuscle || !customAddName.trim()) return;
+    const isYoga = selectedMuscle === "yoga";
     const { data: inserted } = await supabase.from("exercises").insert({
-      name: customAddName.trim(), category: "strength", equipment: "none", primary_muscle: selectedMuscle,
-      met_value: 5.0, owner_id: userId
-    }).select("id, name, met_value, instructions").single();
+      name: customAddName.trim(), 
+      category: isYoga ? "yoga" : "strength", 
+      equipment: "none", 
+      primary_muscle: isYoga ? "full body" : selectedMuscle,
+      met_value: isYoga ? 2.5 : 5.0, 
+      owner_id: userId
+    }).select("id, name, met_value, instructions, category").single();
     if (inserted) {
       setMuscleExercises(prev => [...prev, inserted].sort((a, b) => a.name.localeCompare(b.name)));
       addExerciseToSession(inserted);
