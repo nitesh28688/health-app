@@ -48,6 +48,26 @@ this network).
 
 ## Immediate open items
 
+0. **Gemini quota — link a billing account, using existing Google Cloud credit
+   (2026-07-09, deferred to next session).** Confirmed live: Gemini's free
+   tier is 20 requests/day *per model, per Google Cloud project* — shared
+   across the whole app (all family members, all AI features combined), not
+   per end-user. The app's own per-user caps (10/day on food-estimate, photo-
+   estimate, piece-weight, suggest-exercises) don't protect against this — a
+   single engaged user alone can exceed Google's real ceiling before anyone
+   else opens the app. Also found and fixed a related bug the same day: the
+   fallback chain (`web/lib/gemini.ts`) only advanced to the next model on a
+   503, not a 429 (quota) — so quota exhaustion on the first model never
+   actually engaged the other two, despite the chain existing. Fixed
+   (`94be123`) and verified live. User has **$350 in existing Google Cloud
+   credit** (from the separate Linear Ventures ERP project) they want to
+   apply to this Gemini API key's billing — deferred to "connect it tomorrow."
+   Once linked, the free-tier 20/day ceiling should lift substantially (paid
+   tier 1 limits are much higher, and Gemini Flash pricing is cheap enough
+   that realistic family usage would cost cents/month against that credit).
+   Until then, deliberately left as-is per user's call — the app already
+   degrades gracefully (clear "AI unavailable, try again shortly" message,
+   not a crash) when quota is genuinely exhausted on a bad day.
 1. **Open Food Facts — SOLVED via bulk dump (2026-07-09): 2,908 products live.**
    The API throttle that had this stuck at 172 products never applies to OFF's
    full CSV export. `scripts/seed-off-bulk.mjs` downloads-once-and-streams the
