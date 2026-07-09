@@ -25,9 +25,11 @@ ${JSON.stringify(items.map(i => i.name))}
   );
 
   const data = await res.json();
+  if (!data.candidates) {
+    throw new Error(`HTTP ${res.status}: ${JSON.stringify(data).slice(0, 300)}`);
+  }
   let text = data.candidates[0].content.parts[0].text.trim();
-  if (text.startsWith('```json')) text = text.slice(7, -3).trim();
-  if (text.startsWith('```')) text = text.slice(3, -3).trim();
+  text = text.replace(/^```(json)?\s*/i, "").replace(/```\s*$/, "").trim();
   return JSON.parse(text);
 }
 
