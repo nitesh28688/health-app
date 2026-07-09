@@ -11,9 +11,9 @@ const client = new pg.Client({ connectionString: process.env.SEED_DB_URL });
     const userId = "33333333-3333-3333-3333-333333333333";
     await client.query(`INSERT INTO auth.users (id, email) VALUES ($1, 'testw1@example.com') ON CONFLICT DO NOTHING`, [userId]);
     await client.query(`
-      INSERT INTO auth.identities (id, user_id, provider_id, identity_data, provider) 
-      VALUES ($1, $1, $1::text, '{"sub":"${userId}"}', 'email') ON CONFLICT DO NOTHING
-    `, [userId]);
+      INSERT INTO auth.identities (id, user_id, provider_id, identity_data, provider)
+      VALUES ($1::uuid, $1::uuid, $1::text, $2::jsonb, 'email') ON CONFLICT DO NOTHING
+    `, [userId, JSON.stringify({ sub: userId })]);
 
     // Insert dummy workout log
     const logRes = await client.query(`
@@ -60,9 +60,9 @@ const client = new pg.Client({ connectionString: process.env.SEED_DB_URL });
       INSERT INTO auth.users (id, email) VALUES ($1, 'testw2@example.com'), ($2, 'testw3@example.com') ON CONFLICT DO NOTHING
     `, [user1Id, user2Id]);
     await client.query(`
-      INSERT INTO auth.identities (id, user_id, provider_id, identity_data, provider) 
-      VALUES ($1, $1, $1::text, '{"sub":"${user1Id}"}', 'email'), ($2, $2, $2::text, '{"sub":"${user2Id}"}', 'email') ON CONFLICT DO NOTHING
-    `, [user1Id, user2Id]);
+      INSERT INTO auth.identities (id, user_id, provider_id, identity_data, provider)
+      VALUES ($1::uuid, $1::uuid, $1::text, $3::jsonb, 'email'), ($2::uuid, $2::uuid, $2::text, $4::jsonb, 'email') ON CONFLICT DO NOTHING
+    `, [user1Id, user2Id, JSON.stringify({ sub: user1Id }), JSON.stringify({ sub: user2Id })]);
 
     const log1Res = await client.query(`
       INSERT INTO workout_logs (user_id, log_date, title, duration_min) 
@@ -91,9 +91,15 @@ const client = new pg.Client({ connectionString: process.env.SEED_DB_URL });
     let theirRes = await client.query(`SELECT count(*) FROM workout_log_exercises`);
     console.log("User 2 sees WLE count:", theirRes.rows[0].count);
 
-    // Cleanup
+    // Cleanup — profiles cascades to workout_logs/_exercises/_sets, but auth.users
+    // and auth.identities are a separate cascade root and were left orphaned here
+    // until this fix (confirmed 2026-07-09: three test accounts survived a run of
+    // this script with the emails still present in auth.users afterward).
     await client.query(`RESET ROLE`);
-    await client.query(`DELETE FROM profiles WHERE id IN ($1, $2, $3)`, [userId, user1Id, user2Id]);
+    const ids = [userId, user1Id, user2Id];
+    await client.query(`DELETE FROM profiles WHERE id = ANY($1::uuid[])`, [ids]);
+    await client.query(`DELETE FROM auth.identities WHERE user_id = ANY($1::uuid[])`, [ids]);
+    await client.query(`DELETE FROM auth.users WHERE id = ANY($1::uuid[])`, [ids]);
     console.log("Cleanup done.");
     
   } catch(e) {

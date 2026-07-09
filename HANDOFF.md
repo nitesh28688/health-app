@@ -3,20 +3,31 @@
 Short pointer document. For the deep "why is it built this way" reference, read
 `STRUCTURE.md` — that's the source of truth and is kept in sync every session.
 
-## Where things stand (2026-07-08)
+## Where things stand (2026-07-09)
 
 **The app is live and in real use.** Family members have signed up
 (health.linearventures.in). Feature set is complete for daily use: auth (email +
 WhatsApp OTP), food diary with Indian/western/branded search + AI fallback (text and
-photo), recipes, water, weight/BMI/waist/body-fat trends, workout plans + structured/freeform
-logging + AI coaching, friends/leaderboard/cheers, medications, menstrual cycle
-tracking, avatar + progress photos, Web Push reminders, admin panel.
+photo), recipes, water, weight/BMI/waist/body-fat trends + a Goal Progress page
+(`/goals` — target weight, kg lost, ETA), workout plans + structured per-set logging
+(muscle picker, AI exercise suggestions, custom exercises) + freeform logging + AI
+coaching, friends/leaderboard/cheers, medications, menstrual cycle tracking, avatar +
+progress photos, Web Push reminders, admin panel.
+
+**`UPGRADE.md` 4-phase batch (2026-07-09) — all done, reviewed, and verified live:**
+milk search ranking, the diary unit-display wiring bug (`qty_unit_label` now actually
+shown instead of always grams), the Goal Progress page, and the workout logging
+overhaul. Built by Antigravity, reviewed and two small bugs fixed by Fable (an
+`inputMode` mismatch on the weight-kg input, and a `parseInt(...) || null` pattern
+that was silently converting a genuine 0 rep/weight/duration to `null`) — see
+`UPGRADE.md` for the full phase-by-phase record and STRUCTURE.md for the technical
+detail on each.
 
 **Deploy pipeline:** `git push origin master` → Vercel auto-deploys (confirmed real,
 ~30s builds). Don't use `vercel deploy --prod` unless git is unavailable — git is now
 the standard path.
 
-**Database:** Supabase project `caqtjgruowpgujtmuwkf` (Mumbai), 19 migrations, all
+**Database:** Supabase project `caqtjgruowpgujtmuwkf` (Mumbai), 20 migrations, all
 live. Connect via the session pooler only — `aws-1-ap-south-1.pooler.supabase.com`,
 user `postgres.caqtjgruowpgujtmuwkf` (the direct host is IPv6-only, unreachable from
 this network).

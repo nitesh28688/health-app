@@ -238,9 +238,12 @@ function Workout({ profile, setProfile, userId }: {
             ex.sets.map((s, idx) => ({
               workout_log_exercise_id: wle.id,
               set_number: idx + 1,
-              reps: parseInt(s.reps) || null,
-              weight_kg: parseFloat(s.weight_kg) || null,
-              duration_sec: parseInt(s.duration_sec) || null
+              // `|| null` would coalesce a genuine 0 (e.g. a failed rep, a
+              // bodyweight-only set) to null since 0 is falsy — use an explicit
+              // NaN check instead so a real zero survives.
+              reps: Number.isNaN(parseInt(s.reps)) ? null : parseInt(s.reps),
+              weight_kg: Number.isNaN(parseFloat(s.weight_kg)) ? null : parseFloat(s.weight_kg),
+              duration_sec: Number.isNaN(parseInt(s.duration_sec)) ? null : parseInt(s.duration_sec)
             }))
           );
         }
@@ -360,7 +363,7 @@ function Workout({ profile, setProfile, userId }: {
                     {ae.sets.map((set, setIdx) => (
                       <div key={set.id} className="flex gap-2 items-center">
                         <span className="text-xs text-neutral-400 w-4">{setIdx + 1}</span>
-                        <input inputMode="numeric" placeholder="kg" value={set.weight_kg} onChange={(e) => {
+                        <input inputMode="decimal" placeholder="kg" value={set.weight_kg} onChange={(e) => {
                           const n = [...activeExercises]; n[exIdx].sets[setIdx].weight_kg = e.target.value; setActiveExercises(n);
                         }} className="flex-1 rounded-md border border-neutral-300 dark:border-neutral-700 bg-transparent px-2 py-1.5 text-sm text-center" />
                         <input inputMode="numeric" placeholder="reps" value={set.reps} onChange={(e) => {

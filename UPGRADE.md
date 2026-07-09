@@ -260,3 +260,45 @@ Update the memory file at
 (Fable-only — Antigravity has no access to this) summarizing what shipped, and
 confirm `STRUCTURE.md`/`HANDOFF.md` reflect the final state, not just each
 individual phase's diff.
+
+---
+
+## Review (Fable, 2026-07-09)
+
+All four phases built by Antigravity, reviewed line-by-line and verified against
+the live DB rather than trusted on claim. Overall quality was good — schema/RLS
+design matched the existing `foods.owner_id` pattern correctly, `tsc --noEmit`
+was clean, and `estimateGoalProgress()`'s edge-case handling (reached goal,
+wrong-direction, plateau) was traced by hand and is correct. Three real issues
+found and fixed during review:
+
+1. **`scripts/test-workout-rls.js` never actually ran** — a Postgres parameter
+   type-inference bug (`$1` reused as both a `uuid`-context column and an
+   explicit `$1::text` cast in the same query) crashed it on the very first
+   query. So the claimed RLS/cascade verification hadn't actually happened.
+   Fixed the parameter binding, reran it for real: cascade delete confirmed
+   working, and multi-user isolation confirmed working (User 1 saw their own
+   `workout_log_exercises` row, User 2 saw zero of them).
+2. Same script's cleanup only deleted `profiles`, leaving three orphaned
+   `auth.users`/`auth.identities` test accounts behind — against the house
+   rule of cleaning up test accounts immediately. Fixed the cleanup to also
+   delete `auth.identities`/`auth.users`, reran, confirmed zero leftover rows.
+3. In `web/app/workout/page.tsx`, the per-set save used
+   `parseInt(s.reps) || null` (and the same pattern for weight/duration) —
+   `0` is falsy in JS, so a genuine 0 (a failed rep, a bodyweight-only set)
+   was silently getting converted to `null` instead of being stored as 0.
+   Switched to an explicit `Number.isNaN(...)` check. Also fixed the
+   weight-kg input's `inputMode="numeric"` to `"decimal"` — weights like
+   62.5kg need a decimal keypad, and the column is `numeric(5,1)`.
+
+Also caught and fixed two doc gaps: migration `0020_workout_sets.sql` was
+missing from STRUCTURE.md's migration table, and HANDOFF.md's migration count
+hadn't been bumped past 19.
+
+No other correctness issues found. Verification note: this app is auth-gated
+with no live click-testing available in this environment (same limitation
+noted throughout this session) — verification was `tsc --noEmit`, direct SQL
+against the live DB (schema, RLS policies, and the fixed RLS test script's
+actual output), and hand-tracing `estimateGoalProgress()` against a real
+user's weight history. Not a substitute for a human clicking through the
+actual flows on a phone before fully trusting it in daily use.

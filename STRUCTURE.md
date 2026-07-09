@@ -86,6 +86,7 @@ edit an already-applied migration; add a new one.
 | 0016 | `0016_bmi_series_waist.sql` | Adds `waist_cm` to `get_bmi_series()`'s return — **had to `DROP FUNCTION` first**, Postgres refuses `CREATE OR REPLACE` on a changed return-column set |
 | 0018 | `0018_search_ranking.sql` | `search_foods()` boosts generic/base entries ("Bananas, raw") over prepared or exotic variants for single-ingredient searches — see Round 8 item 9 |
 | 0019 | `0019_search_milk_default.sql` | `search_foods()` explicit boost for "Milk, whole%" so it outranks shorter matches like buttermilk |
+| 0020 | `0020_workout_sets.sql` | `exercises.owner_id` (custom exercises), `workout_log_exercises` + `workout_log_sets` (per-set reps/weight/duration), RLS mirroring the `foods.owner_id` pattern |
 
 ### Key design decisions worth understanding
 
