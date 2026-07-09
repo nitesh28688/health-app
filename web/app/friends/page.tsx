@@ -132,7 +132,7 @@ function Friends({ userId }: { userId: string }) {
                     <p className="text-sm text-neutral-600 dark:text-neutral-300 truncate">{feedLine(f)}</p>
                   </div>
                   <button onClick={() => cheer(f)} aria-label="Cheer"
-                    className={`w-11 h-11 rounded-full text-lg ${cheered.has(key) ? "bg-green-600/15" : ""}`}>
+                    className={`w-11 h-11 rounded-full text-lg flex items-center justify-center active:scale-[0.98] shrink-0 ${cheered.has(key) ? "bg-green-600/15" : ""}`}>
                     👏
                   </button>
                 </li>
@@ -173,7 +173,7 @@ function Friends({ userId }: { userId: string }) {
                 <p className="text-xs text-neutral-500">@{r.username}</p>
               </div>
               <button onClick={() => request(r.id)}
-                className="rounded-lg bg-green-600 text-white text-xs px-4 py-2.5 font-semibold">Add friend</button>
+                className="rounded-lg bg-green-600 text-white text-xs px-4 py-2.5 font-semibold active:scale-[0.98]">Add friend</button>
             </div>
           ))}
 
@@ -185,9 +185,9 @@ function Friends({ userId }: { userId: string }) {
                 <p className="text-xs text-neutral-500">@{profiles[f.requester_id]?.username}</p>
               </div>
               <button onClick={() => accept(f)}
-                className="rounded-lg bg-green-600 text-white text-xs px-4 py-2.5 font-semibold">Accept</button>
-              <button onClick={() => unfriend(f)}
-                className="rounded-lg border border-neutral-300 dark:border-neutral-700 text-xs px-3 py-2.5">✕</button>
+                className="rounded-lg bg-green-600 text-white text-xs px-4 py-2.5 font-semibold active:scale-[0.98]">Accept</button>
+              <button onClick={() => unfriend(f)} aria-label="Reject request"
+                className="w-11 h-11 shrink-0 flex items-center justify-center rounded-lg border border-neutral-300 dark:border-neutral-700 text-neutral-500 active:scale-[0.98]">✕</button>
             </div>
           ))}
 
@@ -201,7 +201,7 @@ function Friends({ userId }: { userId: string }) {
                   <p className="font-semibold text-sm">{profiles[other]?.display_name ?? "…"}</p>
                   <p className="text-xs text-neutral-500">@{profiles[other]?.username}</p>
                 </div>
-                <button onClick={() => unfriend(f)} className="text-xs text-neutral-400">unfriend</button>
+                <button onClick={() => unfriend(f)} className="text-xs text-red-500 bg-red-50 dark:bg-red-950/30 font-semibold px-3 py-2 rounded-lg active:scale-[0.98]">remove</button>
               </div>
             );
           })}
@@ -215,7 +215,7 @@ function Friends({ userId }: { userId: string }) {
                     <p className="text-xs text-neutral-500">@{profiles[f.addressee_id]?.username}</p>
                   </div>
                   <button onClick={() => unfriend(f)}
-                    className="rounded-lg border border-neutral-300 dark:border-neutral-700 text-xs px-3 py-2.5">Cancel</button>
+                    className="rounded-lg border border-neutral-300 dark:border-neutral-700 text-xs px-4 py-2.5 font-semibold active:scale-[0.98]">Cancel</button>
                 </div>
               ))}
             </>

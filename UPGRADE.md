@@ -778,6 +778,10 @@ Below is the verified audit based on line-by-line inspection of the 14 main page
   - Loading: L92 shows "Loading…" while fetching period history.
   - Empty: L94 says "No periods logged yet." when history is empty.
   - Empty (Prediction): L55 avoids rendering the prediction card until `predicted_start` exists.
+- **Friends (`web/app/friends/page.tsx`)**:
+  - Loading (Feed): L112 renders 3 full-width `<Skeleton>` blocks while fetching.
+  - Empty (Feed): L119 handles empty feed ("No activity yet.").
+  - Empty (People): L195 states "Search a username above to add family & friends." when friend list is empty.
 
 7. **Error states.** Anything that can fail (a network call, a validation
    check) needs a visible, clear message — not a silent no-op.
