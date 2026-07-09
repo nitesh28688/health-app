@@ -36,9 +36,17 @@ export async function generateWithFallback(parts: object[], responseSchema?: obj
       );
       if (res.ok) return res;
       lastStatus = res.status;
-      // 503 = overloaded, worth trying the next model. Other errors (bad key, bad
-      // request) will fail identically on every model — don't waste the retries.
-      if (res.status !== 503) return res;
+      // 503 = overloaded, 429 = quota exceeded — both worth trying the next model.
+      // Confirmed 2026-07-09: Gemini's free-tier quota is scoped
+      // "PerProjectPerModel", not per-project-total — gemini-2.5-flash being
+      // exhausted says nothing about gemini-flash-latest or gemini-2.0-flash,
+      // each has its own separate daily allowance. The original "other errors
+      // fail identically on every model" reasoning is true for a bad API key or
+      // a malformed request, but was wrong for 429 specifically, and silently
+      // meant the fallback chain never actually engaged on the single most
+      // likely real-world failure (a shared, easily-exhausted 20/day quota
+      // across the whole app, not per end-user).
+      if (res.status !== 503 && res.status !== 429) return res;
     } catch (e) {
       // Timeout (our own abort) or a network-level failure — same treatment as a
       // 503: this model isn't answering, move on to the next one in the chain.
