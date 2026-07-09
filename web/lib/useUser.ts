@@ -26,6 +26,7 @@ export interface Profile {
   avatar_url: string | null;
   track_cycle: boolean;
   diet_type: "balanced" | "high_protein" | "low_carb" | "keto" | "diabetic_friendly";
+  target_weight_kg: number | null;
 }
 
 export function useUser() {

@@ -157,6 +157,7 @@ function Trends({ profile, userId }: { profile: Profile | null; userId: string }
         </div>
         <p className="mt-2 text-xs text-neutral-400">
           Log waist &amp; body fat % in <Link href="/profile" className="underline">Profile</Link>.
+          See <Link href="/goals" className="underline text-blue-600">Goal Progress</Link>.
         </p>
 
         {weightHistory.length > 0 && (

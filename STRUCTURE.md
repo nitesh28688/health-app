@@ -628,8 +628,10 @@ by wiring up the `qty_unit_label` column that was added in migration 0017. Profi
 `lib/nutrition.ts` now drives both the "Suggest" button and *live* recalculation
 when the user directly edits the kcal field, so typing "1000" for a hard deficit
 actually re-splits protein/carbs/fat by the selected diet's ratios instead of
-leaving them at a stale generic 50/30/20 split. Also added global
-`safe-area-inset-top` padding (`app/layout.tsx`) to fix an iPhone notch overlap
+leaving them at a stale generic 50/30/20 split. The Profile also now includes `target_weight_kg`,
+which is used in a new standalone Goal Progress page (`/goals`) that computes estimated
+weight loss trajectories based on the user's BMI check-in history via the `estimateGoalProgress` helper.
+Also added global `safe-area-inset-top` padding (`app/layout.tsx`) to fix an iPhone notch overlap
 reported on the Profile page.
 
 **Round 4 additions (2026-07-08):** avatar upload + before/after progress photo

@@ -36,6 +36,7 @@ function ProfileForm({ profile, setProfile, userId, email }: {
     share_weight: profile.share_weight,
     track_cycle: profile.track_cycle ?? false,
     diet_type: (profile.diet_type ?? "balanced") as DietType,
+    target_weight_kg: profile.target_weight_kg?.toString() ?? "",
   });
   const [weight, setWeight] = useState("");
   const [waist, setWaist] = useState("");
@@ -125,6 +126,7 @@ function ProfileForm({ profile, setProfile, userId, email }: {
       share_weight: f.share_weight,
       track_cycle: f.track_cycle,
       diet_type: f.diet_type,
+      target_weight_kg: parseFloat(f.target_weight_kg) > 0 ? parseFloat(f.target_weight_kg) : null,
     };
     const { data, error } = await supabase.from("profiles").update(patch).eq("id", userId).select().single();
     if (error) { setError(error.message); return; }
@@ -186,7 +188,10 @@ function ProfileForm({ profile, setProfile, userId, email }: {
         </div>
       </div>
       {avatarError && <p className="text-xs text-amber-600 mb-4">{avatarError}</p>}
-      <Link href="/progress" className="block text-sm text-green-600 font-semibold mt-2 mb-8">📸 Before/after progress photos →</Link>
+      <div className="flex items-center gap-4 mt-2 mb-8">
+        <Link href="/progress" className="text-sm text-green-600 font-semibold">📸 Progress photos →</Link>
+        <Link href="/goals" className="text-sm text-blue-600 font-semibold">🎯 Goal progress →</Link>
+      </div>
 
       <section className="flex flex-col gap-4">
         <div>
@@ -304,7 +309,7 @@ function ProfileForm({ profile, setProfile, userId, email }: {
         <div className="grid grid-cols-2 gap-3">
           {([["target_kcal", "Calories (kcal)"], ["target_protein", "Protein (g)"],
              ["target_carbs", "Carbs (g)"], ["target_fat", "Fat (g)"],
-             ["target_water_ml", "Water (ml)"]] as const).map(([k, label]) => (
+             ["target_water_ml", "Water (ml)"], ["target_weight_kg", "Goal weight (kg)"]] as const).map(([k, label]) => (
             <div key={k}>
               <label className={labelCls}>{label}</label>
               <input className={inputCls} inputMode="numeric" value={f[k]}

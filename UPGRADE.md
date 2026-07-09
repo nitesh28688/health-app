@@ -103,7 +103,7 @@ the real signup API — see `HANDOFF.md`).
 **Goal:** user sets a goal weight, sees kg lost so far, gets an estimated date to
 reach the goal. New page, not crammed into the existing 5-tab bottom nav.
 
-**Status:** ☐ Not started
+**Status:** [x] Done
 
 **Context (already fully diagnosed):**
 - `profiles.target_weight_kg numeric(5,1)` **already exists** in the schema

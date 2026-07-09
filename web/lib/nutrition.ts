@@ -110,3 +110,47 @@ export function kcalBurned(met: number, weightKg: number, durationMin: number) {
 export function todayLocal(d = new Date()) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
+
+export function estimateGoalProgress(
+  history: { log_date: string; weight_kg: number | null }[],
+  targetWeightKg: number
+) {
+  const pts = history.filter(h => h.weight_kg != null).map(h => ({
+    time: new Date(h.log_date + "T12:00:00").getTime(),
+    w: Number(h.weight_kg)
+  })).sort((a, b) => a.time - b.time);
+  
+  if (pts.length < 2) return null;
+  const first = pts[0];
+  const last = pts[pts.length - 1];
+  
+  const elapsedDays = (last.time - first.time) / (1000 * 60 * 60 * 24);
+  if (elapsedDays < 1) return null;
+  
+  const kgLost = first.w - last.w;
+  const kgToGo = last.w - targetWeightKg;
+  
+  if ((first.w >= targetWeightKg && kgToGo <= 0) || (first.w <= targetWeightKg && kgToGo >= 0)) {
+    return { startWeight: first.w, currentWeight: last.w, kgLost, kgToGo: 0, ratePerWeek: 0, estimatedDate: null, reached: true };
+  }
+  
+  const ratePerDay = (first.w - last.w) / elapsedDays;
+  const ratePerWeek = ratePerDay * 7;
+  
+  if ((first.w > targetWeightKg && ratePerDay <= 0) || (first.w < targetWeightKg && ratePerDay >= 0)) {
+    return { startWeight: first.w, currentWeight: last.w, kgLost, kgToGo, ratePerWeek, estimatedDate: null, reached: false };
+  }
+  
+  const daysToGo = Math.max(0, kgToGo / ratePerDay);
+  const estimatedDate = new Date(last.time + daysToGo * 1000 * 60 * 60 * 24);
+  
+  return {
+    startWeight: first.w,
+    currentWeight: last.w,
+    kgLost,
+    kgToGo,
+    ratePerWeek,
+    estimatedDate: todayLocal(estimatedDate),
+    reached: false
+  };
+}
