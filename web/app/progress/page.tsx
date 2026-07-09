@@ -70,10 +70,10 @@ function Progress({ userId }: { userId: string }) {
   return (
     <main className="px-4 pt-6">
       <div className="flex items-center gap-3 mb-4">
-        <button onClick={() => router.back()} className="w-11 h-11 rounded-full border border-neutral-200 dark:border-neutral-800 text-lg">←</button>
+        <button onClick={() => router.back()} aria-label="Back" className="w-11 h-11 rounded-full border border-neutral-200 dark:border-neutral-800 text-lg flex items-center justify-center">←</button>
         <h1 className="text-2xl font-bold flex-1">📸 Progress Photos</h1>
         <button onClick={() => fileInput.current?.click()} disabled={busy}
-          className="rounded-xl bg-green-600 text-white px-4 py-2.5 font-semibold text-sm disabled:opacity-50">
+          className="rounded-xl bg-green-600 text-white px-4 py-2.5 font-semibold text-sm disabled:opacity-50 active:scale-[0.98]">
           {busy ? "Uploading…" : "+ Add"}
         </button>
         <input ref={fileInput} type="file" accept="image/*" onChange={onPick} className="hidden" />
@@ -113,8 +113,8 @@ function Progress({ userId }: { userId: string }) {
                   <img src={p.url} alt="" className="w-full h-full object-cover" />
                 </button>
                 <p className="text-[10px] text-center text-neutral-400 mt-0.5">{p.taken_at.slice(5)}</p>
-                <button onClick={() => remove(p.id)} aria-label="Delete"
-                  className="absolute top-1 right-1 w-6 h-6 rounded-full bg-black/60 text-white text-xs flex items-center justify-center">✕</button>
+                <button onClick={() => remove(p.id)} aria-label="Delete photo"
+                  className="absolute top-1 right-1 w-11 h-11 rounded-full bg-black/60 text-white text-xs flex items-center justify-center">✕</button>
               </div>
             );
           })}
