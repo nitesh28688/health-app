@@ -760,6 +760,10 @@ Below is the verified audit based on line-by-line inspection of the 14 main page
   - Loading: L127 correctly returns `<PageSkeleton />` while data fetches.
   - Empty: L21 shows "No data yet — log your weight below." when the line chart has no points.
   - Empty (Food in history): L191 properly says "no food logged" when a check-in day has 0 kcal.
+- **Profile (`web/app/profile/page.tsx`)**:
+  - Loading: L426 uses `<PageSkeleton />` while loading the main profile.
+  - Empty (Badges): Badges are statically rendered but grayed out if unearned via `grayscale opacity-50` at L380.
+  - Error: Handles three separate error states cleanly (`avatarError` L198, `notifError` L346, main `error` L404) with amber/red messages.
 
 7. **Error states.** Anything that can fail (a network call, a validation
    check) needs a visible, clear message — not a silent no-op.

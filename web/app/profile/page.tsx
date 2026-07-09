@@ -197,8 +197,8 @@ function ProfileForm({ profile, setProfile, userId, email }: {
       </div>
       {avatarError && <p className="text-xs text-amber-600 mb-4">{avatarError}</p>}
       <div className="flex items-center gap-4 mt-2 mb-8">
-        <Link href="/progress" className="text-sm text-green-600 font-semibold">📸 Progress photos →</Link>
-        <Link href="/goals" className="text-sm text-blue-600 font-semibold">🎯 Goal progress →</Link>
+        <Link href="/progress" className="text-sm text-green-600 dark:text-green-400 font-semibold">📸 Progress photos →</Link>
+        <Link href="/goals" className="text-sm text-blue-600 dark:text-blue-400 font-semibold">🎯 Goal progress →</Link>
       </div>
 
       <section className="flex flex-col gap-4">
@@ -408,7 +408,7 @@ function ProfileForm({ profile, setProfile, userId, email }: {
       </button>
       <button
         onClick={async () => { await supabase.auth.signOut(); router.replace("/login"); }}
-        className="mt-3 mb-4 w-full rounded-xl border border-red-300 text-red-600 py-3 font-semibold">
+        className="mt-3 mb-4 w-full rounded-xl border border-red-300 dark:border-red-900/50 text-red-600 dark:text-red-400 py-3 font-semibold active:scale-[0.98]">
         Sign out
       </button>
     </main>
