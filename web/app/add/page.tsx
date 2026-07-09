@@ -220,8 +220,8 @@ function AddFood({ userId }: { userId: string }) {
         <QuantitySheet
           food={picked}
           onClose={() => setPicked(null)}
-          onSave={async (grams) => {
-            const snap = logSnapshot(picked, grams);
+          onSave={async (grams, label) => {
+            const snap = logSnapshot(picked, grams, label);
             const { error } = await supabase.from("food_logs").insert({
               user_id: userId, log_date: date, meal, food_id: picked.id, ...snap });
             if (!error) router.push("/");

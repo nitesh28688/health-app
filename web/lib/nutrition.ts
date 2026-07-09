@@ -21,7 +21,7 @@ const r2 = (x: number) => Math.round(x * 100) / 100;
 
 /** Snapshot for a food_logs insert: scale per-100g values to qty_g.
  *  Returns { kcal, protein_g, carbs_g, fat_g, fiber_g, micros } matching the table. */
-export function logSnapshot(food: FoodNutrients, qtyG: number) {
+export function logSnapshot(food: FoodNutrients, qtyG: number, qtyUnitLabel?: string | null) {
   const f = qtyG / 100;
   const micros: Record<string, number> = {};
   for (const k of MICRO_KEYS) {
@@ -30,6 +30,7 @@ export function logSnapshot(food: FoodNutrients, qtyG: number) {
   }
   return {
     qty_g: qtyG,
+    qty_unit_label: qtyUnitLabel ?? null,
     kcal: r2(food.kcal * f),
     protein_g: r2(food.protein_g * f),
     carbs_g: r2(food.carbs_g * f),

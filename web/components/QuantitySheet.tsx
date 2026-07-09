@@ -25,7 +25,7 @@ export function QuantitySheet({
   };
   initialQtyGrams?: number;
   onClose: () => void;
-  onSave: (totalGrams: number) => void;
+  onSave: (totalGrams: number, unitLabel: string | null) => void;
 }) {
   const [servings, setServings] = useState<Serving[]>([]);
   const [unit, setUnit] = useState<"grams" | number>("grams");
@@ -213,7 +213,17 @@ export function QuantitySheet({
         )}
 
         <button
-          onClick={() => onSave(g)}
+          onClick={() => {
+            let label: string | null = null;
+            if (unit === "grams") {
+              label = food.is_liquid ? `${amt} ml` : null;
+            } else if (unit === CUSTOM_PIECE) {
+              label = `${amt} pcs`;
+            } else if (knownServing) {
+              label = `${amt} ${knownServing.label}`;
+            }
+            onSave(g, label);
+          }}
           disabled={!(g > 0)}
           className="mt-4 w-full rounded-xl bg-green-600 text-white py-3.5 font-semibold disabled:opacity-40 active:scale-[0.98]"
         >

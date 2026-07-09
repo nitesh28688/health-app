@@ -621,7 +621,9 @@ always showing grams, and any food — not just ones with a preset serving — c
 switch to "count pieces" with an editable per-piece gram weight the user can
 override per log entry (a chapati isn't always exactly 35g, a pani puri isn't
 always exactly 15g; migration 0017 seeded reasonable defaults for common count
-foods, but the override always wins). Profile gained a `diet_type` column
+foods, but the override always wins). The Diary page now displays these chosen units
+(e.g., "3 pcs" or "200 ml") directly, rather than converting back to grams for display,
+by wiring up the `qty_unit_label` column that was added in migration 0017. Profile gained a `diet_type` column
 (balanced/high_protein/low_carb/keto/diabetic_friendly) — `macrosForTarget()` in
 `lib/nutrition.ts` now drives both the "Suggest" button and *live* recalculation
 when the user directly edits the kcal field, so typing "1000" for a hard deficit

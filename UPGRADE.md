@@ -56,7 +56,7 @@ in the list (not removed).
 **Goal:** if a user logs "3 pcs" or "200 ml", the diary should show that, not
 "84g" / "200g".
 
-**Status:** ☐ Not started
+**Status:** [x] Done
 
 **Context (already fully diagnosed, no further investigation needed):**
 - `web/components/QuantitySheet.tsx` tracks the unit the user picked (grams / a

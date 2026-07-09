@@ -23,7 +23,7 @@ const MICRO_LABELS: Record<string, string> = {
 };
 
 interface LogRow {
-  id: number; food_id: number; meal: string; qty_g: number; kcal: number;
+  id: number; food_id: number; meal: string; qty_g: number; qty_unit_label: string | null; kcal: number;
   protein_g: number; carbs_g: number; fat_g: number; fiber_g: number;
   foods: { name: string } | null;
 }
@@ -89,7 +89,7 @@ function Diary({ profile, userId }: { profile: Profile | null; userId: string })
 
   const load = useCallback(async () => {
     const [logsRes, totalsRes] = await Promise.all([
-      supabase.from("food_logs").select("id,food_id,meal,qty_g,kcal,protein_g,carbs_g,fat_g,fiber_g,foods(name)")
+      supabase.from("food_logs").select("id,food_id,meal,qty_g,qty_unit_label,kcal,protein_g,carbs_g,fat_g,fiber_g,foods(name)")
         .eq("user_id", userId).eq("log_date", date).order("id"),
       supabase.rpc("get_daily_totals", { p_from: date, p_to: date }),
     ]);
@@ -140,7 +140,7 @@ function Diary({ profile, userId }: { profile: Profile | null; userId: string })
   async function copyMeal(meal: string) {
     const yesterday = shiftDate(date, -1);
     const { data: prevLogs } = await supabase.from("food_logs")
-      .select("food_id,qty_g").eq("user_id", userId).eq("log_date", yesterday).eq("meal", meal);
+      .select("food_id,qty_g,qty_unit_label").eq("user_id", userId).eq("log_date", yesterday).eq("meal", meal);
     if (!prevLogs?.length) return;
     const foodIds = [...new Set(prevLogs.map((l) => l.food_id))];
     const { data: foods } = await supabase.from("foods").select("*").in("id", foodIds);
@@ -149,7 +149,7 @@ function Diary({ profile, userId }: { profile: Profile | null; userId: string })
       .filter((l) => foodById.has(l.food_id))
       .map((l) => ({
         user_id: userId, log_date: date, meal, food_id: l.food_id,
-        ...logSnapshot(foodById.get(l.food_id)!, Number(l.qty_g)),
+        ...logSnapshot(foodById.get(l.food_id)!, Number(l.qty_g), l.qty_unit_label),
       }));
     if (rows.length) {
       await supabase.from("food_logs").insert(rows);
@@ -287,7 +287,7 @@ function Diary({ profile, userId }: { profile: Profile | null; userId: string })
                   <li key={l.id} className="rounded-xl border border-neutral-200 dark:border-neutral-800 px-3 py-2.5 flex items-center gap-2">
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">{l.foods?.name ?? "Food"}</p>
-                      <p className="text-xs text-neutral-500">{Math.round(l.qty_g)}g · {Math.round(Number(l.kcal))} kcal</p>
+                      <p className="text-xs text-neutral-500">{l.qty_unit_label ?? `${Math.round(l.qty_g)}g`} · {Math.round(Number(l.kcal))} kcal</p>
                       <p className="text-[11px] text-neutral-400">
                         Protein {Math.round(Number(l.protein_g))}g · Carbs {Math.round(Number(l.carbs_g))}g ·
                         {" "}Fat {Math.round(Number(l.fat_g))}g · Fiber {Math.round(Number(l.fiber_g ?? 0))}g
@@ -321,8 +321,8 @@ function Diary({ profile, userId }: { profile: Profile | null; userId: string })
           food={editingLog.food}
           initialQtyGrams={editingLog.log.qty_g}
           onClose={() => setEditingLog(null)}
-          onSave={async (grams) => {
-            const snap = logSnapshot(editingLog.food, grams);
+          onSave={async (grams, label) => {
+            const snap = logSnapshot(editingLog.food, grams, label);
             await supabase.from("food_logs").update(snap).eq("id", editingLog.log.id);
             setEditingLog(null);
             load();
