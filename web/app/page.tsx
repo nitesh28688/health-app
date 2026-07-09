@@ -4,7 +4,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { AppShell } from "./AppShell";
 import { supabase } from "@/lib/supabase";
-import { todayLocal, logSnapshot, type FoodNutrients } from "@/lib/nutrition";
+import { awardBadge } from "@/lib/badges";
+import { todayLocal, type FoodNutrients, logSnapshot } from "@/lib/nutrition";
 import type { Profile } from "@/lib/useUser";
 import { Skeleton } from "@/lib/Skeleton";
 import { QuantitySheet } from "@/components/QuantitySheet";
@@ -125,7 +126,13 @@ function Diary({ profile, userId }: { profile: Profile | null; userId: string })
 
   async function addWater(ml: number) {
     await supabase.from("water_logs").insert({ user_id: userId, log_date: date, ml });
-    setTotals((t) => (t ? { ...t, water_ml: Number(t.water_ml) + ml } : t));
+    setTotals((t) => {
+      const next = Number(t?.water_ml ?? 0) + ml;
+      if (next >= (profile?.target_water_ml ?? 3000)) {
+        awardBadge(userId, "hydration_hero");
+      }
+      return t ? { ...t, water_ml: next } : t;
+    });
   }
   async function removeLog(id: number) {
     await supabase.from("food_logs").delete().eq("id", id);

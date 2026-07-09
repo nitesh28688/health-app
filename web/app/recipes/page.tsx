@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AppShell } from "../AppShell";
 import { supabase } from "@/lib/supabase";
+import { awardBadge } from "@/lib/badges";
 import type { FoodNutrients } from "@/lib/nutrition";
 
 type Food = FoodNutrients & { id: number; name: string; source: string };
@@ -51,6 +52,7 @@ function RecipeBuilder({ userId, onDone }: { userId: string; onDone: () => void 
       })));
     setBusy(false);
     if (e2) { setError(e2.message); return; }
+    await awardBadge(userId, "first_recipe");
     onDone(); // DB triggers computed per-100g macros already
   }
 

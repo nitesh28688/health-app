@@ -690,13 +690,13 @@ prediction from cycle history.
 - `web/app/workout/page.tsx` overhauled to introduce a new "Log structured" flow with a muscle picker, an AI suggestion fetcher, custom exercise addition, and granular sets/reps/weight logging UI, sitting alongside the existing seeded plans and freeform text fallback.
 
 
-**Round 8 additions (Batch 2 / Phase 5):** Group Challenges UI.
+**Round 8 additions (Batch 2 / Phases 5-6):** Group Challenges UI and Badges.
 - `web/app/challenges/page.tsx` introduces the ability to create, discover, and track group challenges among friends (e.g. 'Workout Days', 'Diary Logging Days'). Hooks up the existing `get_challenge_progress()` RPC and challenge RLS policies.
 - A "Challenges →" link added to the Friends page header.
+- `web/app/profile/page.tsx` includes a new grid display for `user_badges`.
+- Badges are awarded automatically during relevant actions (e.g. 7-day or 30-day streak on Trends page, logging first recipe, hitting water goal). Note: `challenge_won` evaluation is left for future server-side cron expansion since it depends on `end_date` passing.
 
 **Not yet built** (schema/RPCs already exist, just needs UI):
-- Badges UI — `user_badges` table ready; badge criteria intended to live in app code,
-  not the database (easier to add new badge types without a migration).
 - AI daily suggestions (proactive tips, not just on-demand food/workout feedback).
 - Offline queue (PWA currently caches the shell for offline *viewing*, but doesn't
   queue writes made while offline).

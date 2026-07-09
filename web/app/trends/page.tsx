@@ -4,6 +4,7 @@ import Link from "next/link";
 import { AppShell } from "../AppShell";
 import { supabase } from "@/lib/supabase";
 import { todayLocal, bmiCategory } from "@/lib/nutrition";
+import { awardBadge } from "@/lib/badges";
 import type { Profile } from "@/lib/useUser";
 import { PageSkeleton } from "@/lib/Skeleton";
 
@@ -90,9 +91,16 @@ function Trends({ profile, userId }: { profile: Profile | null; userId: string }
     setBmiRows((bmiRes.data as BmiRow[]) ?? []);
     setAllTotals((totalsRes.data as DayTotal[]) ?? []);
     setWeek(((totalsRes.data as DayTotal[]) ?? []).slice(-7));
-    setStreaks((streakRes.data as Streak[]) ?? []);
+    const sts = (streakRes.data as Streak[]) ?? [];
+    setStreaks(sts);
     setLoaded(true);
-  }, []);
+
+    // Evaluate streak badges
+    for (const s of sts) {
+      if (s.current_streak >= 7) awardBadge(userId, "streak_7");
+      if (s.current_streak >= 30) awardBadge(userId, "streak_30");
+    }
+  }, [userId]);
   useEffect(() => { load(); }, [load]);
 
   async function logWeight() {

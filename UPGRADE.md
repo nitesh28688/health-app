@@ -332,7 +332,7 @@ from reading the actual schema/code — don't re-derive what's already found.
 
 **Goal:** users see earned badges (their own + friends'), and badges actually get awarded when criteria are met.
 
-**Status:** ☐ Not started
+**Status:** [x] Done
 
 **Context:** `user_badges` table exists (`0009_fun.sql`): `user_id`, `badge_code` (free text, e.g. `'streak_7'`, `'streak_30'`, `'first_recipe'`, `'challenge_won'`, `'hydration_hero'`), `earned_at`. RLS: visible to the user themself or their friends. **The schema comment is explicit that criteria belong in app code, not the database** — don't add a migration for badge logic, don't build a Postgres trigger for this.
 

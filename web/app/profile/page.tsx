@@ -6,6 +6,7 @@ import { AppShell } from "../AppShell";
 import { supabase } from "@/lib/supabase";
 import { bmr, tdee, ageFromBirthDate, todayLocal, ACTIVITY_FACTORS, bmi, bmiCategory, DIET_PRESETS, macrosForTarget, type DietType } from "@/lib/nutrition";
 import type { Profile } from "@/lib/useUser";
+import { BADGES } from "@/lib/badges";
 import { PhoneInput } from "@/lib/PhoneInput";
 import { PageSkeleton } from "@/lib/Skeleton";
 import { pushSupported, currentPushSubscription, enablePush, disablePush } from "@/lib/push";
@@ -53,6 +54,8 @@ function ProfileForm({ profile, setProfile, userId, email }: {
   const [avatarBusy, setAvatarBusy] = useState(false);
   const [avatarError, setAvatarError] = useState<string | null>(null);
 
+  const [earnedBadges, setEarnedBadges] = useState<Set<string>>(new Set());
+
   useEffect(() => {
     supabase.from("body_metrics").select("weight_kg, waist_cm, body_fat_pct").eq("user_id", userId)
       .order("log_date", { ascending: false }).limit(1).maybeSingle()
@@ -61,6 +64,11 @@ function ProfileForm({ profile, setProfile, userId, email }: {
         if (data?.waist_cm) setWaist(String(data.waist_cm));
         if (data?.body_fat_pct) setBodyFat(String(data.body_fat_pct));
       });
+    supabase.from("user_badges").select("badge_code").eq("user_id", userId)
+      .then(({ data }) => {
+        if (data) setEarnedBadges(new Set(data.map(r => r.badge_code)));
+      });
+
     if (!pushSupported()) { setNotifStatus("unsupported"); return; }
     currentPushSubscription().then((sub) => setNotifStatus(sub ? "enabled" : "disabled"));
   }, [userId]);
@@ -361,6 +369,22 @@ function ProfileForm({ profile, setProfile, userId, email }: {
             )}
           </>
         )}
+      </section>
+
+      <section className="mt-8">
+        <h2 className="text-lg font-bold mb-3">Badges</h2>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          {BADGES.map((b) => {
+            const earned = earnedBadges.has(b.code);
+            return (
+              <div key={b.code} className={`rounded-xl border p-3 flex flex-col items-center text-center ${earned ? "border-amber-200 bg-amber-50/30 dark:border-amber-900/50 dark:bg-amber-900/10" : "border-neutral-200 dark:border-neutral-800 opacity-50 grayscale"}`}>
+                <span className="text-3xl mb-1">{b.icon}</span>
+                <span className="font-bold text-xs leading-tight mb-1">{b.name}</span>
+                <span className="text-[10px] text-neutral-500 leading-tight">{b.description}</span>
+              </div>
+            );
+          })}
+        </div>
       </section>
 
       <section className="mt-8">
