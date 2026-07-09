@@ -690,8 +690,11 @@ prediction from cycle history.
 - `web/app/workout/page.tsx` overhauled to introduce a new "Log structured" flow with a muscle picker, an AI suggestion fetcher, custom exercise addition, and granular sets/reps/weight logging UI, sitting alongside the existing seeded plans and freeform text fallback.
 
 
+**Round 8 additions (Batch 2 / Phase 5):** Group Challenges UI.
+- `web/app/challenges/page.tsx` introduces the ability to create, discover, and track group challenges among friends (e.g. 'Workout Days', 'Diary Logging Days'). Hooks up the existing `get_challenge_progress()` RPC and challenge RLS policies.
+- A "Challenges →" link added to the Friends page header.
+
 **Not yet built** (schema/RPCs already exist, just needs UI):
-- Challenges UI (create/join/scoreboard) — `challenges` table + `get_challenge_progress()` ready.
 - Badges UI — `user_badges` table ready; badge criteria intended to live in app code,
   not the database (easier to add new badge types without a migration).
 - AI daily suggestions (proactive tips, not just on-demand food/workout feedback).

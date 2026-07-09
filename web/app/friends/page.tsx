@@ -4,6 +4,7 @@ import { AppShell } from "../AppShell";
 import { supabase } from "@/lib/supabase";
 import { todayLocal } from "@/lib/nutrition";
 import { Skeleton } from "@/lib/Skeleton";
+import Link from "next/link";
 
 interface PubProfile { id: string; username: string; display_name: string | null; }
 interface Friendship { requester_id: string; addressee_id: string; status: string; }
@@ -91,8 +92,11 @@ function Friends({ userId }: { userId: string }) {
   }
 
   return (
-    <main className="px-4 pt-6">
-      <h1 className="text-2xl font-bold mb-3">Friends</h1>
+    <main className="px-4 pt-6 pb-24">
+      <div className="flex items-center justify-between mb-3">
+        <h1 className="text-2xl font-bold">Friends</h1>
+        <Link href="/challenges" className="text-sm font-semibold text-green-600 bg-green-50 dark:bg-green-950/30 px-3 py-1.5 rounded-lg border border-green-200 dark:border-green-900">Challenges →</Link>
+      </div>
       <div className="flex gap-2 mb-4">
         {([["feed", "Feed"], ["board", "Leaderboard"], ["people", "People"]] as const).map(([k, label]) => (
           <button key={k} onClick={() => setTab(k)}

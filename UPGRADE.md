@@ -316,7 +316,7 @@ from reading the actual schema/code — don't re-derive what's already found.
 
 **Goal:** friends can create a challenge ("most workout days this month"), invite/join, and see a live scoreboard.
 
-**Status:** ☐ Not started
+**Status:** [x] Done
 
 **Context:** Schema is fully ready, nothing to add — `supabase/migrations/0009_fun.sql`:
 - `challenges` table: `creator_id`, `name`, `kind` (check constraint: `workout_days` | `diary_days` | `water_days` | `protein_days`), `start_date`, `end_date`.
