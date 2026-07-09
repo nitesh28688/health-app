@@ -771,6 +771,9 @@ Below is the verified audit based on line-by-line inspection of the 14 main page
   - Loading: L102 displays a simple text "Loading…" while fetching.
   - Empty: L104 explicitly states "No photos yet. Add one..." when `photos.length === 0`.
   - Error: L81 handles upload/fetch failures (`error`) via visible amber text (`text-amber-600`).
+- **Medications (`web/app/medications/page.tsx`)**:
+  - Loading: L81 correctly handles initial load with "Loading…".
+  - Empty: L83 explicitly states "No medications added. Add one and get a reminder..." when `meds.length === 0`.
 
 7. **Error states.** Anything that can fail (a network call, a validation
    check) needs a visible, clear message — not a silent no-op.

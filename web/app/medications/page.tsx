@@ -43,9 +43,9 @@ function Medications({ userId }: { userId: string }) {
   return (
     <main className="px-4 pt-6">
       <div className="flex items-center gap-3 mb-4">
-        <button onClick={() => router.back()} className="w-11 h-11 rounded-full border border-neutral-200 dark:border-neutral-800 text-lg">←</button>
+        <button onClick={() => router.back()} aria-label="Back" className="w-11 h-11 rounded-full border border-neutral-200 dark:border-neutral-800 text-lg flex items-center justify-center">←</button>
         <h1 className="text-2xl font-bold flex-1">💊 Medications</h1>
-        <button onClick={() => setAdding((a) => !a)} className="rounded-xl bg-green-600 text-white px-4 py-2.5 font-semibold text-sm">
+        <button onClick={() => setAdding((a) => !a)} className="rounded-xl bg-green-600 text-white px-4 py-2.5 font-semibold text-sm active:scale-[0.98]">
           {adding ? "Close" : "+ New"}
         </button>
       </div>
@@ -71,7 +71,7 @@ function Medications({ userId }: { userId: string }) {
             </div>
           </div>
           <button onClick={save} disabled={!name.trim()}
-            className="rounded-xl bg-green-600 text-white py-3 font-semibold disabled:opacity-40">
+            className="rounded-xl bg-green-600 text-white py-3 font-semibold disabled:opacity-40 active:scale-[0.98]">
             Save medication
           </button>
         </div>
@@ -94,12 +94,12 @@ function Medications({ userId }: { userId: string }) {
                   <p className="text-xs text-neutral-500">{m.times.join(", ")}</p>
                 </div>
                 <button onClick={() => logTaken(m.id)}
-                  className="text-xs rounded-lg bg-green-600 text-white px-3 py-2 font-semibold">Taken</button>
+                  className="text-xs rounded-lg bg-green-600 text-white px-3 py-2 font-semibold active:scale-[0.98]">Taken</button>
                 <button onClick={() => toggleActive(m)}
                   className="text-xs rounded-lg border border-neutral-300 dark:border-neutral-700 px-2 py-2">
                   {m.active ? "Pause" : "Resume"}
                 </button>
-                <button onClick={() => remove(m.id)} className="w-9 h-9 text-neutral-400">✕</button>
+                <button onClick={() => remove(m.id)} aria-label="Delete medication" className="w-11 h-11 flex items-center justify-center text-neutral-400 shrink-0">✕</button>
               </div>
             </li>
           ))}
