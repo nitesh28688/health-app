@@ -191,7 +191,7 @@ export default function AdminPage() {
                         <div className="flex-1 min-w-0">
                           <p className="font-medium truncate">{f.name} {f.is_verified && "✅"}</p>
                           <p className="text-xs text-neutral-500">
-                            {f.kcal} kcal · P {f.protein_g} · C {f.carbs_g} · F {f.fat_g} /100g
+                            {f.kcal} kcal/100g · {f.protein_g}g protein · {f.carbs_g}g carbs · {f.fat_g}g fat
                           </p>
                         </div>
                         {!f.is_verified && (

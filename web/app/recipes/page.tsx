@@ -147,7 +147,7 @@ function Recipes({ userId }: { userId: string }) {
               <div className="flex items-center gap-2">
                 <div className="flex-1 min-w-0">
                   <p className="font-medium truncate">🍲 {r.name}</p>
-                  <p className="text-xs text-neutral-500">{Math.round(Number(r.kcal))} kcal · P{Math.round(Number(r.protein_g))} /100g</p>
+                  <p className="text-xs text-neutral-500">{Math.round(Number(r.kcal))} kcal/100g · {Math.round(Number(r.protein_g))}g protein</p>
                 </div>
                 <button onClick={() => toggleShare(r)}
                   className={`text-xs rounded-lg px-3 py-2 font-semibold border ${

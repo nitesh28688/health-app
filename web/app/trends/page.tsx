@@ -172,11 +172,11 @@ function Trends({ profile, userId }: { profile: Profile | null; userId: string }
                       <span className="text-neutral-500 ml-2">{Number(r.weight_kg)} kg</span>
                       {r.bmi != null && <span className="text-neutral-400 ml-1.5">· BMI {Number(r.bmi)}</span>}
                       {r.waist_cm != null && <span className="text-neutral-400 ml-1.5">· Waist {Number(r.waist_cm)}cm</span>}
-                      {r.body_fat_pct != null && <span className="text-neutral-400 ml-1.5">· BF {Number(r.body_fat_pct)}%</span>}
+                      {r.body_fat_pct != null && <span className="text-neutral-400 ml-1.5">· Body Fat {Number(r.body_fat_pct)}%</span>}
                     </div>
                     {t && Number(t.kcal) > 0 ? (
                       <span className="text-xs text-neutral-500">
-                        {Math.round(Number(t.kcal))} kcal · P{Math.round(Number(t.protein_g))} C{Math.round(Number(t.carbs_g))} F{Math.round(Number(t.fat_g))}
+                        {Math.round(Number(t.kcal))} kcal
                       </span>
                     ) : (
                       <span className="text-xs text-neutral-300 dark:text-neutral-700">no food logged</span>

@@ -18,7 +18,7 @@ function feedLine(f: FeedItem): string {
   const p = f.payload as Record<string, number | string>;
   switch (f.kind) {
     case "workout": return `💪 ${p.title} · ${Math.round(Number(p.duration_min))}min · 🔥${Math.round(Number(p.kcal_burned ?? 0))}`;
-    case "diary": return `📖 Logged the day · ${Math.round(Number(p.kcal))} kcal, P${Math.round(Number(p.protein_g))}`;
+    case "diary": return `📖 Logged the day · ${Math.round(Number(p.kcal))} kcal, ${Math.round(Number(p.protein_g))}g protein`;
     case "weight": return `⚖️ Checked in · ${p.weight_kg} kg`;
     case "recipe": return `🍲 Shared recipe: ${p.name} (${Math.round(Number(p.kcal))} kcal/100g)`;
     default: return "";

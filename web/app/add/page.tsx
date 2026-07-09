@@ -188,7 +188,7 @@ function AddFood({ userId }: { userId: string }) {
               </p>
               <p className="text-xs text-neutral-500">
                 {f.brand && <span className="font-medium text-neutral-600 dark:text-neutral-400">{f.brand} · </span>}
-                {Math.round(Number(f.kcal))} kcal · P{Math.round(Number(f.protein_g))} C{Math.round(Number(f.carbs_g))} F{Math.round(Number(f.fat_g))} /100g
+                {Math.round(Number(f.kcal))} kcal/100g · {Math.round(Number(f.protein_g))}g protein · {Math.round(Number(f.carbs_g))}g carbs · {Math.round(Number(f.fat_g))}g fat
               </p>
             </button>
           </li>
