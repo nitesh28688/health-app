@@ -302,3 +302,100 @@ against the live DB (schema, RLS policies, and the fixed RLS test script's
 actual output), and hand-tracing `estimateGoalProgress()` against a real
 user's weight history. Not a substitute for a human clicking through the
 actual flows on a phone before fully trusting it in daily use.
+
+---
+
+# Batch 2 (2026-07-09) — Challenges, badges, Hindi search, AI tips, fasting timer, weekly digest
+
+Same conventions as above (checkbox + STRUCTURE.md/HANDOFF.md sync per phase,
+`tsc --noEmit` clean, verify against the live DB since there's no click-testing
+here, real cleanup of any test data). All six items below are already scoped
+from reading the actual schema/code — don't re-derive what's already found.
+
+## Phase 5 — Challenges UI
+
+**Goal:** friends can create a challenge ("most workout days this month"), invite/join, and see a live scoreboard.
+
+**Status:** ☐ Not started
+
+**Context:** Schema is fully ready, nothing to add — `supabase/migrations/0009_fun.sql`:
+- `challenges` table: `creator_id`, `name`, `kind` (check constraint: `workout_days` | `diary_days` | `water_days` | `protein_days`), `start_date`, `end_date`.
+- `challenge_participants` (challenge_id, user_id, joined_at) — join table.
+- RLS: a challenge is visible to its creator, its participants, and **friends of the creator** (via `are_friends()`) — so a friend can discover and join it without already being a participant. `is_challenge_member()` is a `security definer` helper avoiding RLS self-recursion — use it, don't reinvent the membership check client-side.
+- `get_challenge_progress(p_challenge_id)` RPC already computes the scoreboard server-side (one round trip, per-`kind` scoring logic already written) — caller must be the creator or a participant or it raises an exception. Just call this RPC for the scoreboard, don't recompute progress in the client.
+
+**Do:** new route `web/app/challenges/page.tsx` (wrapped in `<AppShell>`), linked from Friends (mirroring how `/goals` was linked from Trends/Profile in Batch 1). List challenges the user's in/can see, a create form (name, kind, date range), a join button, and a scoreboard view calling `get_challenge_progress`. Look at `web/app/friends/page.tsx` for the existing friends-list UI pattern to match visually.
+
+**Verify:** `tsc --noEmit`. Direct SQL: create a test challenge + participant row, call `get_challenge_progress` for it and confirm it returns a sane score, confirm a non-participant/non-friend genuinely cannot select it (RLS). Clean up test rows after.
+
+## Phase 6 — Badges UI
+
+**Goal:** users see earned badges (their own + friends'), and badges actually get awarded when criteria are met.
+
+**Status:** ☐ Not started
+
+**Context:** `user_badges` table exists (`0009_fun.sql`): `user_id`, `badge_code` (free text, e.g. `'streak_7'`, `'streak_30'`, `'first_recipe'`, `'challenge_won'`, `'hydration_hero'`), `earned_at`. RLS: visible to the user themself or their friends. **The schema comment is explicit that criteria belong in app code, not the database** — don't add a migration for badge logic, don't build a Postgres trigger for this.
+
+**Do:**
+1. A small badge catalog in app code (e.g. `web/lib/badges.ts`): array of `{ code, name, description, icon }` for a first real set — reuse what's already named in the schema comment (`streak_7`, `streak_30`, `first_recipe`, `challenge_won`, `hydration_hero`) plus any others that make sense.
+2. Criteria evaluation: the natural place is right after a relevant action succeeds (e.g. after `get_streaks()` is called on the Trends/Diary page and a 7-day streak is detected, upsert `user_badges` if not already earned) — client-side check-and-insert is fine given `badges_insert` RLS already restricts `user_id = auth.uid()`. Don't build a separate cron for this unless a phase turns out to need it (e.g. `challenge_won` needs to fire when a challenge's `end_date` passes, which does need a server-side check somewhere — note this explicitly if it comes up rather than silently skipping `challenge_won`).
+3. A badges display — grid of earned (full color) vs. not-yet-earned (greyed out) badges, on Profile or a new `/badges` page.
+
+**Verify:** `tsc --noEmit`. Directly insert a test `user_badges` row and confirm the display renders it; confirm a friend can see it and a non-friend cannot (RLS check via direct SQL, same style as other phases this session).
+
+## Phase 7 — Hindi/regional name search
+
+**Goal:** `foods.name_local` (exists, currently empty for every row) gets populated for INDB's 1,014 Indian recipes at minimum, so Hindi-name search actually returns something.
+
+**Status:** ☐ Not started
+
+**Context:** `search_foods()` already checks `f.name_local % q` (trigram match) — the **search logic is already correct and ready**, it just has zero data to match against. This is a data-population task, not a code task. INDB (`source='indb'`, 1,014 rows) is the highest-value target — real Indian home cooking, most likely to be searched by Hindi name.
+
+**Do:** a one-off script (`scripts/populate-name-local.mjs`, same shape as the other seed scripts in `scripts/` — connects via `SEED_DB_URL`) that calls Gemini (`generateWithFallback` pattern, batch a handful of names per call to save quota — or the direct `GEMINI_API_KEY` REST call other seed-adjacent scripts use since this runs standalone, outside the Next.js server) to get the Hindi name/transliteration for each INDB food name, then updates `foods.name_local`. Spot-check a sample of ~15-20 results by hand before running the full batch — Gemini transliteration quality varies and a bad batch is easy to avoid by checking first. Idempotent (only update rows where `name_local is null`), so it's safe to re-run if interrupted.
+
+**Verify:** after running, `select name, name_local from foods where source='indb' and name_local is not null limit 20` and eyeball for sanity (not garbled, plausible Hindi). Then confirm `search_foods()` with an actual Hindi query string returns the right food.
+
+## Phase 8 — AI daily tips (proactive, not just on-demand)
+
+**Goal:** users get an occasional proactive tip, not just the on-demand "🤖 AI coach feedback" button that already exists.
+
+**Status:** ☐ Not started
+
+**Context:** `web/app/api/cron/reminders/route.ts` already runs once/day via Vercel Cron (Hobby tier only allows once-daily — this is a known, accepted constraint, don't propose more frequent cron), checks each subscribed user's actual activity, and sends a tailored push. This is the natural place to extend, not a new cron job. `generateWithFallback` (`web/lib/gemini.ts`) is the model-call helper — reuse it, it already has the timeout/fallback-chain fix from earlier this session.
+
+**Do:** extend the reminders cron to occasionally (not every single day — e.g. only when nothing else is pending, or on a rotation, to avoid spamming) fetch a short cached AI tip per user (cache in `ai_suggestions`, `kind='daily_tip'`, same pattern `food-estimate`/`suggest-exercises` already use for their daily caps) and fold it into the push body, or surface it as a card on the diary page. Pick whichever is simpler to implement correctly rather than doing both halfway.
+
+**Verify:** `tsc --noEmit`. Since this touches a cron route, verify by direct invocation (the route checks `Authorization: Bearer $CRON_SECRET` — call it with that header via curl/fetch against a local or preview deploy if possible) or by careful code review if live invocation isn't practical here either.
+
+## Phase 9 — Fasting timer
+
+**Goal:** start/stop a fast, see a countdown/elapsed timer, see past fasting sessions.
+
+**Status:** ☐ Not started
+
+**Context:** Genuinely new, small feature — no existing schema for this. Cheapest correct design: a `fasting_sessions` table (`user_id`, `started_at timestamptz`, `ended_at timestamptz` nullable — null means currently fasting, `target_hours` optional). New migration `0021_fasting.sql` with RLS matching the simple owner-only pattern used by e.g. `body_metrics`.
+
+**Do:** new migration, new route `web/app/fasting/page.tsx` (or fold into an existing page if it fits better — your call, note the reasoning either way) with a start/stop button and a live countdown (client-side `setInterval` against `started_at`, no server polling needed), plus a short history list.
+
+**Verify:** `tsc --noEmit`, direct SQL check that starting then ending a session round-trips correctly and RLS restricts to the owner.
+
+## Phase 10 — Weekly summary email
+
+**Goal:** a Sunday-night "here's your week" digest email.
+
+**Status:** ☐ Not started — **blocked on a credential the user needs to provide, see below**
+
+**Context:** Brevo is only wired into **Supabase's own SMTP settings** for auth emails (password reset, confirmation) — confirmed by checking `web/.env.local` for any Brevo/SMTP app-level credential: **none exist**. There is no reusable email-sending helper in this codebase to call from app code; this needs new code AND a new credential (a Brevo API key, or SMTP host/user/pass) added to Vercel env vars, which only the user can obtain/paste in (per this repo's standing rule: agents don't generate or handle live secrets on the user's behalf).
+
+**Do:** build everything up to the actual send: a new cron route (`web/app/api/cron/weekly-digest/route.ts`, same `CRON_SECRET` auth pattern as `cron/reminders`, added to `vercel.json`'s cron schedule for Sunday), the digest content logic (pull the week's totals via existing RPCs like `get_daily_totals` summed over 7 days, workout days, weight change if any), and the email template — but gate the actual `send` call behind an env var check, and if the Brevo credential isn't present, log/skip clearly rather than silently failing or fabricating a working send. **Stop here and flag it back rather than guessing at credentials.**
+
+**Verify:** `tsc --noEmit`, review the digest content logic against a real user's data by hand (query what the digest *would* say), confirm the route correctly no-ops (not crashes) when the email credential is absent.
+
+---
+
+## When Batch 2 is done
+
+Same as Batch 1: update the memory file (Fable-only) and do an independent
+review pass against the live DB before trusting any "done" status — Batch 1's
+review caught a test script that had never actually run despite being
+reported as verified. Assume the same is possible here until checked.
