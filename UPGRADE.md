@@ -575,3 +575,101 @@ Bird Dog, Cobra Stretch, Seated Spinal Twist) simply have no matching entry
 in the source JSON at all — added to this app's `exercises` table from
 somewhere else during the original seed, not a bug, no fix available without
 sourcing a different image set for just those 6.
+
+---
+
+# Batch 3 (2026-07-09) — UI/UX consistency overhaul
+
+**Trigger:** user reported the workout page's "log your own workout" entry
+point was "so complicated," and turned out to be a plain text-styled button
+(`text-sm text-neutral-500 font-semibold`, no border/background/padding) for
+what is a primary, frequent action — easy to miss, easy to mistake for a
+label rather than something tappable. Fixed directly by Fable (commit
+`017d213`): moved to its own prominent two-button row with real chrome
+(filled primary + bordered secondary), matching the button style this
+codebase already uses elsewhere (e.g. `web/app/workout/page.tsx`'s "Start
+this plan" button — `rounded-xl bg-green-600 text-white py-2.5 font-semibold
+active:scale-[0.98]`).
+
+That one instance is fixed, but three UPGRADE.md batches (12 phases) were
+built fast, mostly by Antigravity, across many new screens without a unified
+design pass — Challenges, Goals, the Badges grid, the Yoga/muscle picker and
+structured-session workout UI, SetTimer, ExerciseDemo. High risk that the
+same class of inconsistency (and others: spacing, empty states, dark mode
+gaps) exists elsewhere and hasn't been reported yet simply because nobody's
+tapped that exact button yet.
+
+**Goal:** a systematic, page-by-page consistency pass — not a redesign. Work
+*within* the existing design system (the green-600 primary action color, the
+`rounded-xl`/`rounded-2xl` radius scale, the existing card/border/padding
+patterns already used throughout) rather than introducing new visual
+language. The point is consistency and correctness of what's already there,
+not a new look.
+
+**Status:** ☐ Not started
+
+**Scope — audit every page**, not just the newest ones (though the newest are
+highest-risk): `web/app/page.tsx` (Diary), `add`, `workout`, `trends`,
+`goals`, `challenges`, `friends`, `profile`, `recipes`, `admin`, `progress`,
+`medications`, `cycle`, `login`/`signup`/`reset`.
+
+**Checklist — apply to every page, this is the "check the smallest detail"
+part:**
+
+1. **Button vs. link visual weight matches actual importance.** Every
+   primary or frequent action (log something, save, create, start, add) needs
+   real button chrome — background or border, `rounded-xl`, adequate padding.
+   Secondary/occasional navigation (view a sub-page, dismiss, a rarely-used
+   toggle) can legitimately stay lighter-weight — don't blanket-convert every
+   link into a filled button, that just creates a different kind of visual
+   noise. The test: would a first-time user recognize this is tappable, and
+   does its visual weight roughly match how often/how important tapping it
+   is? Report every mismatch found, in both directions (a link acting as a
+   primary action, or a button so heavy it drowns out something more
+   important on the same screen).
+2. **Tap target size.** This is a mobile-first app (~380px viewport, an
+   existing hard rule) — flag anything cramped, anything where two tappable
+   elements sit close enough to mis-tap.
+3. **Dark mode coverage.** Every background/border/text color class on
+   anything built in the last two batches should have a `dark:` counterpart.
+   Grep for color utility classes without an adjacent `dark:` variant on the
+   newer files specifically (`challenges/page.tsx`, `goals/page.tsx`,
+   `SetTimer.tsx`, `ExerciseDemo.tsx`, the yoga/structured-session additions
+   in `workout/page.tsx`) — those are the ones least likely to have been
+   checked in dark mode during the original build.
+4. **Empty states.** Every list/data view needs a real message when there's
+   no data yet, not blank space (e.g. no challenges yet, no badges earned,
+   no workout history).
+5. **Loading states.** Every async fetch should show a skeleton or spinner,
+   not a flash of empty/wrong content before data arrives — this app already
+   has a `PageSkeleton` pattern (`web/lib/Skeleton.tsx`), reuse it rather
+   than inventing a new loading treatment.
+6. **Spacing/hierarchy consistency.** Section spacing, card padding, heading
+   sizes should match the established scale already used throughout — flag
+   anything that looks like a one-off.
+7. **Error states.** Anything that can fail (a network call, a validation
+   check) needs a visible, clear message — not a silent no-op.
+8. **Accessibility basics.** Interactive elements need a visible
+   pressed/active state (the `active:scale-[0.98]` pattern is already used
+   widely — check it's applied consistently on newer buttons too).
+   Icon-only buttons need `aria-label` (already done correctly on the Cheer
+   button in `friends/page.tsx` — same treatment needed anywhere else an
+   icon is the only content).
+
+**Process — audit first, then fix, don't skip straight to changes:**
+1. Go page by page. For each, write findings into this section of
+   `UPGRADE.md` (file/line, what's wrong, what the fix should be) *before*
+   changing code — this is a review checkpoint, not a race to ship.
+2. Only after the audit is written, apply the fixes page by page, committing
+   each page's fixes separately (not one giant commit for the whole app).
+3. `tsc --noEmit` clean after each page.
+4. Same verification limitation as every other phase this session: this app
+   is auth-gated with no live click-testing available in this environment —
+   verify via careful code review and, where relevant, direct SQL/DB checks.
+   Say plainly in the writeup what could and couldn't be verified without a
+   human clicking through it on a real phone.
+
+**When done:** update `STRUCTURE.md`/`HANDOFF.md` same as every other phase,
+and expect another independent Fable review pass on top — every prior batch
+has turned up at least one real gap under review, budget for that rather
+than assuming this one will be different.
