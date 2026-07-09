@@ -391,6 +391,40 @@ from reading the actual schema/code — don't re-derive what's already found.
 
 **Verify:** `tsc --noEmit`, review the digest content logic against a real user's data by hand (query what the digest *would* say), confirm the route correctly no-ops (not crashes) when the email credential is absent.
 
+## Phase 11 — Yoga
+
+**Goal:** yoga is a real, structured, loggable practice — not just a text title typed into freeform logging.
+
+**Status:** ☐ Not started
+
+**Context:** Checked the seeded exercise data (`data/exercises.json`, the free-exercise-db/wger source `exercises` was seeded from) for yoga content — confirmed 2026-07-09: **it has essentially none.** 873 entries, categories are `strength`(581)/`stretching`(123)/`plyometrics`(61)/`strongman`(21)/`powerlifting`(38)/`cardio`(14)/`olympic weightlifting`(35) — zero `yoga`. A name search for yoga-adjacent terms found exactly one accidental match ("Child's Pose", filed under `stretching`, not yoga). Live DB confirms the same: `select count(*) from exercises where category='yoga'` → **0**, despite `category` already allowing `'yoga'` in its check constraint (`0003_workouts.sql`) — this was always a valid category, just never populated. **No migration needed for this** — the schema already supports it.
+
+Also relevant: `workout_log_sets.duration_sec` (from Phase 4's `0020_workout_sets.sql`) already fits yoga logging perfectly — a pose hold is just a timed set, same shape as a plank or a cardio interval. No new logging schema needed either; this phase is UI + a real data seed.
+
+**Do:**
+1. **Seed real pose data directly** (a one-off SQL insert or a small script, not an AI-generation pass — common asana names/typical holds are standardized public knowledge, hand-curating ~20-25 well-known poses is more reliable than risking AI-hallucinated pose names). Insert into `exercises` with `category='yoga'`, a sensible `primary_muscle` (or `'full body'` where it doesn't apply to one area), `met_value` (yoga is generally low-moderate, ~2.5-4 depending on style — use per-pose judgment, don't default them all to one number), and a short `instructions` string. `owner_id` stays null (global, like the rest of the seeded exercise library).
+2. **New entry point** in `web/app/workout/page.tsx`: a third button ("🧘 Yoga") alongside the existing "+ Log structured" / "+ Freeform" pair. Unlike the muscle-group flow, **skip the muscle picker** — yoga poses aren't single-muscle, go straight to a browsable list of `category='yoga'` exercises (a flat list is fine at ~20-25 items; add a text filter if it feels cluttered).
+3. **AI-suggest for yoga**, reusing `/api/ai/suggest-exercises` rather than building a parallel endpoint — extend it to accept a themed-sequence mode (e.g. a `style: "yoga"` or `goal` param instead of `muscle`) that prompts for a short pose sequence for a stated goal ("morning energizer," "post-run stretch," "stress relief") instead of strength exercises. The response schema will need an optional `typical_duration_sec` field alongside the existing `typical_sets`/`typical_reps` — sets×reps doesn't fit a pose hold, duration does. Suggested poses insert into `exercises` with `owner_id = auth.uid()` and `category='yoga'`, same self-reinforcing-library pattern as Phase 4's strength suggestions.
+4. Logging reuses the exact structured-session flow already built (add to session → per-set entry, using `duration_sec` per pose instead of reps/weight) — don't build a separate save path.
+
+**Verify:** `tsc --noEmit`. Direct SQL: confirm the seeded poses exist with `category='yoga'` and sane `met_value`s, spot-check a handful of `instructions` strings for sanity. Confirm the AI-suggest extension returns a valid response shape by checking the route's schema/parsing logic (same verification approach as `suggest-exercises` used in Phase 4 — direct code review plus the daily-cap DB check, live click-testing isn't available here).
+
+## Phase 12 — Real timer for timed exercises (holds, planks, yoga poses, intervals)
+
+**Goal:** a set with a duration component gets an actual running countdown/stopwatch, not just a number the user types in after the fact.
+
+**Status:** ☐ Not started
+
+**Context:** Today (post-Phase 4), a timed set is just a plain text input labeled "sec" — the user does the exercise, then guesses/remembers how long it took and types a number. This applies to any timed set, not just yoga: plank holds, wall sits, cardio intervals all have the same gap. This phase is generic infrastructure that Phase 11 (yoga) also depends on for a good experience, but should be built as a standalone reusable piece, not yoga-specific.
+
+**Do:**
+1. New component `web/components/SetTimer.tsx`. Two modes: **countdown** if a target duration is provided (e.g. from an AI-suggested pose's `typical_duration_sec`, or manually entered before starting), **stopwatch** (count-up from 0) if no target is given. Large mm:ss display, start/stop controls. On completion or manual stop, calls back with the actual elapsed seconds — don't require the countdown to reach exactly zero to be considered "done," a user stopping early (e.g. couldn't hold the full 30s) is a real, valid outcome and should still record what actually happened.
+2. Visual progress — consider reusing the existing SVG `Ring` component pattern (already used for Protein/Carbs/Fat progress on the home diary page) for a countdown progress ring, for visual consistency rather than inventing a new progress-indicator style.
+3. Completion feedback: vibrate via `navigator.vibrate(...)` **feature-detected** (`'vibrate' in navigator`) — many browsers (notably iOS Safari) don't support the Vibration API, this must degrade silently, not throw.
+4. Wire it in: in the structured-session per-set row (`workout/page.tsx`, the same row that has weight/reps/sec inputs from Phase 4), add a "▶" button next to the `duration_sec` field that opens `SetTimer` (as a bottom sheet, matching `QuantitySheet`'s presentation style). On stop, write the result into that set's `duration_sec` field the same way the existing manual input does (`n[exIdx].sets[setIdx].duration_sec = ...` pattern already in that file) — don't duplicate that state-update logic, call into the same setter.
+
+**Verify:** `tsc --noEmit`. Since this is a client-only interactive component with no server round-trip, verify by careful code review of the timer's state machine (start/pause/stop/complete transitions, no drift from `setInterval` accumulation error — prefer computing elapsed from a stored start `Date.now()` timestamp on each tick rather than incrementing a counter, which drifts under tab-throttling) rather than a DB check, since there's nothing to query for this one.
+
 ---
 
 ## When Batch 2 is done
