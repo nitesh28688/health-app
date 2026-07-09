@@ -15,7 +15,7 @@ workouts, and cheer each other on. Food data comes from three seeded sources plu
 - **USDA SR Legacy** (7,793 foods, public domain) — western/generic foods AND US
   fast-food chains (KFC Popcorn Chicken, McDonald's fries, etc.), with 13k+ household
   serving sizes.
-- **Open Food Facts India + UAE** ('off' source, ODbL) — 2,671 packaged/branded
+- **Open Food Facts India + UAE** ('off' source, ODbL) — 2,908 packaged/branded
   groceries with a `brand` column, seeded from OFF's **bulk CSV export** (2026-07-09,
   `scripts/seed-off-bulk.mjs`) — the API throttle that had this stuck at 172 products
   never applies to the bulk dump. Includes the Indian brands USDA never had: Amul (72),
@@ -522,7 +522,7 @@ OFF retest.** Three cleanup passes on the branded-foods data:
    separate dataset from a separate seed script and was **not** touched; no
    reported issues with it. **USDA Branded Foods is no longer part of the
    food database.**
-7. **OFF bulk-dump seed (2026-07-09): 172 → 2,671 products, the API throttle
+7. **OFF bulk-dump seed (2026-07-09): 172 → 2,908 products, the API throttle
    sidestepped for good.** `scripts/seed-off-bulk.mjs` seeds from OFF's full
    CSV export (https://static.openfoodfacts.org/data/en.openfoodfacts.org.products.csv.gz,
    ~1.27GB gz — download into `data/off_dump/`, gitignored, delete after
@@ -530,12 +530,12 @@ OFF retest.** Three cleanup passes on the branded-foods data:
    touches disk; the dump is TAB-separated with no quoting, so parsing is a
    plain split (none of the quoted-field state machine the USDA CSVs needed).
    Filters to products tagged `en:india` or `en:united-arab-emirates` with
-   complete macros (4.5M rows scanned → 2,584 kept), upserts on the same
-   `OFF-<barcode>` key as the API seeder so re-running either never duplicates.
-   **This finally delivers the Indian brands** (Amul, Britannia, Parle,
-   Haldiram's, Maggi) that USDA's US-market data never had — and killed the
-   main rationale for retrying the throttled API. Refresh path when wanted:
-   re-download the dump (OFF regenerates it nightly) and re-run.
+   complete macros, upserts on the same `OFF-<barcode>` key as the API seeder
+   so re-running either never duplicates. **This finally delivers the Indian
+   brands** (Amul, Britannia, Parle, Haldiram's, Maggi) that USDA's US-market
+   data never had — and killed the main rationale for retrying the throttled
+   API. Refresh path when wanted: re-download the dump (OFF regenerates it
+   nightly) and re-run.
    The seed also surfaced `is_liquid` false-positive round 3: "milk" as a
    substring flagged solid dairy ("Amul Pure Milk Cheese Slices", "Milk
    Bread"), and the drink brand "Slice" in the brand fallback matched "Cheese
@@ -545,6 +545,31 @@ OFF retest.** Three cleanup passes on the branded-foods data:
    kept in sync across `seed-off.mjs`, `seed-off-bulk.mjs`, and
    `scripts/fix-liquid-round3.mjs` (the idempotent recompute-and-correct pass
    that fixed 57 existing rows; safe to re-run any time).
+8. **Investigated why the first bulk seed only yielded 2,584 of 4.5M scanned
+   rows (2026-07-09) — not a filtering bug, a real data-completeness ceiling.**
+   Broke it down: only 28,975 of 4.5M rows (0.64%) are tagged `en:india` or
+   `en:united-arab-emirates` at all — OFF's crowdsourced coverage for these
+   markets is thin. Worse: of those 28,975 tagged rows, only 2,703 (9%) have
+   *any* nutrition facts entered — most India/UAE submissions are a barcode
+   photo with no Nutrition Facts panel filled in. That 9% completeness rate,
+   not the country tag, is the real bottleneck.
+   Checked whether brand-name matching (regardless of country tag) could
+   recover more: found 4,110 additional complete-macro rows for known Indian
+   brands with no country tag at all — but 3,709 of those were "maggi"
+   (2,311) and "nestle" (1,398), global conglomerate names whose products
+   differ by region (German/Swiss Maggi seasoning, European Nestle SKUs) —
+   matching those without the country tag would exactly repeat the
+   brand-owner over-match mistake already fixed once for USDA branded foods.
+   The remaining ~400 rows were genuinely India-exclusive brands (Haldiram's
+   212, Britannia 59, Parle 43, Everest 36, MDH 15, Amul 15, Dabur 10, Bikaji
+   9, Patanjali 1, MTR 1) with no meaningful presence under that name
+   anywhere else — safe to accept without the country tag. Added a
+   `SAFE_UNTAGGED_BRANDS` allowlist in `seed-off-bulk.mjs` for exactly this
+   set (deliberately excludes Nestle/Maggi — those still come in fine via the
+   country tag). Re-ran: 2,589 → 3,063, then `scripts/dedupe-off.mjs` again
+   (the new rows introduced their own duplicates/ambiguous groups, same
+   pattern as before) → **2,908 final**. Amul 83, Britannia 86, Parle 62,
+   Haldiram's 192, Everest 40.
 8. **Gemini fallback chain had no per-model timeout — a hang, not just a 503,
    could eat the whole request (2026-07-09).** Confirmed directly against the
    live API: `gemini-flash-latest` is genuinely flaky, not just occasionally

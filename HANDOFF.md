@@ -23,15 +23,26 @@ this network).
 
 ## Immediate open items
 
-1. **Open Food Facts — SOLVED via bulk dump (2026-07-09): 2,671 products live.**
+1. **Open Food Facts — SOLVED via bulk dump (2026-07-09): 2,908 products live.**
    The API throttle that had this stuck at 172 products never applies to OFF's
    full CSV export. `scripts/seed-off-bulk.mjs` downloads-once-and-streams the
    ~1.27GB dump (into `data/off_dump/`, gitignored, deleted after seeding),
-   filters to India/UAE-tagged products with complete macros, and upserts on
-   the same `OFF-<barcode>` key as the old API seeder. Delivers the Indian
-   brands USDA never had: Amul (72), Britannia (45), Haldiram's (40), Maggi
-   (37), Parle (33). To refresh later: re-download the dump (OFF regenerates
-   it nightly) and re-run. The old API seeder (`seed-off.mjs`) still exists
+   filters to India/UAE-tagged products with complete macros, plus a small
+   safe allowlist of India-exclusive brands accepted even without the country
+   tag (Amul, Haldiram's, Britannia, Parle, Everest, MDH, Dabur, Bikaji,
+   Patanjali, MTR — deliberately excludes Nestle/Maggi, see STRUCTURE.md
+   Round 8 item 8 for why), and upserts on the same `OFF-<barcode>` key as the
+   old API seeder. Delivers the Indian brands USDA never had: Amul (83),
+   Britannia (86), Parle (62), Haldiram's (192), Everest (40). Investigated
+   why the raw yield is only ~3K out of 4.5M scanned rows: OFF's India/UAE
+   country tagging is genuinely sparse (0.64% of all rows), and only 9% of
+   even the tagged rows have any nutrition facts filled in at all — not a bug
+   on our end, a real data-completeness ceiling. `scripts/dedupe-off.mjs`
+   (same pack-size-duplicate + ambiguous-row cleanup already applied to USDA
+   branded foods, case-insensitive since OFF's casing is inconsistent) keeps
+   the set clean after any reseed. To refresh later: re-download the dump
+   (OFF regenerates it nightly), re-run `seed-off-bulk.mjs`, then
+   `dedupe-off.mjs --apply`. The old API seeder (`seed-off.mjs`) still exists
    but there's no longer a reason to fight its throttle.
 2. **USDA Branded Foods — removed entirely (2026-07-09).** Seeded at 80,820
    (2026-07-09), trimmed to an India/UAE brand allowlist (-41,875), deduped for

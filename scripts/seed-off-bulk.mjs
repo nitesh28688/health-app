@@ -74,6 +74,13 @@ async function upsert(batch) {
     params);
 }
 
+// India-exclusive brands accepted even without a country tag — see the comment at
+// the filter site below for why this list deliberately excludes global brands
+// like Nestle/Maggi.
+const SAFE_UNTAGGED_BRANDS = ["amul", "haldiram", "britannia", "parle", "patanjali",
+  "mtr foods", "dabur", "mother dairy", "bikaji", "everest", "mdh", "catch spices",
+  "tata sampann"];
+
 // Stream: gz file -> gunzip -> line splitter -> tab splitter. The dump has one
 // header row; rows can be jagged (fewer columns than the header) — index lookups
 // past the row's end just come back undefined, which n() treats as null.
@@ -102,7 +109,20 @@ for await (const chunk of stream) {
 
     const t = line.split("\t");
     const countries = (t[idx["countries_tags"]] || "").toLowerCase();
-    if (!countries.includes("en:india") && !countries.includes("en:united-arab-emirates")) continue;
+    const brandLower = (t[idx["brands"]] || "").toLowerCase();
+    const countryTagged = countries.includes("en:india") || countries.includes("en:united-arab-emirates");
+    // Country tagging on OFF is sparse for India/UAE (28,975 of 4.5M rows total,
+    // confirmed 2026-07-09) — most submissions never get a country tag at all. For
+    // brands that are unambiguously India-exclusive (no meaningful presence under
+    // this name anywhere else), accept the row even without the tag: 2026-07-09
+    // analysis found ~400 real, complete-macro rows this recovers. Deliberately
+    // excludes global conglomerate brands (Nestle, Maggi) here — those have
+    // genuinely different regional product lines (German/Swiss Maggi, European
+    // Nestle) and matching without the country tag would re-import the exact
+    // brand-owner over-match problem already fixed once for USDA branded foods
+    // (trim-usda-branded.mjs). Global brands still come in fine via the country tag.
+    const safeBrandMatch = SAFE_UNTAGGED_BRANDS.some((b) => brandLower.includes(b));
+    if (!countryTagged && !safeBrandMatch) continue;
 
     const code = (t[idx["code"]] || "").trim();
     const name = (t[idx["product_name"]] || "").trim().slice(0, 200);
