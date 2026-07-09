@@ -774,6 +774,10 @@ Below is the verified audit based on line-by-line inspection of the 14 main page
 - **Medications (`web/app/medications/page.tsx`)**:
   - Loading: L81 correctly handles initial load with "Loading…".
   - Empty: L83 explicitly states "No medications added. Add one and get a reminder..." when `meds.length === 0`.
+- **Cycle (`web/app/cycle/page.tsx`)**:
+  - Loading: L92 shows "Loading…" while fetching period history.
+  - Empty: L94 says "No periods logged yet." when history is empty.
+  - Empty (Prediction): L55 avoids rendering the prediction card until `predicted_start` exists.
 
 7. **Error states.** Anything that can fail (a network call, a validation
    check) needs a visible, clear message — not a silent no-op.

@@ -48,7 +48,7 @@ function Cycle({ userId }: { userId: string }) {
   return (
     <main className="px-4 pt-6">
       <div className="flex items-center gap-3 mb-4">
-        <button onClick={() => router.back()} className="w-11 h-11 rounded-full border border-neutral-200 dark:border-neutral-800 text-lg">←</button>
+        <button onClick={() => router.back()} aria-label="Back" className="w-11 h-11 rounded-full border border-neutral-200 dark:border-neutral-800 text-lg flex items-center justify-center">←</button>
         <h1 className="text-2xl font-bold">🌸 Cycle Tracking</h1>
       </div>
 
@@ -82,7 +82,7 @@ function Cycle({ userId }: { userId: string }) {
         <input placeholder="Symptoms (optional)" value={symptoms} onChange={(e) => setSymptoms(e.target.value)}
           className="w-full rounded-xl border border-neutral-300 dark:border-neutral-700 bg-transparent px-4 py-3 text-base mb-3" />
         <button onClick={logPeriod} disabled={saving}
-          className="w-full rounded-xl bg-pink-600 text-white py-3 font-semibold disabled:opacity-50">
+          className="w-full rounded-xl bg-pink-600 text-white py-3 font-semibold disabled:opacity-50 active:scale-[0.98]">
           {saving ? "Saving…" : "Log period start"}
         </button>
       </section>
@@ -100,7 +100,7 @@ function Cycle({ userId }: { userId: string }) {
                 <p className="text-sm font-medium">{new Date(l.period_start + "T12:00:00").toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</p>
                 <p className="text-xs text-neutral-500 capitalize">{l.flow ?? "—"}{l.symptoms && ` · ${l.symptoms}`}</p>
               </div>
-              <button onClick={() => remove(l.id)} className="w-9 h-9 text-neutral-400">✕</button>
+              <button onClick={() => remove(l.id)} aria-label="Delete log" className="w-11 h-11 flex items-center justify-center text-neutral-400 shrink-0">✕</button>
             </li>
           ))}
         </ul>
