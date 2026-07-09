@@ -17,11 +17,14 @@ workouts, and cheer each other on. Food data comes from three seeded sources plu
   serving sizes.
 - **Open Food Facts India** ('off' source, ODbL) — packaged/branded groceries with a
   `brand` column. Only 172 products in, parked — see "Known gap" below.
-- **USDA Branded Foods** ('usda' source, `indb_code` prefix `USDABR-`) — 12,467
-  global-brand packaged products (Coca-Cola, Red Bull, Starbucks, Cadbury, protein
-  brands), trimmed from an original 80,820 to India/UAE-relevant brands, with
-  pack-size duplicates and unlabeled ambiguous-variant rows removed. Offline
-  bulk CSV, not a live API — see Round 7/8 below.
+- **USDA Branded Foods — removed entirely (2026-07-09).** Was seeded at
+  80,820, trimmed/deduped/de-ambiguated down to 12,467 (Round 8), then deleted
+  outright — US-only packaging conventions (serving labels like "0.125 PACKET
+  (MAKES 8 FL OZ PREPARED)", "1 K-CUP pod") never actually fit an India/UAE
+  family, on top of the duplicate/ambiguity issues already fought through. One
+  row survives (`COLA` / `COCA-COLA`) only because a user already logged it —
+  `food_logs` is `ON DELETE RESTRICT`. See Round 8 below for the full story
+  and why this was a dead end, not just a cleanup.
 - **Gemini AI fallback** for anything not found — estimates get an "AI" badge and an
   admin moderation queue.
 - Search ranks by text similarity across name/local-name/brand, with substring matching
@@ -501,7 +504,24 @@ OFF retest.** Three cleanup passes on the branded-foods data:
    pick a survivor per group — a survivor would still just be a guess. AI
    fallback (reads the user's actual search text, e.g. "coffee mate french
    vanilla creamer") is the replacement for these, same mitigation as the
-   India-brand gap. **Net across Round 8: 80,820 → 12,467 USDA branded rows.**
+   India-brand gap.
+6. **USDA Branded Foods removed entirely (2026-07-09).** After trim + dedupe +
+   remove-ambiguous got it down to 12,467, the remaining problem was structural,
+   not cleanable: `food_servings` labels for this source are US packaging
+   conventions top to bottom — fluid ounces, K-Cup pods, US can/bottle sizes —
+   that don't map to anything an India/UAE family actually buys. Rather than
+   keep fighting individual data-quality issues on a dataset that was never
+   going to fit the target market, `scripts/delete-usda-branded.mjs` deleted
+   the lot (12,466 of 12,467 — one row survives because a user had already
+   logged it; `food_logs.food_id` is `ON DELETE RESTRICT`, and `food_servings`
+   cascades automatically on food delete so no orphans). USDA SR Legacy (plain
+   `USDA-` prefix, 7,793 rows — generic foods like rice/chicken/apple) is a
+   separate dataset from a separate seed script and was **not** touched; no
+   reported issues with it. **USDA Branded Foods is no longer part of the
+   food database.** The packaged/branded-food gap it was meant to fill goes
+   back to being covered by OFF (parked, 172 India products) and the AI
+   fallback (permanently self-saving, reads the user's actual search text —
+   the practical solution for Indian-specific brands regardless).
 
 **Round 6.5 (2026-07-09): flexible units + diet-aware targets.**
 `QuantitySheet` now defaults liquids to ml (via `food.is_liquid`) instead of

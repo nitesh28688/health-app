@@ -31,27 +31,22 @@ this network).
    by USDA Branded Foods for the global-brand gap OFF was mainly filling.
    `seed-off.mjs` now takes a country arg for when this gets picked back up:
    `node scripts/seed-off.mjs <pages> <startPage> <pageSize> <india|uae>`.
-2. **USDA Branded Foods — 12,467 products live** (trimmed/deduped/de-ambiguated
-   2026-07-08 to 2026-07-09, down from an original 80,820 seeded 2026-07-09).
-   `scripts/trim-usda-branded.mjs` cut US-only SKUs to an India/UAE brand
-   allowlist (removed 41,875 rows), `scripts/dedupe-branded.mjs` collapsed
-   pack-size duplicates — USDA gives every UPC its own row, so one product could
-   have 100+ near-identical rows (removed 22,701 more) — then
-   `scripts/remove-ambiguous-branded.mjs` removed rows where brand+name is
-   identical across multiple entries but the macros differ and there's no
-   flavor/variant text to tell them apart (32 rows all named "Coffee Creamer"
-   under Nestle, 67-600 kcal/100g, zero way to know which is right — removed
-   3,777 more). All three dry-run by default, `--apply` to execute, skip
-   anything already in a user's `food_logs`. `is_liquid` is name+brand
-   keyword-based — two correction rounds so far: `scripts/fix-branded-liquid.mjs` (Round 7,
-   USDA's category field was unreliable) and `scripts/fix-liquid-round2.mjs`
-   (Round 8, brand-only product names like "Sprite"/"Thums Up"/"Bisleri" had no
-   generic keyword to match on, corrected 1,412 rows). Real gap remaining:
-   Indian-specific brands (Amul, Britannia, Parle, Haldiram's) aren't in USDA's
-   US-market label data — AI fallback (permanently self-saving each lookup) is
-   the practical mitigation. Re-run script: `scripts/seed-usda-branded.mjs`
-   (needs `data/usda_branded/` CSVs re-downloaded — deleted after seeding to
-   save 2.9GB disk space).
+2. **USDA Branded Foods — removed entirely (2026-07-09).** Seeded at 80,820
+   (2026-07-09), trimmed to an India/UAE brand allowlist (-41,875), deduped for
+   pack-size duplicates (-22,701), and had ambiguous same-name-different-product
+   rows removed (-3,777, e.g. 32 rows all named "Coffee Creamer" spanning
+   67-600 kcal/100g with no way to tell which was right) — landing at 12,467.
+   Then deleted outright: the remaining problem was structural, not cleanable —
+   `food_servings` labels for this source are pure US packaging convention
+   ("0.125 PACKET (MAKES 8 FL OZ PREPARED)", "1 K-CUP pod") that never fit an
+   India/UAE family regardless of brand filtering. `scripts/delete-usda-branded.mjs`
+   removed 12,466 of 12,467 (one row survives — already logged by a user,
+   `food_logs.food_id` is `ON DELETE RESTRICT`). **USDA SR Legacy is a
+   separate, untouched dataset** (plain `USDA-` prefix, 7,793 generic foods
+   like rice/chicken/apple, no reported issues) — don't confuse the two.
+   OFF (parked, 172 India products) and the AI fallback (permanently
+   self-saving, reads the user's actual search text) are what's left covering
+   packaged/branded foods now.
 2. **Challenges UI, badges UI, AI daily suggestions, offline write queue, Hindi
    `name_local` search data** — schema/RPCs already exist for the first three, just
    need screens. See STRUCTURE.md § "Not yet built" for specifics.
