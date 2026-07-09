@@ -8,7 +8,7 @@ Short pointer document. For the deep "why is it built this way" reference, read
 **The app is live and in real use.** Family members have signed up
 (health.linearventures.in). Feature set is complete for daily use: auth (email +
 WhatsApp OTP), food diary with Indian/western/branded search + AI fallback (text and
-photo), recipes, water, weight/BMI/waist/body-fat trends, workout plans + freeform
+photo), recipes, water, weight/BMI/waist/body-fat trends, workout plans + structured/freeform
 logging + AI coaching, friends/leaderboard/cheers, medications, menstrual cycle
 tracking, avatar + progress photos, Web Push reminders, admin panel.
 

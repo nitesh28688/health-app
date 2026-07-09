@@ -682,6 +682,12 @@ prediction from cycle history.
   `beforeinstallprompt` early-capture fix (real race condition), and the bottom-sheet
   z-index consistency fix are all correct and valuable. No other issues found beyond
   the three above.
+  
+**Round 7 additions (Phase 4):** Workout logging overhaul. Added structured, per-set workout logging.
+- `0020_workout_sets.sql` migration creates `workout_log_exercises` and `workout_log_sets` mapped to parent `workout_logs`, and adds `owner_id` to `exercises` for user-custom exercises.
+- `web/app/api/ai/suggest-exercises/route.ts` adds Gemini-powered exercise suggestions by muscle group.
+- `web/app/workout/page.tsx` overhauled to introduce a new "Log structured" flow with a muscle picker, an AI suggestion fetcher, custom exercise addition, and granular sets/reps/weight logging UI, sitting alongside the existing seeded plans and freeform text fallback.
+
 
 **Not yet built** (schema/RPCs already exist, just needs UI):
 - Challenges UI (create/join/scoreboard) — `challenges` table + `get_challenge_progress()` ready.

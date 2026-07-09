@@ -153,7 +153,7 @@ suggestions + custom-add) → log each set individually (own reps/weight per set
 e.g. set 1 = 20 reps, set 2 = 10 reps) → calories computed from what was actually
 logged, not a single averaged/hardcoded figure.
 
-**Status:** ☐ Not started
+**Status:** [x] Done
 
 **Context (already fully diagnosed):**
 - Today's flow (`web/app/workout/page.tsx`, ~264 lines): pick a seeded plan → tap
