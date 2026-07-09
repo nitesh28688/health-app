@@ -6,3 +6,4 @@ node_modules/
 # One-time bulk seed data — too large for git (branded CSVs exceed GitHub's
 # 100MB/file limit), and disposable once seed-usda-branded.mjs has run.
 data/usda_branded/
+data/off_dump/

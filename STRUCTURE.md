@@ -15,8 +15,11 @@ workouts, and cheer each other on. Food data comes from three seeded sources plu
 - **USDA SR Legacy** (7,793 foods, public domain) — western/generic foods AND US
   fast-food chains (KFC Popcorn Chicken, McDonald's fries, etc.), with 13k+ household
   serving sizes.
-- **Open Food Facts India** ('off' source, ODbL) — packaged/branded groceries with a
-  `brand` column. Only 172 products in, parked — see "Known gap" below.
+- **Open Food Facts India + UAE** ('off' source, ODbL) — 2,671 packaged/branded
+  groceries with a `brand` column, seeded from OFF's **bulk CSV export** (2026-07-09,
+  `scripts/seed-off-bulk.mjs`) — the API throttle that had this stuck at 172 products
+  never applies to the bulk dump. Includes the Indian brands USDA never had: Amul (72),
+  Britannia (45), Haldiram's (40), Maggi (37), Parle (33) — metric units throughout.
 - **USDA Branded Foods — removed entirely (2026-07-09).** Was seeded at
   80,820, trimmed/deduped/de-ambiguated down to 12,467 (Round 8), then deleted
   outright — US-only packaging conventions (serving labels like "0.125 PACKET
@@ -518,10 +521,30 @@ OFF retest.** Three cleanup passes on the branded-foods data:
    `USDA-` prefix, 7,793 rows — generic foods like rice/chicken/apple) is a
    separate dataset from a separate seed script and was **not** touched; no
    reported issues with it. **USDA Branded Foods is no longer part of the
-   food database.** The packaged/branded-food gap it was meant to fill goes
-   back to being covered by OFF (parked, 172 India products) and the AI
-   fallback (permanently self-saving, reads the user's actual search text —
-   the practical solution for Indian-specific brands regardless).
+   food database.**
+7. **OFF bulk-dump seed (2026-07-09): 172 → 2,671 products, the API throttle
+   sidestepped for good.** `scripts/seed-off-bulk.mjs` seeds from OFF's full
+   CSV export (https://static.openfoodfacts.org/data/en.openfoodfacts.org.products.csv.gz,
+   ~1.27GB gz — download into `data/off_dump/`, gitignored, delete after
+   seeding). Stream-decompresses with zlib so the ~10GB unzipped CSV never
+   touches disk; the dump is TAB-separated with no quoting, so parsing is a
+   plain split (none of the quoted-field state machine the USDA CSVs needed).
+   Filters to products tagged `en:india` or `en:united-arab-emirates` with
+   complete macros (4.5M rows scanned → 2,584 kept), upserts on the same
+   `OFF-<barcode>` key as the API seeder so re-running either never duplicates.
+   **This finally delivers the Indian brands** (Amul, Britannia, Parle,
+   Haldiram's, Maggi) that USDA's US-market data never had — and killed the
+   main rationale for retrying the throttled API. Refresh path when wanted:
+   re-download the dump (OFF regenerates it nightly) and re-run.
+   The seed also surfaced `is_liquid` false-positive round 3: "milk" as a
+   substring flagged solid dairy ("Amul Pure Milk Cheese Slices", "Milk
+   Bread"), and the drink brand "Slice" in the brand fallback matched "Cheese
+   Slices". The heuristic is now three-tier — strong liquid phrases
+   ("buttermilk", "milkshake") win outright, then solid-food vetoes (cheese/
+   bread/biscuit/ghee/butter/…), then generic keywords + the brand fallback —
+   kept in sync across `seed-off.mjs`, `seed-off-bulk.mjs`, and
+   `scripts/fix-liquid-round3.mjs` (the idempotent recompute-and-correct pass
+   that fixed 57 existing rows; safe to re-run any time).
 
 **Round 6.5 (2026-07-09): flexible units + diet-aware targets.**
 `QuantitySheet` now defaults liquids to ml (via `food.is_liquid`) instead of

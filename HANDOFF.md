@@ -23,14 +23,16 @@ this network).
 
 ## Immediate open items
 
-1. **Open Food Facts — parked, not pursuing further for now.** Stuck at 172
-   products; repeated retries across multiple days all hit the same throttle
-   within 1-9 requests (not a short cooldown like OFF's docs suggest — retested
-   2026-07-08, got a bit further before failing, but the extra pages that did
-   succeed returned products already in the DB, so no real progress). Superseded
-   by USDA Branded Foods for the global-brand gap OFF was mainly filling.
-   `seed-off.mjs` now takes a country arg for when this gets picked back up:
-   `node scripts/seed-off.mjs <pages> <startPage> <pageSize> <india|uae>`.
+1. **Open Food Facts — SOLVED via bulk dump (2026-07-09): 2,671 products live.**
+   The API throttle that had this stuck at 172 products never applies to OFF's
+   full CSV export. `scripts/seed-off-bulk.mjs` downloads-once-and-streams the
+   ~1.27GB dump (into `data/off_dump/`, gitignored, deleted after seeding),
+   filters to India/UAE-tagged products with complete macros, and upserts on
+   the same `OFF-<barcode>` key as the old API seeder. Delivers the Indian
+   brands USDA never had: Amul (72), Britannia (45), Haldiram's (40), Maggi
+   (37), Parle (33). To refresh later: re-download the dump (OFF regenerates
+   it nightly) and re-run. The old API seeder (`seed-off.mjs`) still exists
+   but there's no longer a reason to fight its throttle.
 2. **USDA Branded Foods — removed entirely (2026-07-09).** Seeded at 80,820
    (2026-07-09), trimmed to an India/UAE brand allowlist (-41,875), deduped for
    pack-size duplicates (-22,701), and had ambiguous same-name-different-product
