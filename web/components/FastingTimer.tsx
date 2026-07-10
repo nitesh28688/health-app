@@ -13,23 +13,22 @@ type FastingSession = {
 
 export function FastingTimer({ userId }: { userId: string }) {
   const [active, setActive] = useState<FastingSession | null>(null);
-  const [history, setHistory] = useState<FastingSession[]>([]);
   const [now, setNow] = useState(Date.now());
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function load() {
+      // Only the in-progress session matters here — history moved to Trends
+      // so this card doesn't grow with every fast ever logged.
       const { data } = await supabase
         .from("fasting_sessions")
         .select("*")
         .eq("user_id", userId)
+        .is("ended_at", null)
         .order("started_at", { ascending: false })
-        .limit(10);
-      
-      const rows = (data as FastingSession[]) || [];
-      const current = rows.find((r) => r.ended_at === null) || null;
-      setActive(current);
-      setHistory(rows.filter((r) => r.ended_at !== null).slice(0, 5));
+        .limit(1)
+        .maybeSingle();
+      setActive((data as FastingSession | null) || null);
       setLoading(false);
     }
     load();
@@ -58,7 +57,6 @@ export function FastingTimer({ userId }: { userId: string }) {
     if (!active) return;
     const ended = new Date().toISOString();
     await offlineWrite({ table: "fasting_sessions", op: "update", payload: { ended_at: ended }, match: { id: active.id } });
-    setHistory([{ ...active, ended_at: ended }, ...history].slice(0, 5));
     setActive(null);
   }
 
@@ -96,23 +94,10 @@ export function FastingTimer({ userId }: { userId: string }) {
         </div>
       )}
 
-      {history.length > 0 && (
-        <div>
-          <h3 className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-2">Recent Fasts</h3>
-          <div className="space-y-2">
-            {history.map((h) => {
-              const ms = new Date(h.ended_at!).getTime() - new Date(h.started_at).getTime();
-              const hHrs = Math.floor(ms / 3600000);
-              const hMins = Math.floor((ms % 3600000) / 60000);
-              return (
-                <div key={h.id} className="flex justify-between items-center text-sm">
-                  <span className="text-neutral-600 dark:text-neutral-400">{new Date(h.started_at).toLocaleDateString()}</span>
-                  <span className="font-mono font-medium">{hHrs}h {hMins}m</span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
+      {!active && (
+        <p className="text-xs text-neutral-400">
+          Past fasts are in Trends.
+        </p>
       )}
     </div>
   );

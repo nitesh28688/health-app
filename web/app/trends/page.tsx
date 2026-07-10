@@ -8,11 +8,12 @@ import { offlineWrite } from "@/lib/offlineWrite";
 import { awardBadge } from "@/lib/badges";
 import type { Profile } from "@/lib/useUser";
 import { PageSkeleton } from "@/lib/Skeleton";
-import { Dumbbell, Droplet, Flame, BookOpen, Target, Check, PartyPopper } from "lucide-react";
+import { Dumbbell, Droplet, Flame, BookOpen, Target, Check, PartyPopper, Clock, Trash2 } from "lucide-react";
 
 interface BmiRow { log_date: string; weight_kg: number | null; body_fat_pct: number | null; waist_cm: number | null; bmi: number | null; }
 interface DayTotal { log_date: string; kcal: number; protein_g: number; carbs_g: number; fat_g: number; water_ml: number; kcal_burned: number; }
 interface Streak { kind: string; current_streak: number; best_streak: number; }
+interface FastingSession { id: string; started_at: string; ended_at: string | null; target_hours: number | null; }
 
 function daysAgo(n: number) {
   const d = new Date(); d.setDate(d.getDate() - n); return todayLocal(d);
@@ -104,11 +105,35 @@ function Trends({ profile, userId }: { profile: Profile | null; userId: string }
   const [loaded, setLoaded] = useState(false);
 
   const [allTotals, setAllTotals] = useState<DayTotal[]>([]);
+  const [fasts, setFasts] = useState<FastingSession[]>([]);
+  const [deletingFastId, setDeletingFastId] = useState<string | null>(null);
+
+  const loadFasts = useCallback(async () => {
+    const { data } = await supabase
+      .from("fasting_sessions")
+      .select("*")
+      .eq("user_id", userId)
+      .not("ended_at", "is", null)
+      .order("started_at", { ascending: false })
+      .limit(30);
+    setFasts((data as FastingSession[]) ?? []);
+  }, [userId]);
+
+  async function deleteFast(id: string) {
+    if (!confirm("Delete this fasting session? This can't be undone.")) return;
+    setDeletingFastId(id);
+    const { error } = await supabase.from("fasting_sessions").delete().eq("id", id);
+    setDeletingFastId(null);
+    if (error) { alert(error.message); return; }
+    setFasts((f) => f.filter((x) => x.id !== id));
+  }
+
   const load = useCallback(async () => {
     const [bmiRes, totalsRes, streakRes] = await Promise.all([
       supabase.rpc("get_bmi_series", { p_from: daysAgo(90), p_to: todayLocal() }),
       supabase.rpc("get_daily_totals", { p_from: daysAgo(89), p_to: todayLocal() }),
       supabase.rpc("get_streaks"),
+      loadFasts(),
     ]);
     setBmiRows((bmiRes.data as BmiRow[]) ?? []);
     setAllTotals((totalsRes.data as DayTotal[]) ?? []);
@@ -122,7 +147,7 @@ function Trends({ profile, userId }: { profile: Profile | null; userId: string }
       if (s.current_streak >= 7) awardBadge(userId, "streak_7");
       if (s.current_streak >= 30) awardBadge(userId, "streak_30");
     }
-  }, [userId]);
+  }, [userId, loadFasts]);
   useEffect(() => { load(); }, [load]);
 
   async function logWeight() {
@@ -277,6 +302,34 @@ function Trends({ profile, userId }: { profile: Profile | null; userId: string }
           <span className="flex items-center gap-1"><Droplet className="w-4 h-4 text-sky-500" /> avg {Math.round(week.reduce((s, d) => s + Number(d.water_ml), 0) / (week.length || 1))} ml</span>
           <span className="flex items-center gap-1"><Flame className="w-4 h-4 text-orange-500" /> total {Math.round(week.reduce((s, d) => s + Number(d.kcal_burned), 0))} kcal</span>
         </div>
+      </section>
+
+      {/* fasting history — moved off Diary so it doesn't grow that page unbounded */}
+      <section className="mt-6 rounded-2xl border border-neutral-200/60 dark:border-neutral-800/60 bg-white/50 dark:bg-neutral-900/50 backdrop-blur-md shadow-sm p-4">
+        <h2 className="font-bold mb-3 flex items-center gap-2"><Clock className="w-5 h-5 text-indigo-500" /> Fasting history</h2>
+        {fasts.length === 0 ? (
+          <p className="text-sm text-neutral-400">No completed fasts yet.</p>
+        ) : (
+          <ul className="flex flex-col gap-1.5 max-h-64 overflow-y-auto">
+            {fasts.map((h) => {
+              const ms = new Date(h.ended_at!).getTime() - new Date(h.started_at).getTime();
+              const hHrs = Math.floor(ms / 3600000);
+              const hMins = Math.floor((ms % 3600000) / 60000);
+              return (
+                <li key={h.id} className="flex items-center justify-between text-sm py-1.5 border-b border-neutral-50 dark:border-neutral-900/50 last:border-0">
+                  <span className="text-neutral-600 dark:text-neutral-400">{new Date(h.started_at).toLocaleDateString()}</span>
+                  <div className="flex items-center gap-3">
+                    <span className="font-mono font-medium">{hHrs}h {hMins}m</span>
+                    <button onClick={() => deleteFast(h.id)} disabled={deletingFastId === h.id}
+                      aria-label="Delete fast" className="text-neutral-400 hover:text-red-500 disabled:opacity-40">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
       </section>
     </main>
   );

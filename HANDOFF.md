@@ -5,7 +5,11 @@ Short pointer document. For the deep "why is it built this way" reference, read
 
 **App renamed to Core AI (2026-07-10)**, rebranded with an indigo/violet palette and
 lucide-react icons throughout — see UPGRADE.md Phases 16-17 and the "Verification
-pass" entry below for what Antigravity built and what Fable found/fixed on review.
+pass" entry below for what Antigravity built and what Fable built/fixed on review.
+
+**Fasting history moved off Diary (2026-07-10, Phase 23)** — Diary's Fasting card now
+only shows the live timer, not a growing list of past fasts. History (with delete) lives
+in Trends now. See UPGRADE.md Phase 23.
 
 **Email confirmation disabled (2026-07-10)**, in the Supabase dashboard (Authentication →
 Sign In / Providers → Email → "Confirm email" toggled off) — not a code change, many

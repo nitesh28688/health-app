@@ -737,7 +737,8 @@ prediction from cycle history.
 - `0021_search_name_local.sql` adds `name_local` check in `search_foods()` RPC. INDB dataset populated with Hindi/regional translations via Gemini AI.
 - `web/app/api/ai/daily-tip/route.ts` provides a proactive, context-aware AI tip based on the user's logged food/water today. Shown as a dismissible card on the Diary page instead of inside the push payload to avoid Vercel's 10s Hobby cron limit.
 - `0022_fasting.sql` adds a `fasting_sessions` table.
-- `web/components/FastingTimer.tsx` provides a live-updating fasting countdown and history view, rendered directly at the top of the Diary page for easy access.
+- `web/components/FastingTimer.tsx` provides a live-updating fasting countdown, rendered directly at the top of the Diary page for easy access. (2026-07-10, Phase 23: history list moved out of this component into Trends — see below — so Diary stays short as fasts accumulate. Component now only fetches/shows the single in-progress session.)
+- Fasting history + delete (2026-07-10, Phase 23): `web/app/trends/page.tsx` renders the last 30 completed `fasting_sessions` rows with a per-row delete button. Deletion goes through a direct `supabase.from("fasting_sessions").delete()` call rather than `offlineWrite()` (delete isn't in offlineWrite's insert/update/upsert op set, and this is an online user-initiated destructive action, not a background write needing offline queueing). RLS already permitted this — `0022_fasting.sql`'s policy is `for all using (user_id = auth.uid())`, which covers delete without any migration change.
 - `web/app/api/cron/weekly-digest/route.ts` added to calculate and send a Sunday weekly digest email via Brevo, gated behind a check for `BREVO_API_KEY`.
 - `scripts/seed-yoga.js` populated the `exercises` table with 12 standard yoga poses.
 - `web/app/workout/page.tsx` updated to include "yoga" in the category picker and handle yoga exercise logging gracefully.

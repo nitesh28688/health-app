@@ -1264,3 +1264,32 @@ variety, not the same generic message. Separately verified the cache-invalidatio
 logic in isolation across 4 scenarios (no change → reuse; new food logged → regenerate; new
 workout logged → regenerate; no cache yet → always regenerate) — all correct.
 `npx tsc --noEmit` clean.
+
+## Phase 23 (Fable, 2026-07-10) — Fasting: move history off Diary + let users delete entries
+
+**Bug reported by user (with screenshot)**: the Diary page's Fasting card rendered a "Recent
+Fasts" list inline (`FastingTimer.tsx`), meaning every completed fast permanently added
+weight to the daily view — the one page meant to stay short and focused on *today*. Same
+class of problem the app already solved for workout/weight history (both live on their own
+pages, not Diary). There was also no way to delete a bad/test fasting entry at all.
+
+**Fixed:**
+1. `components/FastingTimer.tsx` — stripped down to just the live timer (start/stop +
+   elapsed-time display) and a fetch limited to the one in-progress session
+   (`.eq("ended_at", null).limit(1)`), instead of pulling and rendering the last 10 sessions
+   on every Diary load. A small "Past fasts are in Trends" hint replaces the inline list.
+2. `app/trends/page.tsx` — added a new "Fasting history" section (last 30 completed fasts,
+   scrollable list, same visual pattern as the existing weight check-in history) with a
+   per-row delete button (trash icon, confirm-before-delete, matches the existing AI-food
+   delete pattern in `app/admin/page.tsx`).
+3. Delete uses a direct `supabase.from("fasting_sessions").delete()` call, not
+   `offlineWrite()` — deletion isn't in `offlineWrite`'s op set (insert/update/upsert only)
+   and this is a user-initiated destructive action taken online, not a background data write
+   that needs offline queueing.
+4. No RLS/migration change needed — confirmed `0022_fasting.sql`'s existing policy
+   (`for all using (user_id = auth.uid())`) already covers delete for the owning user.
+
+**Verified**: `npx tsc --noEmit` clean. This app is auth-gated with no live click-testing
+available in this environment (per the standing note at the top of this file) — the elapsed-
+time math, RLS policy, and delete-op choice were all confirmed by reading the actual code/
+schema rather than assumed.
