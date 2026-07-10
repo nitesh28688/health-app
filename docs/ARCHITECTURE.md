@@ -1,4 +1,4 @@
-# Health App — Macro Tracking PWA: Architecture Blueprint
+# Core AI — Macro Tracking PWA: Architecture Blueprint
 
 **Status:** APPROVED 2026-07-07 (v2 scope: + micronutrients, body metrics/BMI, water, workouts, Gemini AI). Migrations written — see `supabase/migrations/0001–0006`, which are the source of truth; this doc explains the reasoning.
 **Author:** Fable (Lead Architect) · 2026-07-07

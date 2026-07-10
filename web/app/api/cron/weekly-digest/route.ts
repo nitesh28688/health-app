@@ -87,7 +87,7 @@ export async function GET(req: NextRequest) {
             "accept": "application/json"
           },
           body: JSON.stringify({
-            sender: { name: "Health App", email: "health@notify.linearventures.in" },
+            sender: { name: "Core AI", email: "health@notify.linearventures.in" },
             to: [{ email: user.email }],
             subject: "Your Weekly Health Digest",
             htmlContent: emailHtml

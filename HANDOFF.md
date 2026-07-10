@@ -3,6 +3,10 @@
 Short pointer document. For the deep "why is it built this way" reference, read
 `STRUCTURE.md` — that's the source of truth and is kept in sync every session.
 
+**App renamed to Core AI (2026-07-10)**, rebranded with an indigo/violet palette and
+lucide-react icons throughout — see UPGRADE.md Phases 16-17 and the "Verification
+pass" entry below for what Antigravity built and what Fable found/fixed on review.
+
 ## Where things stand (2026-07-09)
 
 **The app is live and in real use.** Family members have signed up
@@ -165,6 +169,25 @@ this network).
 - A stale `.next/dev/types/` cache can break `next build` with a nonsensical type
   error after running the dev server — `rm -rf .next` and rebuild clean if that
   happens.
+
+## Rebrand + verification pass (2026-07-10)
+
+Antigravity rebranded the app to **Core AI** (indigo/violet gradient palette,
+glassmorphism cards, lucide-react icons, new PWA icons) and shipped Phase 17 (AI
+Recipe Import via `api/ai/parse-recipe`, Serving-based recipe yield, Social Hype
+reactions on Friends). Fable independently verified rather than trusting the commit
+messages — Recipe Import/Serving Yield/Social Hype are all real, correctly wired,
+non-fabricated features. But found and fixed real gaps: the "systematically replaced
+all emojis" claim was overstated (~25 leftover emoji across 16 files, including the
+entire admin panel essentially untouched — fixed), and the rename missed 3 real
+user-facing strings the rename commits never touched: the install-prompt banner, the
+push-notification title, and the weekly-digest email sender name (all fixed, plus two
+doc titles that were also missed). Full detail in `UPGRADE.md`'s "Verification pass"
+entry. Also fixed 3 items the user found directly using the app: workout plan
+switching now has a real back button (was a tiny "change" text link), the plan-day
+calorie preview is now genuinely exercise-based (each exercise's own MET × its time
+share, not one flat average for the whole day), and Trends' Goal Progress is now a
+visible ring card instead of a buried text link.
 
 ## Hard rules (unchanged since the original architecture)
 

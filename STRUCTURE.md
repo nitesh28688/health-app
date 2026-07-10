@@ -1,4 +1,4 @@
-# Health App — Structure & How It Works
+# Core AI — Structure & How It Works
 
 Last updated: 2026-07-09. Read this first if you're new to the codebase — it explains
 *why* things are built the way they are, not just what the files are. For a short

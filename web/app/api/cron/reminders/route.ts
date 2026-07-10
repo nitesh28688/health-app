@@ -64,7 +64,7 @@ export async function GET(req: NextRequest) {
       try {
         await webPush.sendNotification(
           { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
-          JSON.stringify({ title: "Health App", body, url: "/" })
+          JSON.stringify({ title: "Core AI", body, url: "/" })
         );
         sent++;
       } catch (err: unknown) {

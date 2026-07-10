@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { ZoomIn } from "lucide-react";
 
 // Two real photos per exercise (start/end position, from the public-domain
 // free-exercise-db seed — see scripts/seed-exercise-images.mjs), not a true
@@ -39,7 +40,7 @@ export function ExerciseDemo({ urls, size = 56 }: { urls: string[] | null | unde
           />
         ))}
         <div className="absolute inset-0 bg-black/0 hover:bg-black/10 transition-colors flex items-center justify-center">
-          <span className="opacity-0 hover:opacity-100 text-white text-xs drop-shadow-md">🔍</span>
+          <ZoomIn className="w-4 h-4 opacity-0 hover:opacity-100 text-white drop-shadow-md" />
         </div>
       </button>
 

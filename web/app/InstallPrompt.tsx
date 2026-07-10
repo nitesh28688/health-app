@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { Smartphone } from "lucide-react";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -67,7 +68,7 @@ export function InstallPrompt() {
   return (
     <div className="fixed bottom-20 inset-x-3 z-40 max-w-md mx-auto rounded-2xl bg-neutral-900 dark:bg-neutral-100 text-white dark:text-neutral-900 p-4 shadow-lg page-enter">
       <div className="flex items-start gap-3">
-        <span className="text-2xl">📲</span>
+        <Smartphone className="w-6 h-6 shrink-0" />
         <div className="flex-1 min-w-0">
           {iosMode ? (
             <>
@@ -79,7 +80,7 @@ export function InstallPrompt() {
           ) : (
             <>
               <p className="font-semibold text-sm">Get the app</p>
-              <p className="text-xs opacity-80 mt-0.5">Install Health App on your phone for quick access.</p>
+              <p className="text-xs opacity-80 mt-0.5">Install Core AI on your phone for quick access.</p>
             </>
           )}
         </div>

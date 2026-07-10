@@ -902,3 +902,47 @@ Done (all verified):
 2. **Serving-based Yield**: Added a "Servings" input option in the Recipe Builder alongside "Cooked Weight (g)". If servings are provided, it automatically adds a row to `food_servings` so the recipe can be logged in "servings" instead of raw grams in the diary.
 3. **Pre-canned Hype Messages**: Revamped the 'Cheer' button on the Friends feed. Instead of just a single cheer, users can click to reveal a popover with pre-canned hype options (🔥, 💪, or 'Beast mode!'). These are stored in the existing `emoji` text column of the `cheers` table to avoid any database schema or storage bloat.
 4. **Feed Cheers Display**: Upgraded the Friends feed to actually fetch and display all cheers directed at the feed items inline, grouped by the sender's display name.
+
+# Verification pass on Phases 16-17 rebrand/features (Fable, 2026-07-10)
+
+Per the established review convention, independently verified Antigravity's 8-commit
+"Core AI" rebrand + Phase 17 features against the live codebase rather than trusting
+commit messages/docs claims.
+
+**Confirmed genuinely real, not fabricated:** AI Recipe Import (`api/ai/parse-recipe`
+is a real route, correctly wired through the existing Vertex `generateWithFallback`,
+client calls it correctly from `recipes/page.tsx`), Serving Yield (real UI wiring onto
+the pre-existing `cooked_yield_g` column and `food_servings` insert path), Social Hype
+(`cheers` table already existed from migration 0007, feature is a real popover +
+feed display). `npx tsc --noEmit` clean throughout.
+
+**Found and fixed real gaps in the rename/icon-overhaul claims:**
+1. Phase 17's item 7 claim ("systematically replaced ALL text-based emojis across the
+   entire app") was overstated — verified live, raw emoji remained in all 11 files the
+   overhaul commit itself listed as touched (admin panel was essentially untouched at
+   8 emoji; `friends/page.tsx` had a self-contradictory case where cheer buttons showed
+   lucide icons but still passed raw emoji strings as data). Fixed ~25 remaining
+   instances across `admin`, `add`, `login`, `page` (diary), `trends`, `friends`,
+   `challenges`, `goals`, `progress`, `signup`, `AppShell`, `InstallPrompt`,
+   `AiRoutineGenerator`, `ExerciseDemo`, `LiveWorkout`, `QuantitySheet` — using
+   lucide-react icons already established in the app's own palette (Crown, Smartphone,
+   CheckCircle2, CalendarDays, Clock, BookOpen, Users, Camera, MailCheck, Hand,
+   PartyPopper, Trophy, Medal, Sparkles, ZoomIn, Salad, Bot). Deliberately left the
+   `✕` close/delete glyph and `sendHype("🔥"/"💪")` DB-stored identifiers alone — the
+   former is a consistent, intentional minimal symbol used 15+ places (not clutter),
+   the latter is internal data representation already rendered as icons on screen.
+2. Two rename commits ("Design sweep and app renaming to Core AI", "Update auth pages
+   to use new name") missed 3 real user-facing surfaces that were never touched by
+   either commit: `InstallPrompt.tsx`'s install-banner text, the push-notification
+   title in `api/cron/reminders/route.ts`, and the weekly-digest email sender name in
+   `api/cron/weekly-digest/route.ts` — all still said "Health App". Fixed. Also fixed
+   `STRUCTURE.md`/`docs/ARCHITECTURE.md` titles, which `287fcb2` claimed to update but
+   didn't touch the `# Health App` header line in either.
+
+Also completed 3 items the user flagged directly from using the app: workout plan
+switching had no visible back button (tiny text link "change" → real pill button
+"← All plans"), the plan-day calorie preview used a flat average MET across all
+exercises regardless of duration entered (now genuinely exercise-based: each
+exercise's own MET × its estimated time share, scaled proportionally to the entered
+minutes, shown per-exercise in the list too), and Trends' Goal Progress was a buried
+text hyperlink (now a full card with a live SVG progress ring, tappable to `/goals`).

@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { supabase } from "@/lib/supabase"; // Note: window.supabase is used in workout/page.tsx, but best to import
+import { Sparkles } from "lucide-react";
 
 export function AiRoutineGenerator({ onGenerated }: { onGenerated: (planId: number) => void }) {
   const [open, setOpen] = useState(false);
@@ -51,7 +52,7 @@ export function AiRoutineGenerator({ onGenerated }: { onGenerated: (planId: numb
     <>
       <button onClick={() => setOpen(true)}
         className="w-full mb-4 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-md shadow-violet-500/20 py-3 font-bold active:scale-[0.98] transition-transform flex items-center justify-center gap-2">
-        <span>✨</span> Generate AI Routine
+        <Sparkles className="w-4 h-4" /> Generate AI Routine
       </button>
 
       {open && (

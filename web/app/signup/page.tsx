@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { PhoneInput } from "@/lib/PhoneInput";
+import { MailCheck } from "lucide-react";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -56,7 +57,7 @@ export default function SignupPage() {
   if (confirmSent) {
     return (
       <main className="flex-1 flex flex-col justify-center items-center px-6 text-center">
-        <p className="text-5xl mb-4">📬</p>
+        <MailCheck className="w-12 h-12 mb-4 text-indigo-500" />
         <h1 className="text-xl font-bold mb-2">Check your email</h1>
         <p className="text-neutral-500">
           We sent a confirmation link to <b>{email}</b>. Tap it, then sign in.

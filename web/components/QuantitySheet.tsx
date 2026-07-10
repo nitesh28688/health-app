@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { Bot } from "lucide-react";
 
 interface Serving {
   id: number;
@@ -227,7 +228,7 @@ export function QuantitySheet({
         {unit !== "grams" && (
           <div className="mt-2 min-h-[1.25rem]">
             {aiBusy ? (
-              <p className="text-xs text-violet-600">🤖 Estimating typical weight…</p>
+              <p className="text-xs text-violet-600 flex items-center gap-1"><Bot className="w-3.5 h-3.5" /> Estimating typical weight…</p>
             ) : needsWeight || showAdjust ? (
               <div className="flex items-center gap-2">
                 <input
@@ -244,8 +245,8 @@ export function QuantitySheet({
                 </span>
                 {needsWeight && !aiError && (
                   <button onClick={estimatePieceWeight}
-                    className="text-xs text-violet-600 font-semibold shrink-0 ml-auto">
-                    🤖 ask AI
+                    className="text-xs text-violet-600 font-semibold shrink-0 ml-auto flex items-center gap-1">
+                    <Bot className="w-3.5 h-3.5" /> ask AI
                   </button>
                 )}
               </div>

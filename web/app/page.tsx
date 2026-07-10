@@ -10,7 +10,7 @@ import { todayLocal, type FoodNutrients, logSnapshot } from "@/lib/nutrition";
 import type { Profile } from "@/lib/useUser";
 import { Skeleton } from "@/lib/Skeleton";
 import { QuantitySheet } from "@/components/QuantitySheet";
-import { Pencil, X, Sunrise, Sun, Moon, Coffee, Droplet, Flame, Sparkles, Bot, Shield } from "lucide-react";
+import { Pencil, X, Sunrise, Sun, Moon, Coffee, Droplet, Flame, Sparkles, Bot, Shield, CalendarDays } from "lucide-react";
 
 const MEALS = [
   { key: "breakfast", label: "Breakfast", icon: <Sunrise className="w-5 h-5 text-amber-500" /> },
@@ -189,8 +189,8 @@ function Diary({ profile, userId }: { profile: Profile | null; userId: string })
       <div className="flex items-center justify-between mb-1">
         <button onClick={() => go(-1)} aria-label="Previous Day"
           className="w-11 h-11 rounded-full flex items-center justify-center text-lg border border-neutral-200 dark:border-neutral-800 active:scale-95 transition-transform">←</button>
-        <label className="relative font-bold text-lg px-3 py-1 rounded-lg active:bg-neutral-100 dark:active:bg-neutral-900">
-          {dateLabel(date)} 📅
+        <label className="relative font-bold text-lg px-3 py-1 rounded-lg active:bg-neutral-100 dark:active:bg-neutral-900 flex items-center gap-1.5">
+          {dateLabel(date)} <CalendarDays className="w-4 h-4 text-neutral-400" />
           <input type="date" value={date} max={todayLocal()}
             onChange={(e) => e.target.value && setDate(e.target.value)}
             className="absolute inset-0 opacity-0 w-full h-full cursor-pointer" />

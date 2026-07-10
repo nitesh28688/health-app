@@ -2,7 +2,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { AppShell } from "../AppShell";
 import { supabase } from "@/lib/supabase";
-import { Shield, Dumbbell, Droplet, Scale } from "lucide-react";
+import { Shield, Dumbbell, Droplet, Scale, Crown, Smartphone, CheckCircle2, CalendarDays, Clock, BookOpen, Users } from "lucide-react";
 
 interface Stats {
   users: number;
@@ -163,13 +163,13 @@ export default function AdminPage() {
                       <button onClick={() => openUser(u.id)}
                         className="w-full text-left rounded-xl border border-neutral-200/60 dark:border-neutral-800/60 bg-white/50 dark:bg-neutral-900/50 backdrop-blur-md shadow-sm p-3 active:bg-neutral-50 dark:active:bg-neutral-900">
                         <p className="font-medium text-sm flex items-center gap-1.5">
-                          {u.display_name ?? "(no name)"} {u.is_admin && <span title="Admin">👑</span>}
+                          {u.display_name ?? "(no name)"} {u.is_admin && <Crown className="w-3.5 h-3.5 text-amber-500" aria-label="Admin" />}
                           {!u.email_confirmed && <span className="text-amber-500 text-xs">unconfirmed</span>}
                         </p>
                         <p className="text-xs text-neutral-500">@{u.username ?? "—"} · {u.email}</p>
-                        <p className="text-xs text-neutral-400 mt-0.5">
+                        <p className="text-xs text-neutral-400 mt-0.5 flex items-center gap-1">
                           Joined {new Date(u.created_at).toLocaleDateString()}
-                          {u.phone && ` · 📱 ${u.phone}`}
+                          {u.phone && <> · <Smartphone className="w-3 h-3 inline" /> {u.phone}</>}
                         </p>
                       </button>
                     </li>
@@ -191,7 +191,7 @@ export default function AdminPage() {
                     {aiFoods.map((f) => (
                       <li key={f.id} className="rounded-xl border border-neutral-200/60 dark:border-neutral-800/60 bg-white/50 dark:bg-neutral-900/50 backdrop-blur-md shadow-sm p-3 flex items-center gap-3">
                         <div className="flex-1 min-w-0">
-                          <p className="font-medium truncate">{f.name} {f.is_verified && "✅"}</p>
+                          <p className="font-medium truncate flex items-center gap-1.5">{f.name} {f.is_verified && <CheckCircle2 className="w-3.5 h-3.5 text-green-600 shrink-0" />}</p>
                           <p className="text-xs text-neutral-500">
                             {f.kcal} kcal/100g · {f.protein_g}g protein · {f.carbs_g}g carbs · {f.fat_g}g fat
                           </p>
@@ -220,18 +220,18 @@ export default function AdminPage() {
                     {!selected.email_confirmed && <span className="text-amber-500"> (unconfirmed)</span>}
                   </p>
                   <div className="grid grid-cols-2 gap-3 text-sm mb-4">
-                    <p>📅 Joined <b>{new Date(selected.created_at).toLocaleDateString()}</b></p>
-                    <p>🕐 Last seen <b>{selected.last_sign_in ? new Date(selected.last_sign_in).toLocaleDateString() : "never"}</b></p>
-                    <p>📖 Food logs <b>{selected.stats.food_logs}</b></p>
+                    <p className="flex items-center gap-1"><CalendarDays className="w-4 h-4 text-neutral-500" /> Joined <b>{new Date(selected.created_at).toLocaleDateString()}</b></p>
+                    <p className="flex items-center gap-1"><Clock className="w-4 h-4 text-neutral-500" /> Last seen <b>{selected.last_sign_in ? new Date(selected.last_sign_in).toLocaleDateString() : "never"}</b></p>
+                    <p className="flex items-center gap-1"><BookOpen className="w-4 h-4 text-neutral-500" /> Food logs <b>{selected.stats.food_logs}</b></p>
                     <p className="flex items-center gap-1"><Dumbbell className="w-4 h-4 text-amber-500" /> Workouts <b>{selected.stats.workout_logs}</b></p>
                     <p className="flex items-center gap-1"><Droplet className="w-4 h-4 text-sky-500" /> Water logs <b>{selected.stats.water_logs}</b></p>
-                    <p>👥 Friends <b>{selected.stats.friend_count}</b></p>
+                    <p className="flex items-center gap-1"><Users className="w-4 h-4 text-neutral-500" /> Friends <b>{selected.stats.friend_count}</b></p>
                   </div>
                   <div className="grid grid-cols-2 gap-2 text-sm">
                     {selected.stats.last_weight && (
                       <p className="col-span-2 flex items-center gap-1"><Scale className="w-4 h-4 text-neutral-500" /> Last weight <b>{selected.stats.last_weight.weight_kg} kg</b> on {selected.stats.last_weight.log_date}</p>
                     )}
-                    {(selected.profile.phone as string) && <p className="col-span-2">📱 {selected.profile.phone as string}</p>}
+                    {(selected.profile.phone as string) && <p className="col-span-2 flex items-center gap-1"><Smartphone className="w-4 h-4 text-neutral-500" /> {selected.profile.phone as string}</p>}
                   </div>
                   <button onClick={() => deleteUser(selected.id, selected.profile.display_name as string)}
                     disabled={busyId !== null}

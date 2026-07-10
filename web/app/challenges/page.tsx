@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase";
 import { Skeleton } from "@/lib/Skeleton";
 import Link from "next/link";
 import { todayLocal } from "@/lib/nutrition";
+import { Trophy, Medal } from "lucide-react";
 
 interface Challenge { id: number; creator_id: string; name: string; kind: string; start_date: string; end_date: string; created_at: string; }
 interface Participant { challenge_id: number; user_id: string; joined_at: string; }
@@ -143,8 +144,12 @@ function Challenges({ userId }: { userId: string }) {
                       <ul className="flex flex-col gap-1.5">
                         {scores.map((r, i) => (
                           <li key={r.user_id} className="flex justify-between items-center text-sm border-b border-neutral-200 dark:border-neutral-800 pb-1.5 last:border-0 last:pb-0">
-                            <span className="font-medium">
-                              {i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `${i + 1}.`} {r.display_name} {r.user_id === userId ? "(you)" : ""}
+                            <span className="font-medium flex items-center gap-1.5">
+                              {i === 0 ? <Trophy className="w-4 h-4 text-amber-500" /> :
+                               i === 1 ? <Medal className="w-4 h-4 text-neutral-400" /> :
+                               i === 2 ? <Medal className="w-4 h-4 text-amber-700" /> :
+                               <span className="text-neutral-500">{i + 1}.</span>}
+                              {r.display_name} {r.user_id === userId ? "(you)" : ""}
                             </span>
                             <span className="font-bold">{r.score}</span>
                           </li>

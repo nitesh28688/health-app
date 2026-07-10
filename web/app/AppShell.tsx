@@ -5,7 +5,7 @@ import { useEffect, useRef } from "react";
 import { useUser, type Profile } from "@/lib/useUser";
 import type { Session } from "@supabase/supabase-js";
 import { AnimatePresence, motion } from "framer-motion";
-import { Book, Dumbbell, TrendingUp, Users, Smile } from "lucide-react";
+import { Book, Dumbbell, TrendingUp, Users, Smile, Salad } from "lucide-react";
 
 const TABS = [
   { href: "/", label: "Diary", icon: Book },
@@ -50,7 +50,7 @@ export function AppShell({ children }: {
   if (loading || !session) {
     return (
       <main className="flex-1 flex items-center justify-center">
-        <p className="text-4xl animate-pulse">🥗</p>
+        <Salad className="w-10 h-10 text-green-600 animate-pulse" />
       </main>
     );
   }

@@ -7,7 +7,7 @@ import { supabase } from "@/lib/supabase";
 import { logSnapshot, todayLocal, type FoodNutrients } from "@/lib/nutrition";
 import { compressImage } from "@/lib/imageCompress";
 import { QuantitySheet } from "@/components/QuantitySheet";
-import { Loader2, ChefHat, Bot, Tag } from "lucide-react";
+import { Loader2, ChefHat, Bot, Tag, Camera } from "lucide-react";
 
 type Food = FoodNutrients & {
   id: number;
@@ -183,7 +183,7 @@ function AddFood({ userId }: { userId: string }) {
               <Loader2 className="w-3.5 h-3.5 animate-spin" />
               {aiElapsed < 8 ? "Analyzing…" : `Still analyzing… (${aiElapsed}s)`}
             </>
-          ) : "📷 Snap a photo"}
+          ) : <span className="flex items-center gap-1.5"><Camera className="w-4 h-4" /> Snap a photo</span>}
         </button>
         <input ref={photoInput} type="file" accept="image/*" capture="environment"
           onChange={onPhotoPicked} className="hidden" />

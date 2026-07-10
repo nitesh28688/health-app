@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { ExerciseDemo } from "./ExerciseDemo";
+import { PartyPopper } from "lucide-react";
 
 export type ActiveEx = {
   id: string;
@@ -210,8 +211,8 @@ export function LiveWorkout({ initialExercises, sessionTitle, onFinish, onCancel
 
       {/* Footer / Action */}
       <div className="p-4 bg-white dark:bg-[#0a0a0a] border-t border-neutral-100 dark:border-neutral-900 pb-[calc(1rem+env(safe-area-inset-bottom))]">
-        <button onClick={completeSet} className="w-full rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-bold text-lg py-5 shadow-xl shadow-indigo-500/30 active:scale-[0.98] transition-transform">
-          {isLastSet && isLastEx ? "Finish Workout 🎉" : "Complete Set"}
+        <button onClick={completeSet} className="w-full rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-bold text-lg py-5 shadow-xl shadow-indigo-500/30 active:scale-[0.98] transition-transform flex items-center justify-center gap-2">
+          {isLastSet && isLastEx ? <>Finish Workout <PartyPopper className="w-5 h-5" /></> : "Complete Set"}
         </button>
       </div>
     </div>

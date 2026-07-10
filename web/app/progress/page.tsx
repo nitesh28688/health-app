@@ -5,6 +5,7 @@ import { AppShell } from "../AppShell";
 import { supabase } from "@/lib/supabase";
 import { compressImage } from "@/lib/imageCompress";
 import { todayLocal } from "@/lib/nutrition";
+import { Camera } from "lucide-react";
 
 interface Photo { id: number; taken_at: string; url: string; note: string | null; }
 
@@ -72,7 +73,7 @@ function Progress({ userId }: { userId: string }) {
     <main className="px-4 pt-6">
       <div className="flex items-center gap-3 mb-4">
         <button onClick={() => router.back()} aria-label="Back" className="w-11 h-11 rounded-full border border-neutral-200 dark:border-neutral-800 text-lg flex items-center justify-center">←</button>
-        <h1 className="text-2xl font-bold flex-1">📸 Progress Photos</h1>
+        <h1 className="text-2xl font-bold flex-1 flex items-center gap-2"><Camera className="w-6 h-6" /> Progress Photos</h1>
         <button onClick={() => fileInput.current?.click()} disabled={busy}
           className="rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md shadow-indigo-500/20 transition-all hover:shadow-lg hover:shadow-indigo-500/30 px-4 py-2.5 font-semibold text-sm disabled:opacity-50 active:scale-[0.98]">
           {busy ? "Uploading…" : "+ Add"}

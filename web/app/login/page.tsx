@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { PhoneInput } from "@/lib/PhoneInput";
-import { Mail, MessageCircle, Check } from "lucide-react";
+import { Mail, MessageCircle, Check, Hand } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -35,7 +35,7 @@ export default function LoginPage() {
     });
     setBusy(false);
     if (error) { setError(error.message); return; }
-    setNotice("Password reset link sent — check your email 📬");
+    setNotice("Password reset link sent — check your email");
   }
 
   async function sendOtp() {
@@ -68,7 +68,7 @@ export default function LoginPage() {
   return (
     <main className="flex-1 flex flex-col justify-center px-6 py-10 max-w-md w-full mx-auto">
       <h1 className="text-3xl font-bold text-indigo-600 mb-1">Core AI</h1>
-      <p className="text-neutral-500 mb-6">Welcome back 👋</p>
+      <p className="text-neutral-500 mb-6 flex items-center gap-1.5">Welcome back <Hand className="w-4 h-4" /></p>
       <div className="flex gap-2 mb-5">
         {[
           { key: "email", label: "Email", icon: <Mail className="w-4 h-4" /> },

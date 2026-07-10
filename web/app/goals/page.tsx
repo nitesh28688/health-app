@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabase";
 import { estimateGoalProgress, todayLocal } from "@/lib/nutrition";
 import { PageSkeleton } from "@/lib/Skeleton";
 import type { Profile } from "@/lib/useUser";
+import { PartyPopper } from "lucide-react";
 
 function Goals({ profile }: { profile: Profile }) {
   const router = useRouter();
@@ -75,7 +76,7 @@ function Goals({ profile }: { profile: Profile }) {
           <div className="rounded-2xl border border-neutral-200/60 dark:border-neutral-800/60 bg-white/50 dark:bg-neutral-900/50 backdrop-blur-md shadow-sm p-5">
             <h2 className="text-lg font-bold mb-4">Projection</h2>
             {progress.reached ? (
-              <p className="text-indigo-600 dark:text-indigo-400 font-bold text-lg">🎉 You've reached your goal!</p>
+              <p className="text-indigo-600 dark:text-indigo-400 font-bold text-lg flex items-center gap-2"><PartyPopper className="w-5 h-5" /> You've reached your goal!</p>
             ) : progress.estimatedDate ? (
               <>
                 <p className="text-sm text-neutral-500 mb-1">Estimated date to reach goal:</p>

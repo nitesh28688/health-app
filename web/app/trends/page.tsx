@@ -7,7 +7,7 @@ import { todayLocal, bmiCategory, estimateGoalProgress } from "@/lib/nutrition";
 import { awardBadge } from "@/lib/badges";
 import type { Profile } from "@/lib/useUser";
 import { PageSkeleton } from "@/lib/Skeleton";
-import { Dumbbell, Droplet, Flame, BookOpen, Target, Check } from "lucide-react";
+import { Dumbbell, Droplet, Flame, BookOpen, Target, Check, PartyPopper } from "lucide-react";
 
 interface BmiRow { log_date: string; weight_kg: number | null; body_fat_pct: number | null; waist_cm: number | null; bmi: number | null; }
 interface DayTotal { log_date: string; kcal: number; protein_g: number; carbs_g: number; fat_g: number; water_ml: number; kcal_burned: number; }
@@ -184,7 +184,7 @@ function Trends({ profile, userId }: { profile: Profile | null; userId: string }
             <h2 className="font-bold">Goal Progress</h2>
             {goal ? (
               goal.reached ? (
-                <p className="text-sm text-indigo-600 dark:text-indigo-400 font-semibold mt-0.5">🎉 Goal reached!</p>
+                <p className="text-sm text-indigo-600 dark:text-indigo-400 font-semibold mt-0.5 flex items-center gap-1.5"><PartyPopper className="w-4 h-4" /> Goal reached!</p>
               ) : (
                 <>
                   <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-0.5">

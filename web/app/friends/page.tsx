@@ -5,7 +5,7 @@ import { supabase } from "@/lib/supabase";
 import { todayLocal } from "@/lib/nutrition";
 import { Skeleton } from "@/lib/Skeleton";
 import Link from "next/link";
-import { Dumbbell, Flame, BookOpen, Scale, ChefHat, HandHeart } from "lucide-react";
+import { Dumbbell, Flame, BookOpen, Scale, ChefHat, HandHeart, Trophy, Medal } from "lucide-react";
 
 interface PubProfile { id: string; username: string; display_name: string | null; }
 interface Friendship { requester_id: string; addressee_id: string; status: string; }
@@ -207,7 +207,12 @@ function Friends({ userId }: { userId: string }) {
           )}
           {board.map((r, i) => (
             <div key={r.user_id} className={`flex items-center gap-3 px-4 py-3 ${i > 0 ? "border-t border-neutral-100 dark:border-neutral-900" : ""}`}>
-              <span className="text-lg w-7">{i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `${i + 1}.`}</span>
+              <span className="w-7 flex items-center justify-center">
+                {i === 0 ? <Trophy className="w-5 h-5 text-amber-500" /> :
+                 i === 1 ? <Medal className="w-5 h-5 text-neutral-400" /> :
+                 i === 2 ? <Medal className="w-5 h-5 text-amber-700" /> :
+                 <span className="text-sm text-neutral-500">{i + 1}.</span>}
+              </span>
               <div className="flex-1">
                 <p className="font-semibold text-sm">{r.display_name}{r.user_id === userId && " (you)"}</p>
                 <p className="text-xs text-neutral-500">@{r.username}</p>
