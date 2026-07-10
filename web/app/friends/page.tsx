@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase";
 import { todayLocal } from "@/lib/nutrition";
 import { Skeleton } from "@/lib/Skeleton";
 import Link from "next/link";
+import { Dumbbell, Flame, BookOpen, Scale, ChefHat, HandHeart } from "lucide-react";
 
 interface PubProfile { id: string; username: string; display_name: string | null; }
 interface Friendship { requester_id: string; addressee_id: string; status: string; }
@@ -15,13 +16,13 @@ function mondayOf(d = new Date()) {
   const x = new Date(d); const day = (x.getDay() + 6) % 7; x.setDate(x.getDate() - day); return todayLocal(x);
 }
 
-function feedLine(f: FeedItem): string {
+function feedLine(f: FeedItem): React.ReactNode {
   const p = f.payload as Record<string, number | string>;
   switch (f.kind) {
-    case "workout": return `💪 ${p.title} · ${Math.round(Number(p.duration_min))}min · 🔥${Math.round(Number(p.kcal_burned ?? 0))}`;
-    case "diary": return `📖 Logged the day · ${Math.round(Number(p.kcal))} kcal, ${Math.round(Number(p.protein_g))}g protein`;
-    case "weight": return `⚖️ Checked in · ${p.weight_kg} kg`;
-    case "recipe": return `🍲 Shared recipe: ${p.name} (${Math.round(Number(p.kcal))} kcal/100g)`;
+    case "workout": return <span className="flex items-center gap-1"><Dumbbell className="w-3.5 h-3.5" /> {p.title} · {Math.round(Number(p.duration_min))}min · <Flame className="w-3 h-3 text-orange-500" />{Math.round(Number(p.kcal_burned ?? 0))}</span>;
+    case "diary": return <span className="flex items-center gap-1"><BookOpen className="w-3.5 h-3.5 text-indigo-400" /> Logged the day · {Math.round(Number(p.kcal))} kcal, {Math.round(Number(p.protein_g))}g protein</span>;
+    case "weight": return <span className="flex items-center gap-1"><Scale className="w-3.5 h-3.5" /> Checked in · {p.weight_kg} kg</span>;
+    case "recipe": return <span className="flex items-center gap-1"><ChefHat className="w-3.5 h-3.5" /> Shared recipe: {p.name} ({Math.round(Number(p.kcal))} kcal/100g)</span>;
     default: return "";
   }
 }
@@ -118,7 +119,7 @@ function Friends({ userId }: { userId: string }) {
         ) :
         feed.length === 0 ? (
           <p className="text-neutral-500 text-sm text-center py-8">
-            No activity yet.<br />Add friends in the People tab — activity they share shows up here. 👀
+            No activity yet.<br />Add friends in the People tab — activity they share shows up here.
           </p>
         ) : (
           <ul className="flex flex-col gap-2">
@@ -133,7 +134,7 @@ function Friends({ userId }: { userId: string }) {
                   </div>
                   <button onClick={() => cheer(f)} aria-label="Cheer"
                     className={`w-11 h-11 rounded-full text-lg flex items-center justify-center active:scale-[0.98] shrink-0 ${cheered.has(key) ? "bg-indigo-600/15" : ""}`}>
-                    👏
+                    <HandHeart className="w-5 h-5 text-indigo-500" />
                   </button>
                 </li>
               );
@@ -147,7 +148,7 @@ function Friends({ userId }: { userId: string }) {
           <p className="text-xs text-neutral-500 px-4 pt-3">This week (since Monday)</p>
           {board.length === 0 && (
             <p className="text-sm text-neutral-400 text-center px-4 py-8">
-              No activity yet this week — log a workout or your diary to get on the board! 💪
+              No activity yet this week — log a workout or your diary to get on the board! <Dumbbell className="w-4 h-4 inline" />
             </p>
           )}
           {board.map((r, i) => (
@@ -158,7 +159,7 @@ function Friends({ userId }: { userId: string }) {
                 <p className="text-xs text-neutral-500">@{r.username}</p>
               </div>
               <div className="text-right text-sm">
-                <p className="font-bold">{r.workout_days} 💪</p>
+                <p className="font-bold flex items-center justify-center gap-0.5">{r.workout_days} <Dumbbell className="w-4 h-4" /></p>
                 <p className="text-xs text-neutral-500">{Math.round(Number(r.workout_min))} min · {r.diary_days}d logged</p>
               </div>
             </div>

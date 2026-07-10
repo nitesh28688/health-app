@@ -10,14 +10,14 @@ import { todayLocal, type FoodNutrients, logSnapshot } from "@/lib/nutrition";
 import type { Profile } from "@/lib/useUser";
 import { Skeleton } from "@/lib/Skeleton";
 import { QuantitySheet } from "@/components/QuantitySheet";
-import { Pencil, X } from "lucide-react";
+import { Pencil, X, Sunrise, Sun, Moon, Coffee, Droplet, Flame, Sparkles, Bot, Shield } from "lucide-react";
 
 const MEALS = [
-  { key: "breakfast", label: "Breakfast", icon: "🌅" },
-  { key: "lunch", label: "Lunch", icon: "☀️" },
-  { key: "snack", label: "Snacks", icon: "🍿" },
-  { key: "dinner", label: "Dinner", icon: "🌙" },
-] as const;
+  { key: "breakfast", label: "Breakfast", icon: <Sunrise className="w-5 h-5 text-amber-500" /> },
+  { key: "lunch", label: "Lunch", icon: <Sun className="w-5 h-5 text-amber-400" /> },
+  { key: "snack", label: "Snacks", icon: <Coffee className="w-5 h-5 text-orange-400" /> },
+  { key: "dinner", label: "Dinner", icon: <Moon className="w-5 h-5 text-indigo-400" /> },
+];
 
 const MICRO_LABELS: Record<string, string> = {
   sugar_g: "Sugar (g)", sodium_mg: "Sodium (mg)", iron_mg: "Iron (mg)",
@@ -207,7 +207,7 @@ function Diary({ profile, userId }: { profile: Profile | null; userId: string })
       {date === todayLocal() && dailyTip && showDailyTip && (
         <div className="mb-4 rounded-xl border border-violet-200 dark:border-violet-900/50 bg-violet-50/50 dark:bg-violet-900/10 p-3 flex flex-col gap-1 relative">
           <div className="flex items-center gap-1.5 mb-1">
-            <span className="text-base">✨</span>
+            <Sparkles className="w-4 h-4 text-violet-500" />
             <span className="text-xs font-bold text-violet-900 dark:text-violet-100 uppercase tracking-wider">Core Insights</span>
           </div>
           <p className="text-sm text-violet-800 dark:text-violet-200 pr-4">{dailyTip}</p>
@@ -256,7 +256,7 @@ function Diary({ profile, userId }: { profile: Profile | null; userId: string })
       <div className="rounded-2xl border border-neutral-200/60 dark:border-neutral-800/60 bg-white/50 dark:bg-neutral-900/50 backdrop-blur-md shadow-sm p-4">
         <div className="flex items-baseline justify-between">
           <p className="text-3xl font-bold">{Math.round(tKcal)}<span className="text-base font-normal text-neutral-500"> / {Math.round(profile?.target_kcal ?? 2000)} kcal</span></p>
-          {burned > 0 && <p className="text-sm text-orange-500">🔥 {Math.round(burned)}</p>}
+          {burned > 0 && <p className="text-sm text-orange-500 flex items-center gap-1"><Flame className="w-3.5 h-3.5" /> {Math.round(burned)}</p>}
         </div>
         <div className="flex gap-2 mt-4 pb-2 border-b border-neutral-100 dark:border-neutral-900">
           <Ring full="Protein" val={Number(totals?.protein_g ?? 0)} max={profile?.target_protein ?? 100} unit="g" colorClass="text-blue-500" />
@@ -266,7 +266,7 @@ function Diary({ profile, userId }: { profile: Profile | null; userId: string })
         </div>
         {/* water */}
         <div className="flex items-center gap-2 mt-4">
-          <p className="text-sm">💧 {Number(totals?.water_ml ?? 0)} / {profile?.target_water_ml ?? 3000} ml</p>
+          <p className="text-sm flex items-center gap-1"><Droplet className="w-4 h-4 text-sky-500" /> {Number(totals?.water_ml ?? 0)} / {profile?.target_water_ml ?? 3000} ml</p>
           <div className="flex-1" />
           {[250, 500].map((ml) => (
             <button key={ml} onClick={() => addWater(ml)}
@@ -286,8 +286,8 @@ function Diary({ profile, userId }: { profile: Profile | null; userId: string })
               {" "}Fat {Math.max(0, Math.round((profile?.target_fat ?? 65) - Number(totals?.fat_g ?? 0)))}g
             </p>
             <button onClick={askMealIdea} disabled={mealIdeaBusy}
-              className="mt-2 text-sm text-violet-600 font-semibold disabled:opacity-50 bg-violet-100 dark:bg-violet-900/30 px-4 py-2.5 rounded-xl border border-violet-200 dark:border-violet-900 w-full active:scale-[0.98]">
-              {mealIdeaBusy ? "Thinking…" : "🤖 Suggest a meal for what's left"}
+              className="mt-2 flex items-center justify-center gap-2 text-sm text-violet-600 font-semibold disabled:opacity-50 bg-violet-100 dark:bg-violet-900/30 px-4 py-2.5 rounded-xl border border-violet-200 dark:border-violet-900 w-full active:scale-[0.98]">
+              {mealIdeaBusy ? "Thinking…" : <><Bot className="w-4 h-4" /> Suggest a meal for what's left</>}
             </button>
             <AnimatePresence>
               {mealIdeaError && (
@@ -326,7 +326,7 @@ function Diary({ profile, userId }: { profile: Profile | null; userId: string })
         return (
           <section key={m.key} className="mt-5">
             <div className="flex items-center justify-between mb-2">
-              <h2 className="font-bold">{m.icon} {m.label}
+              <h2 className="font-bold flex items-center gap-2">{m.icon} {m.label}
                 {mealKcal > 0 && <span className="text-sm font-normal text-neutral-500"> · {Math.round(mealKcal)} kcal</span>}
               </h2>
               <Link href={`/add?meal=${m.key}&date=${date}`}
@@ -370,7 +370,7 @@ function Diary({ profile, userId }: { profile: Profile | null; userId: string })
       })}
 
       {profile?.is_admin && (
-        <Link href="/admin" className="mt-8 mb-2 block text-center text-sm text-neutral-400">🛠️ Admin dashboard</Link>
+        <Link href="/admin" className="mt-8 mb-2 flex items-center justify-center gap-2 text-sm text-neutral-400"><Shield className="w-4 h-4" /> Admin dashboard</Link>
       )}
       </div>
 

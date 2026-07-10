@@ -5,6 +5,7 @@ import { AppShell } from "../AppShell";
 import { supabase } from "@/lib/supabase";
 import { awardBadge } from "@/lib/badges";
 import type { FoodNutrients } from "@/lib/nutrition";
+import { ChefHat, Check } from "lucide-react";
 
 type Food = FoodNutrients & { id: number; name: string; source: string };
 interface Recipe { id: number; name: string; kcal: number; protein_g: number; shared: boolean; cooked_yield_g: number | null; }
@@ -141,7 +142,7 @@ function Recipes({ userId }: { userId: string }) {
 
       {!building && (recipes.length === 0 ? (
         <p className="text-neutral-500 text-sm text-center py-8">
-          No recipes yet. Build your dal, sabzi or smoothie once —<br />log it forever with one tap. 🍲
+          No recipes yet. Build your dal, sabzi or smoothie once —<br />log it forever with one tap. <ChefHat className="w-4 h-4 inline" />
         </p>
       ) : (
         <ul className="flex flex-col gap-2">
@@ -149,13 +150,13 @@ function Recipes({ userId }: { userId: string }) {
             <li key={r.id} className="rounded-xl border border-neutral-200 dark:border-neutral-800 px-3 py-3">
               <div className="flex items-center gap-2">
                 <div className="flex-1 min-w-0">
-                  <p className="font-medium truncate">🍲 {r.name}</p>
+                  <p className="font-medium truncate flex items-center gap-1"><ChefHat className="w-4 h-4 text-indigo-500" /> {r.name}</p>
                   <p className="text-xs text-neutral-500">{Math.round(Number(r.kcal))} kcal/100g · {Math.round(Number(r.protein_g))}g protein</p>
                 </div>
                 <button onClick={() => toggleShare(r)}
                   className={`text-xs rounded-lg px-3 py-2 font-semibold border ${
                     r.shared ? "border-indigo-600 text-indigo-600" : "border-neutral-300 dark:border-neutral-700 text-neutral-500"}`}>
-                  {r.shared ? "Shared ✓" : "Share"}
+                  {r.shared ? <span className="flex items-center gap-1">Shared <Check className="w-3.5 h-3.5" /></span> : "Share"}
                 </button>
                 <button onClick={() => remove(r)} aria-label="Delete recipe" className="w-11 h-11 flex items-center justify-center text-neutral-400 shrink-0">✕</button>
               </div>

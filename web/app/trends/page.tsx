@@ -7,6 +7,7 @@ import { todayLocal, bmiCategory, estimateGoalProgress } from "@/lib/nutrition";
 import { awardBadge } from "@/lib/badges";
 import type { Profile } from "@/lib/useUser";
 import { PageSkeleton } from "@/lib/Skeleton";
+import { Dumbbell, Droplet, Flame, BookOpen, Target, Check } from "lucide-react";
 
 interface BmiRow { log_date: string; weight_kg: number | null; body_fat_pct: number | null; waist_cm: number | null; bmi: number | null; }
 interface DayTotal { log_date: string; kcal: number; protein_g: number; carbs_g: number; fat_g: number; water_ml: number; kcal_burned: number; }
@@ -87,10 +88,10 @@ function GoalRing({ pct }: { pct: number }) {
   );
 }
 
-const STREAK_META: Record<string, { icon: string; label: string }> = {
-  diary: { icon: "📖", label: "Logging" },
-  workout: { icon: "💪", label: "Workouts" },
-  water: { icon: "💧", label: "Water" },
+const STREAK_META: Record<string, { icon: React.ReactNode; label: string }> = {
+  diary: { icon: <BookOpen className="w-6 h-6 text-indigo-400" />, label: "Logging" },
+  workout: { icon: <Dumbbell className="w-6 h-6 text-amber-500" />, label: "Workouts" },
+  water: { icon: <Droplet className="w-6 h-6 text-sky-400" />, label: "Water" },
 };
 
 function Trends({ profile, userId }: { profile: Profile | null; userId: string }) {
@@ -166,8 +167,8 @@ function Trends({ profile, userId }: { profile: Profile | null; userId: string }
           const s = streaks.find((x) => x.kind === k);
           const cur = s?.current_streak ?? 0;
           return (
-            <div key={k} className="rounded-2xl border border-neutral-200/60 dark:border-neutral-800/60 bg-white/50 dark:bg-neutral-900/50 backdrop-blur-md shadow-sm p-3 text-center">
-              <p className="text-2xl">{cur > 0 ? "🔥" : STREAK_META[k].icon}</p>
+            <div key={k} className="rounded-2xl border border-neutral-200/60 dark:border-neutral-800/60 bg-white/50 dark:bg-neutral-900/50 backdrop-blur-md shadow-sm p-3 text-center flex flex-col items-center">
+              <div className="mb-1 h-8 flex items-center justify-center">{cur > 0 ? <Flame className="w-7 h-7 text-orange-500" /> : STREAK_META[k].icon}</div>
               <p className="text-xl font-bold">{cur}</p>
               <p className="text-[11px] text-neutral-500">{STREAK_META[k].label} · best {s?.best_streak ?? 0}</p>
             </div>
@@ -204,7 +205,7 @@ function Trends({ profile, userId }: { profile: Profile | null; userId: string }
       ) : (
         <Link href="/profile" className="mt-6 flex items-center justify-between gap-3 rounded-2xl border border-dashed border-neutral-300 dark:border-neutral-700 p-4 active:bg-neutral-50 dark:active:bg-neutral-900">
           <div>
-            <h2 className="font-bold">Set a goal weight 🎯</h2>
+            <h2 className="font-bold flex items-center gap-1.5">Set a goal weight <Target className="w-4 h-4 text-indigo-500" /></h2>
             <p className="text-xs text-neutral-500 mt-0.5">Track progress toward your target with a projection date.</p>
           </div>
           <span className="text-neutral-400 shrink-0">→</span>
@@ -226,7 +227,7 @@ function Trends({ profile, userId }: { profile: Profile | null; userId: string }
             className="flex-1 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-white/50 dark:bg-neutral-900/50 shadow-sm focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition-all px-4 py-3 text-base" />
           <button onClick={logWeight} disabled={!(parseFloat(weight) > 0)}
             className="rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md shadow-indigo-500/20 transition-all hover:shadow-lg hover:shadow-indigo-500/30 px-5 py-3 font-semibold disabled:opacity-40 active:scale-[0.98]">
-            {savedMsg ? "✓" : "Log"}
+            {savedMsg ? <Check className="w-5 h-5 mx-auto" /> : "Log"}
           </button>
         </div>
         <p className="mt-2 text-xs text-neutral-400">
@@ -270,8 +271,8 @@ function Trends({ profile, userId }: { profile: Profile | null; userId: string }
         </h2>
         <KcalBars days={week} target={profile?.target_kcal ?? 2000} />
         <div className="flex justify-between mt-3 text-sm text-neutral-500">
-          <span>💧 avg {Math.round(week.reduce((s, d) => s + Number(d.water_ml), 0) / (week.length || 1))} ml</span>
-          <span>🔥 total {Math.round(week.reduce((s, d) => s + Number(d.kcal_burned), 0))} kcal</span>
+          <span className="flex items-center gap-1"><Droplet className="w-4 h-4 text-sky-500" /> avg {Math.round(week.reduce((s, d) => s + Number(d.water_ml), 0) / (week.length || 1))} ml</span>
+          <span className="flex items-center gap-1"><Flame className="w-4 h-4 text-orange-500" /> total {Math.round(week.reduce((s, d) => s + Number(d.kcal_burned), 0))} kcal</span>
         </div>
       </section>
     </main>

@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { AppShell } from "../AppShell";
 import { supabase } from "@/lib/supabase";
 import { todayLocal } from "@/lib/nutrition";
+import { Activity } from "lucide-react";
 
 interface CycleLog { id: number; period_start: string; period_end: string | null; flow: string | null; symptoms: string | null; }
 interface Prediction { avg_cycle_days: number | null; predicted_start: string | null; cycles_used: number; }
@@ -50,7 +51,7 @@ function Cycle({ userId }: { userId: string }) {
     <main className="px-4 pt-6">
       <div className="flex items-center gap-3 mb-4">
         <button onClick={() => router.back()} aria-label="Back" className="w-11 h-11 rounded-full border border-neutral-200 dark:border-neutral-800 text-lg flex items-center justify-center">←</button>
-        <h1 className="text-2xl font-bold">🌸 Cycle Tracking</h1>
+        <h1 className="text-2xl font-bold flex items-center gap-2"><Activity className="w-6 h-6 text-pink-500" /> Cycle Tracking</h1>
       </div>
 
       {prediction?.predicted_start && (

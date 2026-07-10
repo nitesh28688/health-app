@@ -9,6 +9,7 @@ import { SetTimer } from "@/components/SetTimer";
 import { AiRoutineGenerator } from "@/components/AiRoutineGenerator";
 import { ExerciseDemo } from "@/components/ExerciseDemo";
 import { LiveWorkout, ActiveEx } from "@/components/LiveWorkout";
+import { Dumbbell, Flame, Bot } from "lucide-react";
 
 interface Plan { id: number; name: string; goal: string | null; level: string | null; days_per_week: number | null; description: string | null; owner_id: string | null; }
 interface PlanDay { id: number; day_number: number; title: string; }
@@ -361,13 +362,13 @@ function Workout({ profile, setProfile, userId }: {
       <section className="mt-6">
         <h2 className="font-bold mb-2">Recent workouts</h2>
         {recent.length === 0 ? (
-          <p className="text-sm text-neutral-400">Nothing yet — smash Day 1! 💪</p>
+          <p className="text-sm text-neutral-400 flex items-center justify-center gap-1">Nothing yet — smash Day 1! <Dumbbell className="w-4 h-4" /></p>
         ) : (
           <ul className="flex flex-col gap-1.5">
             {recent.map((w) => (
               <li key={w.id} className="rounded-xl border border-neutral-200 dark:border-neutral-800 px-3 py-2.5 flex justify-between text-sm">
                 <span className="font-medium">{w.title}</span>
-                <span className="text-neutral-500">{w.log_date.slice(5)} · {Math.round(Number(w.duration_min))}min · 🔥{Math.round(Number(w.kcal_burned ?? 0))}</span>
+                <span className="text-neutral-500 flex items-center gap-1">{w.log_date.slice(5)} · {Math.round(Number(w.duration_min))}min · <Flame className="w-3.5 h-3.5 text-orange-500" />{Math.round(Number(w.kcal_burned ?? 0))}</span>
               </li>
             ))}
           </ul>
@@ -377,9 +378,9 @@ function Workout({ profile, setProfile, userId }: {
       {/* AI coach */}
       <section className="mt-6">
         <button onClick={askAiCoach} disabled={aiBusy}
-          className="w-full rounded-2xl border border-violet-400 text-violet-600 py-3 font-semibold text-sm disabled:opacity-50 flex items-center justify-center gap-2">
-          {aiBusy ? "Analyzing your workouts…" : "🤖 Get AI coach feedback"}
-        </button>
+              className="mt-3 w-full rounded-xl flex items-center justify-center gap-2 border border-indigo-200 dark:border-indigo-900 bg-indigo-50/50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 font-semibold py-3 active:scale-[0.98]">
+              {aiBusy ? "Analyzing your workouts…" : <><Bot className="w-4 h-4" /> Get AI coach feedback</>}
+            </button>
         {aiError && <p className="text-sm text-amber-600 mt-2">{aiError}</p>}
         {aiTip && (
           <div className="mt-3 rounded-2xl bg-violet-50 dark:bg-violet-950/30 border border-violet-200 dark:border-violet-900 p-4 text-sm leading-relaxed">
@@ -536,7 +537,7 @@ function Workout({ profile, setProfile, userId }: {
                         {i.duration_min ? `${i.duration_min} min` : `${i.sets} × ${i.reps}`}
                       </p>
                     </div>
-                    <span className="text-xs text-orange-500 shrink-0">🔥{Math.round(itemKcal)}</span>
+                    <span className="text-xs text-orange-500 shrink-0 flex items-center gap-0.5"><Flame className="w-3 h-3" />{Math.round(itemKcal)}</span>
                   </li>
                 );
               })}
@@ -547,7 +548,7 @@ function Workout({ profile, setProfile, userId }: {
               <span className="text-neutral-500 text-sm">minutes</span>
               <div className="flex-1" />
               <span className="text-sm text-orange-500 font-semibold">
-                ≈🔥{dayKcal(items, parseFloat(duration) || 0)} kcal
+                ≈<Flame className="w-3 h-3 inline-block -mt-0.5" />{dayKcal(items, parseFloat(duration) || 0)} kcal
               </span>
             </div>
             <div className="flex gap-3 mt-4">

@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AppShell } from "../AppShell";
 import { supabase } from "@/lib/supabase";
+import { Pill, Check } from "lucide-react";
 
 interface Med { id: number; name: string; dosage: string | null; times: string[]; active: boolean; }
 
@@ -50,7 +51,7 @@ function Medications({ userId }: { userId: string }) {
     <main className="px-4 pt-6">
       <div className="flex items-center gap-3 mb-4">
         <button onClick={() => router.back()} aria-label="Back" className="w-11 h-11 rounded-full border border-neutral-200 dark:border-neutral-800 text-lg flex items-center justify-center">←</button>
-        <h1 className="text-2xl font-bold flex-1">💊 Medications</h1>
+        <h1 className="text-2xl font-bold flex-1 flex items-center gap-2"><Pill className="w-6 h-6 text-indigo-500" /> Medications</h1>
         <button onClick={() => setAdding((a) => !a)} className="rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md shadow-indigo-500/20 transition-all hover:shadow-lg hover:shadow-indigo-500/30 px-4 py-2.5 font-semibold text-sm active:scale-[0.98]">
           {adding ? "Close" : "+ New"}
         </button>
@@ -104,7 +105,7 @@ function Medications({ userId }: { userId: string }) {
                     takenIds.has(m.id)
                       ? "bg-indigo-100 dark:bg-indigo-900/30 text-green-700 dark:text-indigo-400"
                       : "bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md shadow-indigo-500/20 transition-all hover:shadow-lg hover:shadow-indigo-500/30"}`}>
-                  {takenIds.has(m.id) ? "✓ Taken" : "Taken"}
+                  {takenIds.has(m.id) ? <span className="flex items-center justify-center gap-1"><Check className="w-3.5 h-3.5" /> Taken</span> : "Taken"}
                 </button>
                 <button onClick={() => toggleActive(m)}
                   className="text-xs rounded-lg border border-neutral-300 dark:border-neutral-700 px-2.5 min-h-11">

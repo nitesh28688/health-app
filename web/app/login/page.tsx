@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { PhoneInput } from "@/lib/PhoneInput";
+import { Mail, MessageCircle, Check } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -47,7 +48,7 @@ export default function LoginPage() {
     setBusy(false);
     if (!res.ok) { setError(body.error ?? "couldn't send code"); return; }
     setOtpPhone(phone);
-    setNotice("Code sent on WhatsApp 💬");
+    setNotice("Code sent on WhatsApp");
   }
 
   async function verifyOtp() {
@@ -69,13 +70,16 @@ export default function LoginPage() {
       <h1 className="text-3xl font-bold text-indigo-600 mb-1">Core AI</h1>
       <p className="text-neutral-500 mb-6">Welcome back 👋</p>
       <div className="flex gap-2 mb-5">
-        {([["email", "✉️ Email"], ["whatsapp", "💬 WhatsApp"]] as const).map(([k, label]) => (
-          <button key={k} type="button"
-            onClick={() => { setMode(k); setError(null); setNotice(null); setOtpPhone(null); }}
-            className={`flex-1 rounded-xl py-2.5 text-sm font-semibold border ${
-              mode === k ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md shadow-indigo-500/20 transition-all hover:shadow-lg hover:shadow-indigo-500/30 border-indigo-600"
+        {[
+          { key: "email", label: "Email", icon: <Mail className="w-4 h-4" /> },
+          { key: "whatsapp", label: "WhatsApp", icon: <MessageCircle className="w-4 h-4" /> }
+        ].map((m) => (
+          <button key={m.key} type="button"
+            onClick={() => { setMode(m.key as any); setError(null); setNotice(null); setOtpPhone(null); }}
+            className={`flex-1 flex items-center justify-center gap-1.5 rounded-xl py-2.5 text-sm font-semibold border ${
+              mode === m.key ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md shadow-indigo-500/20 transition-all hover:shadow-lg hover:shadow-indigo-500/30 border-indigo-600"
                 : "border-neutral-300 dark:border-neutral-700 text-neutral-600 dark:text-neutral-400"}`}>
-            {label}
+            {m.icon} {m.label}
           </button>
         ))}
       </div>

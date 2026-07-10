@@ -2,6 +2,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { AppShell } from "../AppShell";
 import { supabase } from "@/lib/supabase";
+import { Shield, Dumbbell, Droplet, Scale } from "lucide-react";
 
 interface Stats {
   users: number;
@@ -112,7 +113,7 @@ export default function AdminPage() {
           return <main className="px-5 pt-10 text-center text-neutral-500">Admins only.</main>;
         return (
           <main className="px-5 pt-8 pb-8">
-            <h1 className="text-2xl font-bold mb-4">🛠️ Admin</h1>
+            <h1 className="text-2xl font-bold mb-4 flex items-center gap-2"><Shield className="w-6 h-6 text-indigo-500" /> Admin</h1>
             {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
 
             <div className="flex gap-2 mb-5">
@@ -222,11 +223,13 @@ export default function AdminPage() {
                     <p>📅 Joined <b>{new Date(selected.created_at).toLocaleDateString()}</b></p>
                     <p>🕐 Last seen <b>{selected.last_sign_in ? new Date(selected.last_sign_in).toLocaleDateString() : "never"}</b></p>
                     <p>📖 Food logs <b>{selected.stats.food_logs}</b></p>
-                    <p>💪 Workouts <b>{selected.stats.workout_logs}</b></p>
-                    <p>💧 Water logs <b>{selected.stats.water_logs}</b></p>
+                    <p className="flex items-center gap-1"><Dumbbell className="w-4 h-4 text-amber-500" /> Workouts <b>{selected.stats.workout_logs}</b></p>
+                    <p className="flex items-center gap-1"><Droplet className="w-4 h-4 text-sky-500" /> Water logs <b>{selected.stats.water_logs}</b></p>
                     <p>👥 Friends <b>{selected.stats.friend_count}</b></p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
                     {selected.stats.last_weight && (
-                      <p className="col-span-2">⚖️ Last weight <b>{selected.stats.last_weight.weight_kg} kg</b> on {selected.stats.last_weight.log_date}</p>
+                      <p className="col-span-2 flex items-center gap-1"><Scale className="w-4 h-4 text-neutral-500" /> Last weight <b>{selected.stats.last_weight.weight_kg} kg</b> on {selected.stats.last_weight.log_date}</p>
                     )}
                     {(selected.profile.phone as string) && <p className="col-span-2">📱 {selected.profile.phone as string}</p>}
                   </div>

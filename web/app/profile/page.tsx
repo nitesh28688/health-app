@@ -11,7 +11,7 @@ import { PhoneInput } from "@/lib/PhoneInput";
 import { PageSkeleton } from "@/lib/Skeleton";
 import { pushSupported, currentPushSubscription, enablePush, disablePush } from "@/lib/push";
 import { compressImage } from "@/lib/imageCompress";
-import { Camera, Image as ImageIcon } from "lucide-react";
+import { Camera, Image as ImageIcon, Sparkles, Hand, Check, Pill, Activity } from "lucide-react";
 
 const inputCls =
   "rounded-xl border border-neutral-300 dark:border-neutral-700 bg-white/50 dark:bg-neutral-900/50 px-4 py-3 text-base w-full focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition-all shadow-sm";
@@ -313,10 +313,10 @@ function ProfileForm({ profile, setProfile, userId, email }: {
         </div>
         <button onClick={suggest} disabled={!canSuggest || !goal}
           className="w-full rounded-xl border border-indigo-600 text-indigo-600 dark:text-indigo-400 dark:border-indigo-500 py-2.5 font-semibold text-sm disabled:opacity-40 mb-1 transition-all active:scale-[0.98]">
-          {goal ? "✨ Suggest targets from my stats" : "☝️ Pick a goal above first"}
+          {goal ? <span className="flex items-center justify-center gap-2"><Sparkles className="w-4 h-4" /> Suggest targets from my stats</span> : <span className="flex items-center justify-center gap-2"><Hand className="w-4 h-4" /> Pick a goal above first</span>}
         </button>
         {suggestedFor && (
-          <p className="text-xs text-indigo-600 dark:text-indigo-400 mb-4 text-center font-medium">Calculated for: {suggestedFor} ✓</p>
+          <p className="text-xs text-indigo-600 dark:text-indigo-400 mb-4 flex items-center justify-center gap-1 font-medium">Calculated for: {suggestedFor} <Check className="w-3.5 h-3.5" /></p>
         )}
         {!suggestedFor && <div className="mb-4" />}
         <div className="grid grid-cols-2 gap-3">
@@ -345,7 +345,7 @@ function ProfileForm({ profile, setProfile, userId, email }: {
           <button onClick={toggleNotifications} disabled={notifBusy}
             className={`rounded-full px-4 py-2 text-sm font-semibold transition-all shadow-sm ${
               notifStatus === "enabled" ? "bg-gradient-to-r from-indigo-500 to-violet-600 text-white shadow-indigo-500/20" : "border border-neutral-300 dark:border-neutral-700 bg-white/50 dark:bg-neutral-900/50"}`}>
-            {notifBusy ? "…" : notifStatus === "enabled" ? "On ✓" : notifStatus === "unsupported" ? "Unavailable" : "Turn on"}
+            {notifBusy ? "…" : notifStatus === "enabled" ? <span className="flex items-center gap-1">On <Check className="w-3.5 h-3.5" /></span> : notifStatus === "unsupported" ? "Unavailable" : "Turn on"}
           </button>
         </div>
         {notifError && <p className="text-xs text-amber-600 mt-1">{notifError}</p>}
@@ -355,7 +355,7 @@ function ProfileForm({ profile, setProfile, userId, email }: {
         <h2 className="text-lg font-bold mb-1">Health tracking</h2>
         <Link href="/medications"
           className="flex items-center justify-between py-3 border-b border-neutral-100 dark:border-neutral-900">
-          <span>💊 Medications</span>
+          <span className="flex items-center gap-2"><Pill className="w-5 h-5 text-indigo-500" /> Medications</span>
           <span className="text-neutral-400">→</span>
         </Link>
         {f.sex !== "male" && f.sex !== "" && (
@@ -368,7 +368,7 @@ function ProfileForm({ profile, setProfile, userId, email }: {
             </label>
             {f.track_cycle && (
               <Link href="/cycle" className="flex items-center justify-between py-3 border-b border-neutral-100 dark:border-neutral-900">
-                <span>🌸 Cycle tracking</span>
+                <span className="flex items-center gap-2"><Activity className="w-5 h-5 text-pink-500" /> Cycle tracking</span>
                 <span className="text-neutral-400">→</span>
               </Link>
             )}
@@ -434,7 +434,7 @@ function ProfileForm({ profile, setProfile, userId, email }: {
       {error && <p className="text-red-500 text-sm mt-4">{error}</p>}
       <button onClick={save}
         className="mt-6 w-full rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white py-3.5 font-semibold active:scale-[0.98] transition-all shadow-md shadow-indigo-500/20 hover:shadow-lg hover:shadow-indigo-500/30">
-        {saved ? "Saved ✓" : "Save"}
+        {saved ? <span className="flex items-center justify-center gap-1">Saved <Check className="w-5 h-5" /></span> : "Save"}
       </button>
       <button
         onClick={async () => { await supabase.auth.signOut(); router.replace("/login"); }}

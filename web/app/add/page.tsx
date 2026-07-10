@@ -7,7 +7,7 @@ import { supabase } from "@/lib/supabase";
 import { logSnapshot, todayLocal, type FoodNutrients } from "@/lib/nutrition";
 import { compressImage } from "@/lib/imageCompress";
 import { QuantitySheet } from "@/components/QuantitySheet";
-import { Loader2 } from "lucide-react";
+import { Loader2, ChefHat, Bot, Tag } from "lucide-react";
 
 type Food = FoodNutrients & {
   id: number;
@@ -174,7 +174,7 @@ function AddFood({ userId }: { userId: string }) {
         className="w-full rounded-xl border border-neutral-300 dark:border-neutral-700 bg-white/50 dark:bg-neutral-900/50 shadow-sm focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition-all px-4 py-3 text-base" />
       <div className="flex gap-2 mt-3">
         <Link href="/recipes" className="flex-1 flex items-center justify-center gap-1.5 rounded-xl border border-indigo-200 dark:border-indigo-900/50 bg-indigo-50 dark:bg-indigo-900/10 text-sm text-indigo-600 font-semibold py-2.5 active:scale-[0.98]">
-          🍲 My recipes →
+          <span className="flex items-center gap-1"><ChefHat className="w-4 h-4 text-indigo-500" /> My recipes →</span>
         </Link>
         <button onClick={() => photoInput.current?.click()} disabled={photoBusy}
           className="flex-1 flex items-center justify-center gap-1.5 rounded-xl border border-violet-200 dark:border-violet-900/50 bg-violet-50 dark:bg-violet-900/10 text-sm text-violet-600 font-semibold py-2.5 disabled:opacity-50 active:scale-[0.98]">
@@ -201,7 +201,7 @@ function AddFood({ userId }: { userId: string }) {
             <button onClick={() => pick(f)}
               className="w-full text-left rounded-xl border border-neutral-200 dark:border-neutral-800 px-3 py-3 active:bg-neutral-50 dark:active:bg-neutral-900">
               <p className="text-sm font-medium">
-                {f.name} {f.source === "ai" && "🤖"}{f.source === "recipe" && "🍲"}{f.source === "off" && "🏷️"}
+                <span className="flex items-center gap-1">{f.name} {f.source === "ai" && <Bot className="w-3 h-3 text-violet-500" />}{f.source === "recipe" && <ChefHat className="w-3 h-3 text-indigo-500" />}{f.source === "off" && <Tag className="w-3 h-3 text-neutral-400" />}</span>
               </p>
               <p className="text-xs text-neutral-500">
                 {f.brand && <span className="font-medium text-neutral-600 dark:text-neutral-400">{f.brand} · </span>}
@@ -226,7 +226,7 @@ function AddFood({ userId }: { userId: string }) {
                 <Loader2 className="w-4 h-4 animate-spin" />
                 {aiElapsed < 8 ? "Asking AI…" : `Still thinking… (${aiElapsed}s)`}
               </>
-            ) : `🤖 Estimate "${q.trim()}" with AI`}
+            ) : <span className="flex items-center justify-center gap-1.5"><Bot className="w-4 h-4" /> Estimate "{q.trim()}" with AI</span>}
           </button>
           {aiMsg && <p className="text-sm text-amber-600 mt-2">{aiMsg}</p>}
         </div>
