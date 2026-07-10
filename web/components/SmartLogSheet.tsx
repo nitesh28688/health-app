@@ -149,7 +149,10 @@ export function SmartLogSheet({ proposal, logDate, onClose, onConfirmed }: Props
               .from("exercises")
               .insert({
                 name: ex.name,
-                category: "Custom",
+                // "Custom" isn't a valid category — exercises_category_check
+                // only allows strength/cardio/flexibility/core/yoga
+                // (0003_workouts.sql). Confirmed live 2026-07-10.
+                category: "strength",
                 owner_id: userId,
                 met_value: ex.met_value,
               })

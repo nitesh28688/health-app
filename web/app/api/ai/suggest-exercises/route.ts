@@ -98,7 +98,10 @@ Return a strict JSON object containing:
       for (let i = 0; i < result.exercises.length; i++) {
         const ex = result.exercises[i];
         const { data: exRow } = await db.from("exercises").insert({
-          name: ex.name, category: "Custom", owner_id: userId, met_value: ex.met_value || 5, instructions: ex.instructions
+          // "Custom" isn't a valid category — exercises_category_check only
+          // allows strength/cardio/flexibility/core/yoga (0003_workouts.sql).
+          // Confirmed live 2026-07-10 via the same bug in AssistantSheet.tsx.
+          name: ex.name, category: "strength", owner_id: userId, met_value: ex.met_value || 5, instructions: ex.instructions
         }).select("id").single();
 
         if (exRow) {

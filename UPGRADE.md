@@ -1173,3 +1173,27 @@ Fixed both column names, reverified live against the same test account with the 
 shape (both inserts now succeed), test rows cleaned up. Also removed two uncommitted
 throwaway scripts (`create_test_user.ts`, `verify_smart_log.ts`) left in the working tree.
 
+
+# Phase 21 (Fable, 2026-07-10) — Fix "Start Live Session" 400 (real user report)
+
+User tried the AI assistant live: asked for a chest workout, tapped "Start Live Session",
+got a real error on screen: `new row for relation "exercises" violates check constraint
+"exercises_category_check"`.
+
+**Root cause, found and confirmed live**: `exercises.category` has a check constraint —
+`category in ('strength','cardio','flexibility','core','yoga')` (`0003_workouts.sql`) — but
+three separate AI-exercise-insert call sites all hardcoded `category: "Custom"`, which
+satisfies none of those values. Every one of them would have failed with this exact error:
+- `web/components/AssistantSheet.tsx` — the `suggest_workout` → "Start Live Session" path
+  (this is the one the user actually hit).
+- `web/components/SmartLogSheet.tsx` — Smart Log's exercise-confirm path (from today's
+  earlier Phase 20 review — this specific bug sat one layer deeper than the column-name bug
+  already found and fixed there; my earlier live verification used a pre-existing real
+  exercise id and never exercised this exact insert, so it was missed at the time).
+- `web/app/api/ai/suggest-exercises/route.ts` — backing `AiRoutineGenerator.tsx`, a
+  pre-existing route from before this session, same bug, never caught until now.
+
+Fixed all three to `category: "strength"` (matches the existing default `addCustomExercise`
+already uses in `workout/page.tsx` for non-yoga exercises). Reproduced the exact reported
+error live against the dedicated test account with the old value, confirmed the fix succeeds
+with the new one, cleaned up. `npx tsc --noEmit` clean.

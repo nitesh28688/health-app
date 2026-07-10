@@ -140,7 +140,11 @@ export function AssistantSheet({
       for (const ex of proposal.exercises) {
         const { data: inserted, error: insertErr } = await supabase.from("exercises").insert({
           name: ex.name,
-          category: "Custom",
+          // "Custom" isn't a valid category — exercises_category_check only
+          // allows strength/cardio/flexibility/core/yoga (0003_workouts.sql).
+          // Confirmed live 2026-07-10: this exact insert 400'd with
+          // "violates check constraint \"exercises_category_check\"".
+          category: "strength",
           equipment: "none",
           primary_muscle: "full body",
           met_value: ex.met_value || 5.0,
