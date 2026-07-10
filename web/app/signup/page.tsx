@@ -68,7 +68,7 @@ export default function SignupPage() {
 
   return (
     <main className="flex-1 flex flex-col justify-center px-6 py-10 max-w-md w-full mx-auto">
-      <h1 className="text-3xl font-bold text-indigo-600 mb-1">Join Health App</h1>
+      <h1 className="text-3xl font-bold text-indigo-600 mb-1">Join Core AI</h1>
       <p className="text-neutral-500 mb-8">Track food, workouts & streaks with your people.</p>
       <form onSubmit={onSubmit} className="flex flex-col gap-4">
         <input required placeholder="Your name" value={displayName}

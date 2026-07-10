@@ -66,7 +66,7 @@ export default function LoginPage() {
 
   return (
     <main className="flex-1 flex flex-col justify-center px-6 py-10 max-w-md w-full mx-auto">
-      <h1 className="text-3xl font-bold text-indigo-600 mb-1">Health App</h1>
+      <h1 className="text-3xl font-bold text-indigo-600 mb-1">Core AI</h1>
       <p className="text-neutral-500 mb-6">Welcome back 👋</p>
       <div className="flex gap-2 mb-5">
         {([["email", "✉️ Email"], ["whatsapp", "💬 WhatsApp"]] as const).map(([k, label]) => (
