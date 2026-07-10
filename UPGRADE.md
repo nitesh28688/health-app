@@ -347,10 +347,12 @@ from reading the actual schema/code — don't re-derive what's already found.
 
 **Goal:** `foods.name_local` (exists, currently empty for every row) gets populated for INDB's 1,014 Indian recipes at minimum, so Hindi-name search actually returns something.
 
-**Status:** [x] Mostly done — 920/1014 (91%) populated. The remaining 94 (contiguous
-IDs, mostly Western soups) are blocked on Gemini's free-tier rate limit, not a
-bug — `scripts/seed-hindi-names.mjs` is idempotent (`WHERE name_local IS NULL`)
-and safe to re-run later to finish the rest.
+**Status:** [x] DONE — 1014/1014 (100%) populated (2026-07-10). The last 94 rows
+were blocked on AI Studio's free-tier quota; finished by switching
+`scripts/seed-hindi-names.mjs` to Vertex AI (same billed path as the app itself)
+and to `supabase-js` instead of a raw `SEED_DB_URL` pg connection — matches the
+pattern used by `seed-servings-ai.mjs`. Idempotent, safe to re-run if new INDB
+rows are ever added later.
 
 **Context:** `search_foods()` already checks `f.name_local % q` (trigram match) — the **search logic is already correct and ready**, it just has zero data to match against. This is a data-population task, not a code task. INDB (`source='indb'`, 1,014 rows) is the highest-value target — real Indian home cooking, most likely to be searched by Hindi name.
 
