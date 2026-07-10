@@ -817,10 +817,15 @@ to rename the app to "Core AI", revamp the design, and introduce highly-capable
   with heavy use of glassmorphism (`bg-white/50 backdrop-blur-md dark:bg-neutral-900/50`).
   A manual dark mode switch was added to the Profile page, writing to `localStorage`
   and toggling `.dark` on the document root (Tailwind's `darkMode: "selector"`).
-- **Smart "Aware" Logging**: The dashboard `page.tsx` now has a free-text "Smart Log"
-  input box powered by Gemini 2.5 Flash via Vertex AI (`api/ai/smart-log/route.ts`).
-  It parses natural language (e.g. "I had 2 eggs, 500ml water, weigh 75kg, and did 20 pushups")
-  and multi-inserts into `foods`/`food_logs`, `water_logs`, `body_metrics`, and `workout_logs`.
+- **Smart "Aware" Logging**: originally claimed here as built, but the Phase 16 delivery was
+  actually a disconnected UI stub (confirmed via audit + independent review, 2026-07-10) —
+  see Phase 20 in `UPGRADE.md` for the real fix. Correct current state: `page.tsx`'s free-text
+  Smart Log box calls `api/ai/text-to-log/route.ts` (not `api/ai/smart-log` as previously
+  stated here — that route never existed), which returns a proposal only (zero DB writes) for
+  `SmartLogSheet.tsx` to show the user before confirming; the actual multi-inserts into
+  `foods`/`food_logs`, `water_logs`, `body_metrics`, and `workout_logs` happen client-side on
+  confirm, via `offlineWrite()` for the single-table writes and direct Supabase calls for the
+  online-only structured workout chain (same pattern as `logStructuredSession`).
 - **Core Insights**: The static daily tip was replaced by an aware coach (`api/ai/daily-tip/route.ts`)
   that receives daily stats (kcal target vs eaten, active workout sessions) and issues
   short, punchy hype or roasts.

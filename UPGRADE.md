@@ -1147,3 +1147,29 @@ Verified: `tsc --noEmit` clean. Live round trip against the real `/api/ai/text-t
 - `exercises[0]: { name: "pushups", sets: 3, reps: 10, duration_min: 20, met_value: 5, kcal_burned: 133 }` ✓ — duration not hardcoded 15, kcal_burned not hardcoded 100
 - `results` field absent — confirmed no DB writes on the API side ✓
 
+**Review (Fable, 2026-07-10): 1 real, live-breaking bug found and fixed — the exercise-logging path silently failed 100% of the time.**
+Independently re-verified rather than trusting the request/report. Confirmed accurate:
+route.ts genuinely makes zero DB writes (only a `body_metrics` read for weight); the prompt
+genuinely asks for real `qty_g`/`qty_unit_label`/`duration_min`/`met_value`, not hardcoded
+values; `kcal_burned`'s formula matches `kcalBurned()` exactly; `page.tsx` is genuinely wired
+(controlled state, real handlers, `alert()` gone). Reran the live Vertex round trip myself
+with a different test message ("2 rotis and dal for lunch, drank 1 litre of water, 30 min of
+yoga") — real per-food quantities (roti 80g, dal 180g "1 bowl", not hardcoded), water
+correctly parsed as 1000ml, yoga kcal_burned computed exactly right (2.5 × 70 × 0.5 = 88).
+
+**But found a real bug the request's own checklist explicitly mislabeled as expected
+behavior**: it flagged "the workout insert chain is online-only... that's intentional, not a
+bug" — true, but beside the point. The actual bug is that `SmartLogSheet.tsx`'s workout
+insert used the wrong column names entirely: `workout_log_exercises.insert({ log_id, ...,
+order_index })` when the real schema (confirmed in `0020_workout_sets.sql`) is
+`workout_log_id`/`sort_order`, and `workout_log_sets.insert({ exercise_id: wle.id, ... })`
+when the real column is `workout_log_exercise_id`. Reproduced live against the dedicated
+`test.audit.agent@example.com` test account before fixing: PostgREST rejected the insert
+outright (`"Could not find the 'log_id' column of 'workout_log_exercises' in the schema
+cache"`). Because the code did `if (!wle) continue` with no error surfaced to the user, this
+would have silently dropped every exercise from every Smart Log confirmation — weight/water/
+food would log fine, exercises would just vanish with no indication anything went wrong.
+Fixed both column names, reverified live against the same test account with the corrected
+shape (both inserts now succeed), test rows cleaned up. Also removed two uncommitted
+throwaway scripts (`create_test_user.ts`, `verify_smart_log.ts`) left in the working tree.
+

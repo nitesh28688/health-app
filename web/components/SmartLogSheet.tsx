@@ -160,14 +160,14 @@ export function SmartLogSheet({ proposal, logDate, onClose, onConfirmed }: Props
 
             const { data: wle } = await supabase
               .from("workout_log_exercises")
-              .insert({ log_id: wLog.id, exercise_id: exRow.id, order_index: i })
+              .insert({ workout_log_id: wLog.id, exercise_id: exRow.id, sort_order: i })
               .select("id")
               .single();
 
             if (!wle) continue;
 
             const setsData = Array.from({ length: ex.sets }, (_, idx) => ({
-              exercise_id: wle.id,
+              workout_log_exercise_id: wle.id,
               set_number: idx + 1,
               reps: ex.reps ?? null,
               weight_kg: ex.weight_kg ?? null,
