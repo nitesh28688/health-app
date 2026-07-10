@@ -815,3 +815,41 @@ Below is the verified audit based on line-by-line inspection of the 14 main page
 and expect another independent Fable review pass on top — every prior batch
 has turned up at least one real gap under review, budget for that rather
 than assuming this one will be different.
+
+# Phase 14 (Fable, 2026-07-10) — Serving-first quantity entry, no more oz
+
+User complaint (screenshot): logging boiled egg whites surfaced "oz" chips and the
+"Count pieces" Count × g-per-piece flow — confusing, US-centric. Goal: natural
+serving units (piece/slice/katori/bowl/cup...) like HealthifyMe, but self-learning.
+
+Root cause: "oz" was DATA, not UI — 5,525 of 14,379 `food_servings` rows were
+imperial labels seeded from USDA portion data, plus 223 junk/verbose rows.
+
+Done (all verified live):
+1. `scripts/clean-servings.mjs` — deleted 5,888 rows (5,525 imperial, 217
+   junk-phrase, 6 too-long, 140 dupes-after-normalize), normalized 1,598
+   (tablespoon→tbsp, "cup (8 fl oz)"→cup, "0.5 cup"→cup with grams×2).
+   8,491 clean rows remain; verified 0 imperial / 0 ≥55-char labels after.
+2. `scripts/seed-servings-ai.mjs` — Vertex-powered batch seeder (modeled on
+   seed-hindi-names.mjs, 30 foods/call): all 97 INDB foods that lacked a serving
+   now have 1-2 (katori/bowl/piece/tbsp...). Every INDB food now has ≥1 serving.
+3. food-estimate + photo-estimate routes: response schema now includes
+   `servings[]` (enum-constrained vocabulary piece/slice/katori/bowl/cup/glass/
+   plate/tbsp/tsp/scoop); `add/page.tsx` inserts them after creating the AI food
+   (RLS-safe: the user owns AI foods). Verified live: "boiled egg white" →
+   `servings: [{piece, 33g}]`.
+4. piece-weight route: accepts `food_id`, persists the AI estimate as a real
+   `piece` serving via service role (fills gaps only, never overwrites; bounded
+   0<g≤1000). Insert/cleanup round-trip verified on a live OFF food.
+5. QuantitySheet revamp: serving-first preselect (first serving, count 1),
+   chips show weight inline ("piece · 33g"), −/+ stepper (±0.5 servings, ±10
+   grams, still typable), "Count pieces" label gone (a "piece · ?" chip appears
+   only for serving-less non-liquid foods and auto-fires the AI, which persists
+   the answer), per-log weight override tucked behind "adjust weight" link,
+   natural pluralized log labels ("2 pieces", "1 katori"), edit re-matching now
+   by divisibility (2 × 35g chapati = 70g reselects the chapati chip at 2).
+6. `seed-usda.mjs` now filters imperial/junk portion labels at source so a
+   future reseed can't reintroduce them.
+
+Not click-tested live (auth-gated, established limitation) — user smoke test:
+search "boiled egg white", expect serving chips with gram weights, stepper, no oz.

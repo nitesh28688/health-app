@@ -67,6 +67,18 @@ function AddFood({ userId }: { userId: string }) {
     setPicked(f);
   }
 
+  // AI estimates come with 1-2 natural serving measures (piece/katori/glass...) —
+  // save them so the quantity sheet shows real serving chips instead of raw grams.
+  // RLS allows this because the AI food was just created with owner_id = this user.
+  async function insertAiServings(foodId: number, servings: unknown) {
+    if (!Array.isArray(servings)) return;
+    const rows = (servings as { label?: unknown; grams?: unknown }[])
+      .filter((s) => s && typeof s.label === "string" && typeof s.grams === "number" && s.grams > 0 && s.grams <= 1000)
+      .slice(0, 2)
+      .map((s) => ({ food_id: foodId, label: s.label as string, grams: s.grams as number }));
+    if (rows.length) await supabase.from("food_servings").insert(rows);
+  }
+
   async function askAI() {
     setAiBusy(true); setAiMsg(null); setAiElapsed(0);
     const tick = setInterval(() => setAiElapsed((s) => s + 1), 1000);
@@ -94,6 +106,7 @@ function AddFood({ userId }: { userId: string }) {
         sodium_mg: est.sodium_mg ?? null, calcium_mg: est.calcium_mg ?? null, iron_mg: est.iron_mg ?? null,
       }).select("*").single();
       if (error || !food) { setAiMsg(error?.message ?? "couldn't save"); return; }
+      await insertAiServings(food.id, est.servings);
       pick(food as Food);
     } catch (e) {
       setAiMsg(e instanceof DOMException && e.name === "AbortError"
@@ -133,6 +146,7 @@ function AddFood({ userId }: { userId: string }) {
         fat_g: est.fat_g, fiber_g: est.fiber_g,
       }).select("*").single();
       if (error || !food) { setPhotoMsg(error?.message ?? "couldn't save"); return; }
+      await insertAiServings(food.id, est.servings);
       pick(food as Food);
     } catch (e) {
       setPhotoMsg(e instanceof DOMException && e.name === "AbortError"

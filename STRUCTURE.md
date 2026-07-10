@@ -619,6 +619,25 @@ OFF retest.** Three cleanup passes on the branded-foods data:
     "tomato" surfaces "Tomatoes, sun-dried" before plain raw — but both are real,
     correct produce entries, not wrong-product matches like the original bug.
 
+**Round 6.6 (2026-07-10): serving-first quantity entry (Phase 14 — supersedes the
+"count pieces" flow described in Round 6.5 below).** The "oz" chips users saw were
+data, not UI: 5,525 of 14,379 `food_servings` rows carried imperial labels from the
+USDA portion import. `scripts/clean-servings.mjs` removed imperial/junk/dupe rows
+(5,888 total) and normalized 1,598 more; `scripts/seed-usda.mjs` now filters them at
+source. `scripts/seed-servings-ai.mjs` (Vertex batch job) gave every INDB food ≥1
+natural serving (katori/bowl/piece...). `QuantitySheet` is now serving-first: the
+first serving chip is preselected with a −/+ stepper (±0.5), chips show gram weight
+inline ("piece · 33g"), grams/ml is the last chip, and the per-log weight override
+lives behind an "adjust weight" link. "Count pieces" no longer exists as a concept —
+foods with zero servings get a "piece · ?" chip that auto-fires `piece-weight`
+(which now takes `food_id` and persists the estimate as a real `food_servings` row
+via service role — self-learning, same pattern as foods/exercises). food-estimate
+and photo-estimate return `servings[]` (enum vocabulary: piece/slice/katori/bowl/
+cup/glass/plate/tbsp/tsp/scoop) and `add/page.tsx` inserts them with the new AI
+food (RLS-safe: AI foods are user-owned). Log labels pluralize naturally
+("2 pieces", "1 katori"); edit-log re-matching is by divisibility, so a 70g log
+reselects "chapati · 35g" at count 2.
+
 **Round 6.5 (2026-07-09): flexible units + diet-aware targets.**
 `QuantitySheet` now defaults liquids to ml (via `food.is_liquid`) instead of
 always showing grams, and any food — not just ones with a preset serving — can

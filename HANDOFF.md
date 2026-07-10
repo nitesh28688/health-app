@@ -27,6 +27,13 @@ tracking, avatar + progress photos, Web Push reminders + daily AI tips, admin pa
    crossfading photos, self-hosted on R2, sourced from the already-seeded
    free-exercise-db data (public domain) that just never got imported before.
 4. UI/UX Consistency Overhaul (Batch 3) — Systematically fixed button/link visual weights, tap target sizes (~44px minimum for mobile), dark mode coverage, and Empty/Loading/Error states across all 14 app routes.
+5. Phase 14 (2026-07-10, Fable): serving-first quantity entry. Removed 5,888
+   imperial/junk `food_servings` rows ("oz"/"lb" chips users saw were data, not
+   UI), seeded natural servings for every INDB food via Vertex, made AI
+   food/photo estimates return servings, made piece-weight persist its answer
+   as a real serving (self-learning), and revamped `QuantitySheet` to
+   serving-first chips with a stepper — "Count pieces" is gone. Full detail in
+   `UPGRADE.md` Phase 14 and `STRUCTURE.md` Round 6.6.
 
 All built by Antigravity except Phase 13 (images), which Fable built directly.
 Every batch got an independent Fable review against the live DB rather than
@@ -48,26 +55,34 @@ this network).
 
 ## Immediate open items
 
-0. **Gemini quota — link a billing account, using existing Google Cloud credit
-   (2026-07-09, deferred to next session).** Confirmed live: Gemini's free
-   tier is 20 requests/day *per model, per Google Cloud project* — shared
-   across the whole app (all family members, all AI features combined), not
-   per end-user. The app's own per-user caps (10/day on food-estimate, photo-
-   estimate, piece-weight, suggest-exercises) don't protect against this — a
-   single engaged user alone can exceed Google's real ceiling before anyone
-   else opens the app. Also found and fixed a related bug the same day: the
-   fallback chain (`web/lib/gemini.ts`) only advanced to the next model on a
-   503, not a 429 (quota) — so quota exhaustion on the first model never
-   actually engaged the other two, despite the chain existing. Fixed
-   (`94be123`) and verified live. User has **$350 in existing Google Cloud
-   credit** (from the separate Linear Ventures ERP project) they want to
-   apply to this Gemini API key's billing — deferred to "connect it tomorrow."
-   Once linked, the free-tier 20/day ceiling should lift substantially (paid
-   tier 1 limits are much higher, and Gemini Flash pricing is cheap enough
-   that realistic family usage would cost cents/month against that credit).
-   Until then, deliberately left as-is per user's call — the app already
-   degrades gracefully (clear "AI unavailable, try again shortly" message,
-   not a crash) when quota is genuinely exhausted on a bad day.
+0. **Gemini quota — SOLVED via Vertex AI migration (2026-07-10).** Confirmed
+   live: Gemini's AI Studio free tier is 20 requests/day *per model, per
+   Google Cloud project* — shared across the whole app (all family members,
+   all AI features combined), not per end-user. Also found and fixed a
+   related bug on 2026-07-09: the fallback chain (`web/lib/gemini.ts`) only
+   advanced to the next model on a 503, not a 429 (quota) — fixed (`94be123`).
+   **2026-07-10 (commit `816095c`): migrated `web/lib/gemini.ts`'s primary
+   path to Vertex AI**, billed against a new, separate GCP project
+   (`health-app-502004`, kept apart from the Linear Ventures ERP project so
+   AI spend can be killed independently) linked to the user's existing $350
+   Google Cloud credit. Service account `health-app-vertex@health-app-502004
+   .iam.gserviceaccount.com` (role: Agent Platform User / `aiplatform.user`,
+   Google renamed Vertex AI to "Agent Platform" in the console) mints OAuth2
+   tokens via `google-auth-library`. New env vars (local `.env.local` +
+   Vercel production): `GOOGLE_CLOUD_PROJECT`, `GOOGLE_CLOUD_LOCATION`
+   (`us-central1`), `GOOGLE_SERVICE_ACCOUNT_JSON` (full key content).
+   `GEMINI_API_KEY`/AI Studio kept as a final fallback tier for resilience.
+   Verified live before wiring in: Vertex requires an explicit
+   `role: "user"` field per contents entry (AI Studio silently defaults
+   this); `gemini-2.0-flash`/`gemini-flash-latest` don't exist as publisher
+   models on Vertex in this project/region (404) — only `gemini-2.5-flash`
+   and `gemini-2.5-flash-lite` do, so the Vertex chain uses those two;
+   multimodal snake_case `inline_data`/`mime_type` fields work unchanged on
+   Vertex, so `photo-estimate/route.ts` needed no edits. Deployed and
+   confirmed `● Ready` on Vercel. Cost estimate for photo scanning: ~$0.0002
+   per call — negligible against $350 credit even at heavy family use.
+   `scripts/seed-hindi-names.mjs` deliberately left on the AI Studio key
+   (low-volume, manual, not worth coupling to Vertex).
 1. **Open Food Facts — SOLVED via bulk dump (2026-07-09): 2,908 products live.**
    The API throttle that had this stuck at 172 products never applies to OFF's
    full CSV export. `scripts/seed-off-bulk.mjs` downloads-once-and-streams the

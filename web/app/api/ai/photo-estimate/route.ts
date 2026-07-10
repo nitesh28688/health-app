@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
 
   const res = await generateWithFallback(
     [
-      { text: "Identify the food in this photo and estimate its nutrition per 100 grams. If this isn't food, set is_food to false. Set is_liquid to true if it's a drink/beverage/soup measured in ml rather than grams." },
+      { text: "Identify the food in this photo and estimate its nutrition per 100 grams. If this isn't food, set is_food to false. Set is_liquid to true if it's a drink/beverage/soup measured in ml rather than grams. Also give 1-2 natural household serving measures in servings with the typical weight in grams of ONE such serving: piece for countable items, glass/cup for drinks, katori (~150g) for curries/dal/rice, plate for full plates, slice/bowl/tbsp/tsp/scoop where natural." },
       { inline_data: { mime_type: mimeType, data: base64 } },
     ],
     {
@@ -47,6 +47,17 @@ export async function POST(req: NextRequest) {
         is_food: { type: "BOOLEAN" }, name: { type: "STRING" }, is_liquid: { type: "BOOLEAN" },
         kcal: { type: "NUMBER" }, protein_g: { type: "NUMBER" },
         carbs_g: { type: "NUMBER" }, fat_g: { type: "NUMBER" }, fiber_g: { type: "NUMBER" },
+        servings: {
+          type: "ARRAY",
+          items: {
+            type: "OBJECT",
+            properties: {
+              label: { type: "STRING", enum: ["piece", "slice", "katori", "bowl", "cup", "glass", "plate", "tbsp", "tsp", "scoop"] },
+              grams: { type: "NUMBER" },
+            },
+            required: ["label", "grams"],
+          },
+        },
       },
       required: ["is_food", "name", "is_liquid", "kcal", "protein_g", "carbs_g", "fat_g", "fiber_g"],
     }

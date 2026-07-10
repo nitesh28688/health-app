@@ -94,6 +94,12 @@ await db.query(`delete from food_servings where food_id in (select id from foods
 const { rows: idRows } = await db.query(`select id, indb_code from foods where source='usda'`);
 const idByFdc = new Map(idRows.map((r) => [r.indb_code.slice(5), r.id]));
 
+// Skip US imperial measures and USDA junk phrasing at source — the app is for
+// India/UAE families, oz/lb chips confused real users (removed from the live DB
+// by scripts/clean-servings.mjs on 2026-07-10; this filter keeps a future reseed
+// from reintroducing them). Keep the same regexes in both scripts.
+const IMPERIAL = /\b(oz|ounce|ounces|fl\.?\s*oz|lb|lbs|pound|pounds)\b/i;
+const JUNK = /yield|excluding refuse|undiluted|as purchased/i;
 const perFood = new Map();
 const servings = [];
 for (const p of portions) {
@@ -103,6 +109,7 @@ for (const p of portions) {
   const label = (p.modifier || p.portion_description || "").trim().slice(0, 60);
   const count = perFood.get(fid) ?? 0;
   if (!(g > 0) || !label || count >= 3) continue;
+  if (IMPERIAL.test(label) || JUNK.test(label) || label.length >= 55) continue;
   perFood.set(fid, count + 1);
   const amt = parseFloat(p.amount) || 1;
   servings.push([fid, amt === 1 ? label : `${amt} ${label}`, Math.round(g * 10) / 10]);

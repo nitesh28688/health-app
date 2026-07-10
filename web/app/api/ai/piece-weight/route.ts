@@ -15,8 +15,20 @@ const admin = () =>
     auth: { persistSession: false },
   });
 
+// Persist an AI piece-weight as a real food_servings row (service role — global
+// foods aren't user-writable under RLS). Self-learning: the next person who opens
+// this food sees a "piece" chip instead of re-asking the AI. Only fills a gap —
+// never overwrites an existing piece serving.
+async function persistPieceServing(db: ReturnType<typeof admin>, foodId: number, grams: number) {
+  if (!(grams > 0 && grams <= 1000)) return;
+  const { data: existing } = await db.from("food_servings")
+    .select("id").eq("food_id", foodId).eq("label", "piece").limit(1);
+  if (existing?.length) return;
+  await db.from("food_servings").insert({ food_id: foodId, label: "piece", grams });
+}
+
 export async function POST(req: NextRequest) {
-  const { name } = await req.json();
+  const { name, food_id } = await req.json();
   if (!name || typeof name !== "string" || name.length > 100) {
     return NextResponse.json({ error: "bad name" }, { status: 400 });
   }
@@ -29,7 +41,11 @@ export async function POST(req: NextRequest) {
 
   const qNorm = `piece:${name.trim().toLowerCase().replace(/\s+/g, " ")}`;
   const { data: cached } = await db.from("ai_food_cache").select("response").eq("query_norm", qNorm).maybeSingle();
-  if (cached) return NextResponse.json({ source: "cache", grams: (cached.response as { grams: number }).grams });
+  if (cached) {
+    const cachedGrams = (cached.response as { grams: number }).grams;
+    if (typeof food_id === "number") await persistPieceServing(db, food_id, cachedGrams);
+    return NextResponse.json({ source: "cache", grams: cachedGrams });
+  }
 
   const today = new Date().toISOString().slice(0, 10);
   const { data: capRow } = await db.from("ai_suggestions").select("content")
@@ -57,5 +73,6 @@ export async function POST(req: NextRequest) {
     { user_id: userId, log_date: today, kind: "food_estimate", content: { count: used + 1 } },
     { onConflict: "user_id,log_date,kind" });
   await db.from("ai_food_cache").insert({ query_norm: qNorm, response: { grams } });
+  if (typeof food_id === "number") await persistPieceServing(db, food_id, grams);
   return NextResponse.json({ source: "gemini", grams });
 }
