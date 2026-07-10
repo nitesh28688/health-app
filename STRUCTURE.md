@@ -845,9 +845,22 @@ to rename the app to "Core AI", revamp the design, and introduce highly-capable
 - **Pre-canned Hype Messages**: Revamped the 'Cheer' button on the Friends feed. Users can click to reveal a popover with pre-canned hype options (🔥, 💪, or 'Beast mode!'). These are stored in the existing `emoji` text column of the `cheers` table.
 - **Feed Cheers Display**: Upgraded the Friends feed to fetch and display all cheers directed at the feed items inline, grouped by the sender's display name.
 
-**Not yet built** (schema/RPCs already exist, just needs UI):
-- Offline queue (PWA currently caches the shell for offline *viewing*, but doesn't
-  queue writes made while offline).
+**Offline write queue — built 2026-07-10 (Phase 18).** `web/lib/offlineQueue.ts`
+(IndexedDB storage, in-memory fallback for SSR/tests) + `web/lib/offlineWrite.ts`
+(drop-in `supabase.from().insert/update/upsert()` replacement, tries live then falls
+back to the queue on a network failure only — real errors like RLS denials surface
+immediately) + `web/lib/replayQueue.ts` (drains on `online`/`visibilitychange`/60s
+interval/mount, no Background Sync API dependency so Android and iOS behave the
+same). Migration `0024_offline_queue.sql` added `client_id uuid unique` to
+`food_logs`/`water_logs`/`workout_logs`/`medication_logs` as the idempotency key for
+tables with no pre-existing natural one; `body_metrics`/`cycle_logs`/`cheers` dedupe
+via their existing unique constraints, `fasting_sessions` via its own client-assigned
+PK. A `23505` (unique violation) on replay is treated as "already succeeded," the
+mechanism that makes an interrupted mid-batch replay safe. Structured workout
+logging and recipe creation (both multi-table dependent insert chains) deliberately
+stay online-only with an explicit guard — see Phase 18 in `UPGRADE.md` for why.
+
+**Not yet built:**
 - More frequent reminders (needs Vercel Pro cron, or a different scheduling approach).
 
 ## 8. Candidate features not yet built (ideas for later)

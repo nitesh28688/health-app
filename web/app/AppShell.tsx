@@ -1,11 +1,12 @@
 "use client";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useUser, type Profile } from "@/lib/useUser";
 import type { Session } from "@supabase/supabase-js";
 import { AnimatePresence, motion } from "framer-motion";
-import { Book, Dumbbell, TrendingUp, Users, Smile, Salad } from "lucide-react";
+import { Book, Dumbbell, TrendingUp, Users, Smile, Salad, CloudUpload } from "lucide-react";
+import { subscribePendingCount } from "@/lib/offlineQueue";
 
 const TABS = [
   { href: "/", label: "Diary", icon: Book },
@@ -24,10 +25,16 @@ export function AppShell({ children }: {
   const pathname = usePathname();
 
   const touchStart = useRef<{x: number, y: number} | null>(null);
+  const [pendingWrites, setPendingWrites] = useState(0);
 
   useEffect(() => {
     if (!loading && !session) router.replace("/login");
   }, [loading, session, router]);
+
+  // Offline write queue: a small badge, not a redesign — hidden entirely when
+  // there's nothing pending. Subscription lives here (not per-page) so it
+  // persists across navigation.
+  useEffect(() => subscribePendingCount(setPendingWrites), []);
 
   function onTouchStart(e: React.TouchEvent) {
     if ((e.target as Element).closest('.fixed.inset-0')) return;
@@ -57,6 +64,14 @@ export function AppShell({ children }: {
 
   return (
     <div className="flex-1 flex flex-col w-full h-full" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+      {pendingWrites > 0 && (
+        <div className="fixed top-[env(safe-area-inset-top)] inset-x-0 z-40 flex justify-center pt-2 pointer-events-none">
+          <div className="flex items-center gap-1.5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 text-xs font-medium px-3 py-1.5 shadow-sm">
+            <CloudUpload className="w-3.5 h-3.5" />
+            {pendingWrites} pending — will sync automatically
+          </div>
+        </div>
+      )}
       <AnimatePresence>
         <motion.div 
           key={pathname} 

@@ -9,6 +9,7 @@ import { SetTimer } from "@/components/SetTimer";
 import { AiRoutineGenerator } from "@/components/AiRoutineGenerator";
 import { ExerciseDemo } from "@/components/ExerciseDemo";
 import { LiveWorkout, ActiveEx } from "@/components/LiveWorkout";
+import { offlineWrite } from "@/lib/offlineWrite";
 import { Dumbbell, Flame, Bot } from "lucide-react";
 
 interface Plan { id: number; name: string; goal: string | null; level: string | null; days_per_week: number | null; description: string | null; owner_id: string | null; }
@@ -138,10 +139,13 @@ function Workout({ profile, setProfile, userId }: {
     if (!openDay) return;
     const mins = parseFloat(duration) || 40;
     setLogging(true);
-    await supabase.from("workout_logs").insert({
-      user_id: userId, log_date: todayLocal(), plan_day_id: openDay.id,
-      title: openDay.title, duration_min: mins,
-      kcal_burned: dayKcal(items, mins),
+    await offlineWrite({
+      table: "workout_logs", op: "insert",
+      payload: {
+        user_id: userId, log_date: todayLocal(), plan_day_id: openDay.id,
+        title: openDay.title, duration_min: mins,
+        kcal_burned: dayKcal(items, mins),
+      },
     });
     setLogging(false);
     setOpenDay(null);
@@ -154,10 +158,13 @@ function Workout({ profile, setProfile, userId }: {
     const mins = parseFloat(customDuration) || 30;
     if (!customTitle.trim()) return;
     setLogging(true);
-    await supabase.from("workout_logs").insert({
-      user_id: userId, log_date: todayLocal(), plan_day_id: null,
-      title: customTitle.trim(), duration_min: mins, notes: customNotes.trim() || null,
-      kcal_burned: kcalBurned(5, weightKg, mins),
+    await offlineWrite({
+      table: "workout_logs", op: "insert",
+      payload: {
+        user_id: userId, log_date: todayLocal(), plan_day_id: null,
+        title: customTitle.trim(), duration_min: mins, notes: customNotes.trim() || null,
+        kcal_burned: kcalBurned(5, weightKg, mins),
+      },
     });
     setLogging(false);
     setCustomOpen(false);
@@ -227,6 +234,14 @@ function Workout({ profile, setProfile, userId }: {
   async function logStructuredSession(finalExercises = activeExercises, overrideMins?: number) {
     const toLog = finalExercises.length > 0 ? finalExercises : activeExercises;
     if (toLog.length === 0) return;
+    // This writes across 3 tables in a dependent chain (workout_logs -> ...
+    // exercises -> ... sets), each insert needing the previous one's id — not
+    // safe to queue offline (a partial chain would orphan rows). Refuse
+    // upfront rather than risk it, per the known limitation in UPGRADE.md.
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      alert("You're offline — logging a structured workout needs a connection. Try again once you're back online.");
+      return;
+    }
     setLogging(true);
     
     let totalMins = overrideMins || 0;

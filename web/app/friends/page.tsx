@@ -6,6 +6,7 @@ import { todayLocal } from "@/lib/nutrition";
 import { Skeleton } from "@/lib/Skeleton";
 import Link from "next/link";
 import { Dumbbell, Flame, BookOpen, Scale, ChefHat, HandHeart, Trophy, Medal } from "lucide-react";
+import { offlineWrite } from "@/lib/offlineWrite";
 
 interface PubProfile { id: string; username: string; display_name: string | null; }
 interface Friendship { requester_id: string; addressee_id: string; status: string; }
@@ -106,7 +107,12 @@ function Friends({ userId }: { userId: string }) {
   async function sendHype(f: FeedItem, emojiText: string) {
     const kind = f.kind === "workout" ? "workout" : f.kind === "weight" ? "weight" : "general";
     const key = `${f.user_id}|${f.log_date}|${kind}`;
-    await supabase.from("cheers").insert({ from_user: userId, to_user: f.user_id, log_date: f.log_date, kind, emoji: emojiText });
+    await offlineWrite({
+      table: "cheers", op: "upsert",
+      payload: { from_user: userId, to_user: f.user_id, log_date: f.log_date, kind, emoji: emojiText },
+      onConflict: "from_user,to_user,log_date,kind",
+      ignoreDuplicates: true,
+    });
     setCheered((s) => new Set(s).add(key));
     setAllCheers((prev) => {
       const existing = prev[key] || [];

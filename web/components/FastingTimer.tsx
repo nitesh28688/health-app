@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
+import { offlineWrite } from "@/lib/offlineWrite";
 import { Clock, Play, Square } from "lucide-react";
 
 type FastingSession = {
@@ -41,18 +42,22 @@ export function FastingTimer({ userId }: { userId: string }) {
   }, [active]);
 
   async function startFast() {
-    const { data } = await supabase
-      .from("fasting_sessions")
-      .insert({ user_id: userId })
-      .select("*")
-      .single();
-    if (data) setActive(data as FastingSession);
+    // Build the row client-side and set it optimistically — a queued (offline)
+    // write can't return server data, but the timer needs to start counting
+    // immediately regardless of sync status. The client-generated id is also
+    // the idempotency key a queued insert dedupes on if replayed twice.
+    const session: FastingSession = { id: crypto.randomUUID(), started_at: new Date().toISOString(), ended_at: null, target_hours: null };
+    setActive(session);
+    await offlineWrite({
+      table: "fasting_sessions", op: "insert",
+      payload: { id: session.id, user_id: userId, started_at: session.started_at },
+    });
   }
 
   async function stopFast() {
     if (!active) return;
     const ended = new Date().toISOString();
-    await supabase.from("fasting_sessions").update({ ended_at: ended }).eq("id", active.id);
+    await offlineWrite({ table: "fasting_sessions", op: "update", payload: { ended_at: ended }, match: { id: active.id } });
     setHistory([{ ...active, ended_at: ended }, ...history].slice(0, 5));
     setActive(null);
   }

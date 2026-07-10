@@ -948,3 +948,73 @@ exercises regardless of duration entered (now genuinely exercise-based: each
 exercise's own MET × its estimated time share, scaled proportionally to the entered
 minutes, shown per-exercise in the list too), and Trends' Goal Progress was a buried
 text hyperlink (now a full card with a live SVG progress ring, tappable to `/goals`).
+
+# Phase 18 (Fable, 2026-07-10) — Offline write queue
+
+User confirmed the offline-viewing/no-offline-writes gap needs fixing ("we do need offline
+cache sync") and asked how it'd work on both Android and iPhone before committing — answered
+(no Background Sync API on iOS, so sync only drains while the PWA is foregrounded on iOS vs
+Chrome's more automatic background retry; acceptable given daily family use) and then planned
+and built it.
+
+**What was built:**
+1. `supabase/migrations/0024_offline_queue.sql` — `client_id uuid unique` on `food_logs`,
+   `water_logs`, `workout_logs`, `medication_logs` (the four in-scope tables with no existing
+   natural idempotency key). Applied live by the user via Supabase SQL Editor, confirmed
+   present via direct query before proceeding.
+2. `web/lib/offlineQueue.ts` — IndexedDB-backed queue storage (in-memory fallback when
+   `indexedDB` is undefined, e.g. SSR or a Node test script), plus a `subscribePendingCount`
+   pub/sub for the UI badge.
+3. `web/lib/offlineWrite.ts` — drop-in replacement for `supabase.from(...).insert/update/
+   upsert(...)`. Tries live first when online; on a genuine network failure (detected by
+   message content — Supabase-js doesn't give a structured code for this) falls back to the
+   queue. Real errors (RLS, validation) surface immediately, never silently queued. Carries a
+   client-generated idempotency key per table's actual dedupe mechanism: `client_id` for the
+   four migrated tables, the row's own client-assigned `id` for `fasting_sessions`, and the
+   existing natural unique key via `onConflict` for `body_metrics`/`cycle_logs`/`cheers`
+   (added an `ignoreDuplicates` option since `cheers` wants insert-or-no-op while
+   `body_metrics`/`cycle_logs` want real overwrite-on-conflict — these are different upsert
+   semantics that would have been wrong to hardcode as one behavior).
+4. `web/lib/replayQueue.ts` — drains the queue on `online`, `visibilitychange` (iOS PWA
+   foreground resume), a 60s interval fallback, and on initial mount. No Background Sync API
+   dependency, so behavior is identical on Android/iOS by design. Postgres `23505` (unique
+   violation) on replay is treated as "already succeeded" — the concrete safety net for a
+   write that landed server-side but got interrupted before its local queue entry was
+   removed. Refreshes an expired session once per replay pass rather than failing per-item.
+5. Migrated the ~10 in-scope call sites: `food_logs` insert/update (diary + add-food +
+   copy-yesterday, the last one queuing each row independently since they're not dependent on
+   each other), `water_logs` insert, `body_metrics` upsert (Trends + Profile), `cycle_logs`
+   upsert, `workout_logs` simple insert (day-plan log + freeform log — **not** the structured
+   session), `medication_logs` insert, `fasting_sessions` insert/update (built client-side
+   with an optimistic UI update since a queued write can't return server data and the timer
+   needs to start counting immediately regardless of sync status), `cheers` upsert.
+6. Pending-count badge on `AppShell.tsx` — a small dismissible-feeling pill, hidden at 0,
+   shown to every page since the subscription lives above the router.
+7. **Known limitation, explicit not silent:** `logStructuredSession` (workout) and recipe
+   creation both write across 3 dependent tables (each insert needs the previous insert's
+   returned id) — a generic single-mutation queue can't safely replay these without a
+   Postgres RPC to make the chain atomic first. Both got an upfront `navigator.onLine` guard
+   with a clear error message instead — this also fixes a real latent bug where losing
+   connection mid-chain today leaves an orphaned parent row with no children. Full offline
+   support for these two is future work, not attempted this phase.
+
+**Verified (real DB checks, not just tsc):**
+- `client_id` columns confirmed present live before building against them.
+- Inserting the same `client_id` twice raises `23505` as designed (tested live, cleaned up).
+- `cheers` upsert with `ignoreDuplicates: true` correctly no-ops on a duplicate — exactly 1
+  row survives two identical upserts (tested live, cleaned up).
+- The real `offlineWrite()` module (not a reimplementation) tested directly against the live
+  Supabase project with `navigator` polyfilled: an unauthenticated write's RLS rejection
+  surfaces immediately as `{queued:false, error:...}` (never silently queued), and a genuine
+  `navigator.onLine=false` state queues without ever hitting the network (confirmed zero
+  stray rows landed server-side).
+- `scripts/test-offline-queue.mjs` — a plain Node script (no test runner exists in this
+  project) exercising the replay/dedupe logic in isolation: 6/6 passed (batch success,
+  network-error-stops-batch-then-resumes, `23505`-treated-as-success, real-error-bumps-retry,
+  oldest-first ordering, retry-cap-stops-forever-retry).
+- `npx tsc --noEmit` clean throughout.
+
+**Not verified (needs the user, real device/browser):** actual offline behavior in a real
+mobile browser (DevTools Network→Offline, log something, reconnect, watch the badge clear),
+and genuine iOS Safari PWA backgrounding/foreground-resume behavior. Flagged plainly — this
+environment can't drive a real browser against the deployed PWA.

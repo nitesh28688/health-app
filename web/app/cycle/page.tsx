@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { AppShell } from "../AppShell";
 import { supabase } from "@/lib/supabase";
 import { todayLocal } from "@/lib/nutrition";
+import { offlineWrite } from "@/lib/offlineWrite";
 import { Activity } from "lucide-react";
 
 interface CycleLog { id: number; period_start: string; period_end: string | null; flow: string | null; symptoms: string | null; }
@@ -30,9 +31,11 @@ function Cycle({ userId }: { userId: string }) {
 
   async function logPeriod() {
     setSaving(true);
-    await supabase.from("cycle_logs").upsert(
-      { user_id: userId, period_start: periodStart, flow, symptoms: symptoms.trim() || null },
-      { onConflict: "user_id,period_start" });
+    await offlineWrite({
+      table: "cycle_logs", op: "upsert",
+      payload: { user_id: userId, period_start: periodStart, flow, symptoms: symptoms.trim() || null },
+      onConflict: "user_id,period_start",
+    });
     setSaving(false);
     setSymptoms("");
     load();

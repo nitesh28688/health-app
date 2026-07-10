@@ -68,6 +68,14 @@ function RecipeBuilder({ userId, onDone }: { userId: string; onDone: () => void 
     setError(null);
     if (!name.trim() || ings.length === 0) { setError("Name + at least one ingredient."); return; }
     if (ings.some((i) => !(parseFloat(i.qty) > 0))) { setError("Every ingredient needs grams."); return; }
+    // This writes across 3 tables in a dependent chain (foods -> food_servings
+    // -> recipe_ingredients), each insert needing the previous one's id — not
+    // safe to queue offline (a partial chain would orphan rows). Refuse
+    // upfront rather than risk it, per the known limitation in UPGRADE.md.
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      setError("You're offline — saving a recipe needs a connection. Try again once you're back online.");
+      return;
+    }
     setBusy(true);
     const { data: recipe, error: e1 } = await supabase.from("foods").insert({
       name: name.trim(), source: "recipe", owner_id: userId,

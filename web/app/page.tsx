@@ -10,6 +10,7 @@ import { todayLocal, type FoodNutrients, logSnapshot } from "@/lib/nutrition";
 import type { Profile } from "@/lib/useUser";
 import { Skeleton } from "@/lib/Skeleton";
 import { QuantitySheet } from "@/components/QuantitySheet";
+import { offlineWrite } from "@/lib/offlineWrite";
 import { Pencil, X, Sunrise, Sun, Moon, Coffee, Droplet, Flame, Sparkles, Bot, Shield, CalendarDays } from "lucide-react";
 
 const MEALS = [
@@ -140,7 +141,7 @@ function Diary({ profile, userId }: { profile: Profile | null; userId: string })
   }
 
   async function addWater(ml: number) {
-    await supabase.from("water_logs").insert({ user_id: userId, log_date: date, ml });
+    await offlineWrite({ table: "water_logs", op: "insert", payload: { user_id: userId, log_date: date, ml } });
     setTotals((t) => {
       const next = Number(t?.water_ml ?? 0) + ml;
       if (next >= (profile?.target_water_ml ?? 3000)) {
@@ -174,7 +175,9 @@ function Diary({ profile, userId }: { profile: Profile | null; userId: string })
         ...logSnapshot(foodById.get(l.food_id)!, Number(l.qty_g), l.qty_unit_label),
       }));
     if (rows.length) {
-      await supabase.from("food_logs").insert(rows);
+      // Independent rows, no cross-row dependency — safe to queue each
+      // individually rather than as one atomic bulk insert.
+      await Promise.all(rows.map((payload) => offlineWrite({ table: "food_logs", op: "insert", payload })));
       load();
     }
   }
@@ -381,7 +384,7 @@ function Diary({ profile, userId }: { profile: Profile | null; userId: string })
           onClose={() => setEditingLog(null)}
           onSave={async (grams, label) => {
             const snap = logSnapshot(editingLog.food, grams, label);
-            await supabase.from("food_logs").update(snap).eq("id", editingLog.log.id);
+            await offlineWrite({ table: "food_logs", op: "update", payload: snap, match: { id: editingLog.log.id } });
             setEditingLog(null);
             load();
           }}

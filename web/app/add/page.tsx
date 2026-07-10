@@ -7,6 +7,7 @@ import { supabase } from "@/lib/supabase";
 import { logSnapshot, todayLocal, type FoodNutrients } from "@/lib/nutrition";
 import { compressImage } from "@/lib/imageCompress";
 import { QuantitySheet } from "@/components/QuantitySheet";
+import { offlineWrite } from "@/lib/offlineWrite";
 import { Loader2, ChefHat, Bot, Tag, Camera } from "lucide-react";
 
 type Food = FoodNutrients & {
@@ -240,10 +241,12 @@ function AddFood({ userId }: { userId: string }) {
           onSave={async (grams, label) => {
             setSaveMsg(null);
             const snap = logSnapshot(picked, grams, label);
-            const { error } = await supabase.from("food_logs").insert({
-              user_id: userId, log_date: date, meal, food_id: picked.id, ...snap });
+            const { error } = await offlineWrite({
+              table: "food_logs", op: "insert",
+              payload: { user_id: userId, log_date: date, meal, food_id: picked.id, ...snap },
+            });
             // Never fail silently — a stuck sheet with no message reads as "app is broken"
-            if (error) { setSaveMsg(`Couldn't save: ${error.message}`); return; }
+            if (error) { setSaveMsg(`Couldn't save: ${error}`); return; }
             router.push("/");
           }}
         />

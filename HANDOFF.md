@@ -133,8 +133,17 @@ this network).
    OFF (parked, 172 India products) and the AI fallback (permanently
    self-saving, reads the user's actual search text) are what's left covering
    packaged/branded foods now.
-2. **Offline write queue** — PWA currently caches the shell for offline *viewing*, but doesn't
-   queue writes made while offline. See STRUCTURE.md § "Not yet built" for specifics.
+2. **Offline write queue — DONE (2026-07-10).** `web/lib/offlineQueue.ts` +
+   `offlineWrite.ts` + `replayQueue.ts`. The ~10 highest-value writes (food/water/weight/
+   workout/medication/fasting/cheers logging) now queue in IndexedDB on a network failure and
+   replay automatically on reconnect — works identically on Android and iOS (no Background
+   Sync API dependency; iOS just needs the PWA foregrounded to drain the queue, an accepted
+   platform limit). A small pending-count badge shows on every page when writes are queued.
+   Structured workout logging and recipe creation stay online-only (multi-table dependent
+   insert chains, would need a Postgres RPC to become safely queueable — explicit known
+   limitation, not silently broken). Full detail in `UPGRADE.md` Phase 18. **Still needs a
+   real-device smoke test** — DevTools offline toggle + reconnect, and iOS Safari PWA
+   backgrounding — this environment can't drive a real browser against the deployed PWA.
 3. **Candidate v2 features** (not started, ideas only): fasting timer, weekly
    email digest (Brevo SMTP already set up, unused beyond auth mail). Barcode
    scanner was considered and **rejected as a product call (2026-07-09)**: nobody

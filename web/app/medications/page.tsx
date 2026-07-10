@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { AppShell } from "../AppShell";
 import { supabase } from "@/lib/supabase";
 import { Pill, Check } from "lucide-react";
+import { offlineWrite } from "@/lib/offlineWrite";
 
 interface Med { id: number; name: string; dosage: string | null; times: string[]; active: boolean; }
 
@@ -43,7 +44,7 @@ function Medications({ userId }: { userId: string }) {
   const [takenIds, setTakenIds] = useState<Set<number>>(new Set());
   async function logTaken(medicationId: number) {
     if (takenIds.has(medicationId)) return;
-    const { error } = await supabase.from("medication_logs").insert({ medication_id: medicationId, user_id: userId });
+    const { error } = await offlineWrite({ table: "medication_logs", op: "insert", payload: { medication_id: medicationId, user_id: userId } });
     if (!error) setTakenIds((prev) => new Set(prev).add(medicationId));
   }
 

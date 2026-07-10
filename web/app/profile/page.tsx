@@ -11,6 +11,7 @@ import { PhoneInput } from "@/lib/PhoneInput";
 import { PageSkeleton } from "@/lib/Skeleton";
 import { pushSupported, currentPushSubscription, enablePush, disablePush } from "@/lib/push";
 import { compressImage } from "@/lib/imageCompress";
+import { offlineWrite } from "@/lib/offlineWrite";
 import { Camera, Image as ImageIcon, Sparkles, Hand, Check, Pill, Activity } from "lucide-react";
 
 const inputCls =
@@ -142,12 +143,15 @@ function ProfileForm({ profile, setProfile, userId, email }: {
     if (w > 0) {
       const waistNum = parseFloat(waist);
       const bfNum = parseFloat(bodyFat);
-      await supabase.from("body_metrics").upsert(
-        { 
+      await offlineWrite({
+        table: "body_metrics", op: "upsert",
+        payload: {
           user_id: userId, log_date: todayLocal(), weight_kg: w,
           waist_cm: waistNum > 0 ? waistNum : null,
           body_fat_pct: bfNum > 0 ? bfNum : null,
-        }, { onConflict: "user_id,log_date" });
+        },
+        onConflict: "user_id,log_date",
+      });
     }
     setProfile(data as Profile);
     setSaved(true);

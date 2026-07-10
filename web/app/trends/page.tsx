@@ -4,6 +4,7 @@ import Link from "next/link";
 import { AppShell } from "../AppShell";
 import { supabase } from "@/lib/supabase";
 import { todayLocal, bmiCategory, estimateGoalProgress } from "@/lib/nutrition";
+import { offlineWrite } from "@/lib/offlineWrite";
 import { awardBadge } from "@/lib/badges";
 import type { Profile } from "@/lib/useUser";
 import { PageSkeleton } from "@/lib/Skeleton";
@@ -130,9 +131,11 @@ function Trends({ profile, userId }: { profile: Profile | null; userId: string }
     // Deliberately omits waist_cm/body_fat_pct: Profile is the single place those
     // are edited now. Including them here (even as null) would silently overwrite
     // whatever was logged there today, since this is an upsert on the same row.
-    await supabase.from("body_metrics").upsert(
-      { user_id: userId, log_date: todayLocal(), weight_kg: w },
-      { onConflict: "user_id,log_date" });
+    await offlineWrite({
+      table: "body_metrics", op: "upsert",
+      payload: { user_id: userId, log_date: todayLocal(), weight_kg: w },
+      onConflict: "user_id,log_date",
+    });
     setWeight("");
     setSavedMsg(true);
     setTimeout(() => setSavedMsg(false), 1500);
