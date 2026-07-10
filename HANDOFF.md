@@ -7,6 +7,14 @@ Short pointer document. For the deep "why is it built this way" reference, read
 lucide-react icons throughout — see UPGRADE.md Phases 16-17 and the "Verification
 pass" entry below for what Antigravity built and what Fable found/fixed on review.
 
+**Email confirmation disabled (2026-07-10)**, in the Supabase dashboard (Authentication →
+Sign In / Providers → Email → "Confirm email" toggled off) — not a code change, many
+signups never confirmed (spam folder / never checked). `web/app/signup/page.tsx` already
+handled both cases (`if (!data.session) show "check your email"` vs. immediate redirect on
+signup) so no app code needed touching. New signups now log in immediately. Accounts that
+were already stuck unconfirmed from before this change are unaffected — they still need
+their old confirmation link or a manual admin confirm; nobody's asked for that cleanup yet.
+
 ## Where things stand (2026-07-09)
 
 **The app is live and in real use.** Family members have signed up
