@@ -296,11 +296,12 @@ function Workout({ profile, setProfile, userId }: {
       <h1 className="text-2xl font-bold mb-4">Workout</h1>
 
       {activePlan ? (
-        <section className="rounded-2xl border-2 border-indigo-600 p-4 pt-6 relative mt-2">
+        <div className="flex flex-col gap-4 mt-2">
           <button onClick={() => setActive(null)}
-            className="absolute -top-3 left-4 bg-white dark:bg-[#0a0a0a] px-2 text-xs font-bold text-neutral-500 hover:text-indigo-500 transition-colors uppercase tracking-wider">
-            ← All Routines
+            className="self-start flex items-center gap-2 text-sm font-bold text-indigo-600 bg-indigo-50 dark:bg-indigo-950/30 px-4 py-2.5 rounded-xl active:scale-[0.98] transition-transform">
+            ← Back to All Routines
           </button>
+          <section className="rounded-2xl border-2 border-indigo-600 p-5">
           <div className="flex items-center justify-between gap-2">
             <h2 className="font-bold text-lg">{activePlan.name}</h2>
           </div>
@@ -315,6 +316,7 @@ function Workout({ profile, setProfile, userId }: {
             ))}
           </div>
         </section>
+        </div>
       ) : (
         <section>
           <AiRoutineGenerator onGenerated={(planId) => {
