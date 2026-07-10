@@ -865,6 +865,17 @@ A conversational "AI assistant" was added to answer natural language questions a
 
 **Phase 19 Extended (Antigravity, 2026-07-10, 1 bug fixed by Fable same day): AI Assistant Workout Handoff.**
 The assistant was expanded with a new `suggest_workout` tool. Based on user intent (e.g. "let's do a chest and triceps workout"), Gemini generates structured JSON proposals that push a `start_workout` card to the chat. When the user taps "Start Live Session", the custom exercises are immediately inserted into the database, and the generated session is passed seamlessly to the `LiveWorkout` component via `sessionStorage`. This maintains the core requirement that AI tools never mutate the database directly during generation, and offline-state guards prevent DB-writes while initializing a workout if the network is down. **Review found the `sessionStorage` hydration effect incorrectly also set `sessionOpen` (only `liveMode` should be set, per the proven `startDayLive` precedent) — canceling an AI-started live session would have dropped the user into the wrong sheet. Fixed.** `suggest_workout` itself was independently reverified live and works correctly — full detail in `UPGRADE.md`'s Phase 19 Extended review section.
+
+**Phase 20 (Fable, 2026-07-10): Skip Exercise in Live Workout Mode.**
+`LiveWorkout.tsx` had "Skip Rest" but no way to skip a whole exercise (equipment
+unavailable, too hard). Added a confirm-gated "Skip this exercise" button — drops only the
+not-yet-completed sets of the current exercise (already-logged sets are kept), drops the
+exercise entirely from the log if nothing was completed for it, and finishes the session if
+the skipped exercise was the last one. A Node-script simulation of the array logic (this app
+has no click-testable UI in this environment) caught a real bug before it shipped: skipping
+the *only* remaining exercise produces an empty array, and `logStructuredSession`'s
+`finalExercises = activeExercises` default-param fallback would silently re-log the stale
+pre-skip exercise list instead of nothing. Fixed by routing that case through `onCancel()`.
 **Not yet built:**
 - More frequent reminders (needs Vercel Pro cron, or a different scheduling approach).
 

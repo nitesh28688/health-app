@@ -88,6 +88,45 @@ export function LiveWorkout({ initialExercises, sessionTitle, onFinish, onCancel
     setRestSeconds(null);
   }
 
+  // For when an exercise is too hard, or the equipment isn't free — moves on
+  // without ending the whole session. Only drops the NOT-yet-completed sets
+  // of the current exercise (future ones), so already-logged sets are never
+  // lost. If none of this exercise's sets were completed yet, it's dropped
+  // from the log entirely rather than saved with zero sets.
+  function skipExercise() {
+    if (!confirm(`Skip ${currentEx.exercise.name}? Any sets you haven't logged yet for it won't be saved.`)) return;
+
+    const newEx = [...exercises];
+    const completedSets = newEx[exIdx].sets.slice(0, setIdx);
+    let nextExIdx = exIdx;
+    if (completedSets.length === 0) {
+      newEx.splice(exIdx, 1); // untouched — drop it entirely
+    } else {
+      newEx[exIdx] = { ...newEx[exIdx], sets: completedSets }; // keep what's already logged
+      nextExIdx = exIdx + 1;
+    }
+
+    if (nextExIdx >= newEx.length) {
+      // Nothing left to move to — this was the last exercise.
+      if (newEx.length === 0) {
+        // Skipping the only/last remaining exercise with nothing logged for
+        // it leaves nothing to save — calling onFinish([], ...) here would
+        // hit the parent's `finalExercises.length > 0 ? finalExercises :
+        // activeExercises` fallback and silently re-log the STALE original
+        // (pre-skip) list instead of nothing. Cancel out cleanly instead.
+        onCancel();
+        return;
+      }
+      setExercises(newEx);
+      onFinish(newEx, Math.ceil(globalSeconds / 60) || 1);
+      return;
+    }
+
+    setExercises(newEx);
+    setExIdx(nextExIdx);
+    setSetIdx(0);
+  }
+
   function addSet() {
     const newEx = [...exercises];
     newEx[exIdx].sets.push({ id: Math.random().toString(), reps: "", weight_kg: "", duration_sec: "" });
@@ -210,9 +249,12 @@ export function LiveWorkout({ initialExercises, sessionTitle, onFinish, onCancel
       </div>
 
       {/* Footer / Action */}
-      <div className="p-4 bg-white dark:bg-[#0a0a0a] border-t border-neutral-100 dark:border-neutral-900 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+      <div className="p-4 bg-white dark:bg-[#0a0a0a] border-t border-neutral-100 dark:border-neutral-900 pb-[calc(1rem+env(safe-area-inset-bottom))] flex flex-col gap-2">
         <button onClick={completeSet} className="w-full rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-bold text-lg py-5 shadow-xl shadow-indigo-500/30 active:scale-[0.98] transition-transform flex items-center justify-center gap-2">
           {isLastSet && isLastEx ? <>Finish Workout <PartyPopper className="w-5 h-5" /></> : "Complete Set"}
+        </button>
+        <button onClick={skipExercise} className="w-full text-sm font-semibold text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 py-1.5 active:scale-[0.98] transition-transform">
+          Skip this exercise
         </button>
       </div>
     </div>

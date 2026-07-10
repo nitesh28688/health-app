@@ -1103,3 +1103,30 @@ Verified (Antigravity's own claims): `tsc --noEmit` clean. The live endpoint `/a
   renders) in a real browser — same standing limitation as every prior phase this session
   (auth-gated app, no headless browser drive available here). Traced the code path instead
   and confirmed it's now consistent with `startDayLive`'s proven-working equivalent.
+
+# Phase 20 (Fable, 2026-07-10) — Skip Exercise in Live Workout Mode
+
+User asked whether Live Workout Mode could skip a single exercise (equipment unavailable, too
+hard that day) — only "Skip Rest" (the timer between sets) existed; there was no way to move
+past a whole exercise without either finishing the entire session early or canceling and
+losing everything.
+
+**Built:** `web/components/LiveWorkout.tsx` — a "Skip this exercise" button in the footer.
+Confirm-gated (`confirm()`, matching this app's existing confirm-before-destructive-action
+convention). Only drops the current exercise's NOT-yet-completed sets — anything already
+logged for it is kept. If none of its sets were completed, the exercise is dropped from the
+final log entirely rather than saved with zero sets. Skipping the last exercise in the
+session finishes the workout with whatever's been logged so far.
+
+**Verified:** `npx tsc --noEmit` clean. Since this app is auth-gated with no headless
+click-testing available, verified the array logic itself with a standalone Node simulation
+of all edge cases (skip an untouched middle exercise, skip after partial completion, skip the
+last exercise untouched, skip the last exercise partially done, skip the only exercise in the
+session) — all 5 behaved correctly. That simulation surfaced a real bug during verification:
+skipping the *only/last remaining* exercise produces an empty array, and the parent's
+`logStructuredSession(finalExercises = activeExercises, ...)` in `workout/page.tsx` falls
+back to the stale, pre-skip `activeExercises` whenever called with an empty array — meaning
+skipping everything would have silently re-logged the original full exercise list instead of
+nothing. Fixed by routing that specific case through `onCancel()` instead of `onFinish([])`,
+avoiding the parent's ambiguous fallback entirely rather than touching the shared
+`logStructuredSession` write path. Not click-tested live — user should try it for real.
