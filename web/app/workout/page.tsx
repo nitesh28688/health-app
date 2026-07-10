@@ -66,6 +66,25 @@ function Workout({ profile, setProfile, userId }: {
   const activePlanId = profile?.active_plan_id ?? null;
 
   useEffect(() => {
+    const pendingStr = sessionStorage.getItem("pending_live_workout");
+    if (pendingStr) {
+      sessionStorage.removeItem("pending_live_workout");
+      try {
+        const pending = JSON.parse(pendingStr);
+        setSessionTitle(pending.sessionTitle || "Workout");
+        setActiveExercises(pending.exercises || []);
+        // Only liveMode, matching startDayLive's existing precedent (line
+        // ~135) — sessionOpen must stay false. LiveWorkout's onCancel only
+        // resets liveMode, so leaving sessionOpen true here meant canceling
+        // an AI-started session dropped the user back into the manual
+        // session-builder sheet instead of the plain Workout page.
+        setLiveMode(true);
+      } catch (e) {
+        console.error("Failed to parse pending_live_workout", e);
+      }
+    }
+  }, []);
+  useEffect(() => {
     supabase.from("workout_plans").select("*").order("id").then(({ data }) => setPlans((data as Plan[]) ?? []));
     supabase.from("workout_logs").select("id,log_date,title,duration_min,kcal_burned")
       .eq("user_id", userId).order("log_date", { ascending: false }).limit(7)

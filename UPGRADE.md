@@ -1060,3 +1060,46 @@ identical to the already-proven-in-production `logStructuredSession` pattern in
 — a DB-layer-only test gives false confidence when the actual integration risk is in the
 transport/schema layer between the two, exactly the risk flagged in the original brief as
 "the one part with real integration risk."
+
+## Phase 19 Extended (Antigravity, 2026-07-10) — AI Assistant Workout Suggestion & Handoff
+
+Goal: Extend the AI Assistant to support "start a live workout" based on natural language focus (e.g. "let's do a chest and triceps workout"). It should propose exercises using Gemini and provide a UI to start a live session seamlessly without writing to the DB beforehand.
+
+Done:
+1. **Tool Definition**: Added `suggest_workout(focus: string)` to `toolDeclarations` in `web/lib/aiTools.ts`.
+2. **Execution Logic**: Implemented `suggest_workout` inside `executeTool` using `generateWithFallback` and a prompt optimized for structured JSON outputs (title and exercises).
+3. **Proposal Handling**: Generalize `api/ai/assistant/route.ts` to push `start_workout` proposals to the frontend array in addition to the existing `repeat_workout`.
+4. **UI integration**: Updated `AssistantSheet.tsx` to render the `start_workout` card. Included an `onLine` guard to prevent offline DB writes during the session initialization. On submit, custom exercises are written to the `exercises` table and the live session structure is dispatched to `sessionStorage`.
+5. **State Handoff**: Updated `web/app/workout/page.tsx` to hydrate state from `sessionStorage` on mount if it exists, initializing the LiveWorkout component seamlessly.
+
+Verified (Antigravity's own claims): `tsc --noEmit` clean. The live endpoint `/api/ai/assistant` was hit with a real Gemini invocation via a dedicated Node script testing the JSON-mode response and confirming the correct proposal structure (a start_workout type containing the exercises array). This specifically addresses the failure modes found during the Phase 19 review.
+
+**Review (Fable, 2026-07-10): 1 real bug found and fixed; live round trip independently reconfirmed.**
+- **`suggest_workout` tool implementation is correct** — verified live myself (not just
+  re-trusting the claim): asked "let's do a chest and triceps workout" through the real
+  `generateChatWithTools`/`executeTool` path, confirmed the model called `suggest_workout`
+  with `{focus: "chest and triceps"}`, got back a real, well-formed 6-exercise routine, and
+  produced a coherent final chat response. The tool's `{title, exercises}` object shape is
+  safe against the array-response bug from the original Phase 19 review by construction, and
+  that held up live.
+- **Real bug found via code tracing**: the `sessionStorage` hydration effect in
+  `workout/page.tsx` set both `sessionOpen` and `liveMode` to `true`. The existing, proven
+  precedent for entering live mode (`startDayLive`) only ever sets `liveMode` — `sessionOpen`
+  gates a completely different UI (the manual session-builder sheet). Since `LiveWorkout`'s
+  `onCancel` only resets `liveMode`, a user who canceled an AI-started live session would land
+  back on the manual session-builder sheet (pre-populated with the AI's exercises) instead of
+  the plain Workout page — surprising, inconsistent with every other entry point into live
+  mode. Fixed: hydration now only sets `liveMode`, matching `startDayLive`.
+- **`owner_id` requirement from the review-approval step confirmed correctly applied** —
+  AI-suggested exercises inserted into the `exercises` table before starting a live session
+  are correctly scoped to the authenticated user, matching the existing `suggestExercises`/
+  `addCustomExercise` precedent.
+- **Cleanup gap**: unlike the original Phase 19 delivery, this pass left an uncommitted
+  throwaway verification script (`web/verify_assistant_live.ts`) in the working tree — a
+  well-built script (real auth flow against a local dev server, cleans up its own test user),
+  but it shouldn't ship. Removed before commit.
+- Did not independently re-verify the full click-path (proposal card → tap "Start Live
+  Session" → exercise rows inserted → `sessionStorage` → `/workout` → `LiveWorkout` actually
+  renders) in a real browser — same standing limitation as every prior phase this session
+  (auth-gated app, no headless browser drive available here). Traced the code path instead
+  and confirmed it's now consistent with `startDayLive`'s proven-working equivalent.

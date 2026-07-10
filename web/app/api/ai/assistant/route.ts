@@ -136,7 +136,10 @@ export async function POST(req: NextRequest) {
         const result = await executeTool(name, args, userDb);
         
         if (name === "propose_repeat_workout" && result.success && result.proposalData) {
-          proposals.push(result.proposalData);
+          proposals.push({ type: "repeat_workout", ...result.proposalData });
+        }
+        if (name === "suggest_workout" && result.exercises) {
+          proposals.push({ type: "start_workout", ...result });
         }
         
         functionResponses.push({

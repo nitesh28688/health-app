@@ -1,4 +1,5 @@
 import { SupabaseClient } from "@supabase/supabase-js";
+import { generateWithFallback } from "@/lib/gemini";
 
 export const toolDeclarations = [
   {
@@ -66,6 +67,17 @@ export const toolDeclarations = [
         source_date: { type: "STRING", description: "The past date to copy the workout from (YYYY-MM-DD)" }
       },
       required: ["source_date"]
+    }
+  },
+  {
+    name: "suggest_workout",
+    description: "Suggest a list of exercises for a live workout based on a requested focus or goal. This does not write to the database, but returns a workout structure.",
+    parameters: {
+      type: "OBJECT",
+      properties: {
+        focus: { type: "STRING", description: "Target muscle group or focus (e.g. 'chest and triceps', 'full body hiit')" }
+      },
+      required: ["focus"]
     }
   }
 ];
@@ -140,6 +152,52 @@ export async function executeTool(name: string, args: any, db: SupabaseClient) {
           message: `Proposed workout from ${args.source_date} to the user. Waiting for confirmation.`,
           proposalData: data 
         };
+      }
+      case "suggest_workout": {
+        const prompt = `Act as an expert personal trainer. Generate a highly effective workout routine based on:
+Target Focus: ${args.focus}
+
+Return a strict JSON object containing:
+- title: A catchy name for this routine (e.g. "30 Min Kettlebell Shred")
+- exercises: An array of exercises in the order they should be performed. For each:
+  - name: Exercise name
+  - met_value: Estimated MET value (3.0 to 8.0)
+  - instructions: 1-2 short sentences on form
+  - sets: Number of sets (number)
+  - reps: Reps per set (number, optional if it's duration based)
+  - duration_min: Duration in minutes (number, optional if it's rep based)
+`;
+        const res = await generateWithFallback([{ text: prompt }], {
+          type: "OBJECT",
+          properties: {
+            title: { type: "STRING" },
+            exercises: {
+              type: "ARRAY",
+              items: {
+                type: "OBJECT",
+                properties: {
+                  name: { type: "STRING" },
+                  met_value: { type: "NUMBER" },
+                  instructions: { type: "STRING" },
+                  sets: { type: "NUMBER" },
+                  reps: { type: "NUMBER" },
+                  duration_min: { type: "NUMBER" },
+                },
+                required: ["name", "met_value", "instructions", "sets"],
+              },
+            },
+          },
+          required: ["title", "exercises"],
+        });
+
+        if (!res.ok) throw new Error("AI unavailable");
+        const body = await res.json();
+        try {
+          const result = JSON.parse(body.candidates[0].content.parts[0].text);
+          return result;
+        } catch {
+          throw new Error("AI returned invalid data");
+        }
       }
       default:
         return { error: `Unknown tool: ${name}` };

@@ -23,6 +23,7 @@ export function AssistantSheet({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
+  const [startingLive, setStartingLive] = useState(false);
   
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -123,6 +124,58 @@ export function AssistantSheet({
     }
   }
 
+  async function startLiveWorkout(proposal: any) {
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      setError("You're offline — starting a live workout from an AI suggestion requires a connection. Try again once you're back online.");
+      return;
+    }
+
+    setStartingLive(true);
+    setError(null);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const userId = session?.user.id;
+      
+      const newExercises = [];
+      for (const ex of proposal.exercises) {
+        const { data: inserted, error: insertErr } = await supabase.from("exercises").insert({
+          name: ex.name,
+          category: "Custom",
+          equipment: "none",
+          primary_muscle: "full body",
+          met_value: ex.met_value || 5.0,
+          instructions: ex.instructions || null,
+          owner_id: userId
+        }).select("id, name, met_value, instructions, category").single();
+        
+        if (insertErr) throw insertErr;
+        
+        newExercises.push({
+          id: Math.random().toString(),
+          exercise: inserted,
+          sets: Array.from({ length: ex.sets || 3 }).map(() => ({
+            id: Math.random().toString(),
+            reps: String(ex.reps || ""),
+            weight_kg: "",
+            duration_sec: String(ex.duration_min ? ex.duration_min * 60 : "")
+          }))
+        });
+      }
+
+      sessionStorage.setItem("pending_live_workout", JSON.stringify({
+        sessionTitle: proposal.title || "AI Workout",
+        exercises: newExercises
+      }));
+      
+      onClose();
+      router.push("/workout");
+    } catch (err: any) {
+      setError(err.message || "Failed to start live session");
+    } finally {
+      setStartingLive(false);
+    }
+  }
+
   return (
     <div className="fixed inset-0 z-[60] flex flex-col justify-end bg-black/40" onClick={onClose}>
       <div
@@ -156,29 +209,58 @@ export function AssistantSheet({
               
               {m.proposals && m.proposals.length > 0 && (
                 <div className="mt-2 w-full min-w-[240px]">
-                  {m.proposals.map((p, i) => (
-                    <div key={i} className="bg-white dark:bg-neutral-900 border border-indigo-200 dark:border-indigo-800 rounded-xl overflow-hidden shadow-sm">
-                      <div className="bg-indigo-50 dark:bg-indigo-900/20 px-3 py-2 border-b border-indigo-100 dark:border-indigo-800/50 flex items-center gap-2">
-                        <Dumbbell className="w-4 h-4 text-indigo-600" />
-                        <span className="text-sm font-semibold text-indigo-900 dark:text-indigo-200">
-                          Repeat Workout
-                        </span>
+                  {m.proposals.map((p, i) => {
+                    if (p.type === "start_workout") {
+                      const estMins = Math.round(p.exercises?.reduce((sum: number, ex: any) => sum + (ex.duration_min || ((ex.sets || 3) * 1.5)), 0) || 0);
+                      return (
+                        <div key={i} className="bg-white dark:bg-neutral-900 border border-indigo-200 dark:border-indigo-800 rounded-xl overflow-hidden shadow-sm">
+                          <div className="bg-indigo-50 dark:bg-indigo-900/20 px-3 py-2 border-b border-indigo-100 dark:border-indigo-800/50 flex items-center gap-2">
+                            <Dumbbell className="w-4 h-4 text-indigo-600" />
+                            <span className="text-sm font-semibold text-indigo-900 dark:text-indigo-200">
+                              Live Session
+                            </span>
+                          </div>
+                          <div className="p-3">
+                            <p className="text-sm font-medium mb-1">{p.title}</p>
+                            <p className="text-xs text-neutral-500 mb-3">
+                              {p.exercises?.length || 0} exercises · ~{estMins} min
+                            </p>
+                            <button 
+                              onClick={() => startLiveWorkout(p)}
+                              disabled={startingLive}
+                              className="w-full bg-indigo-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 active:scale-95 transition-all disabled:opacity-50"
+                            >
+                              {startingLive ? "Preparing..." : `Start Live Session`}
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    }
+                    // default to repeat_workout (or explicit type)
+                    return (
+                      <div key={i} className="bg-white dark:bg-neutral-900 border border-indigo-200 dark:border-indigo-800 rounded-xl overflow-hidden shadow-sm mt-2 first:mt-0">
+                        <div className="bg-indigo-50 dark:bg-indigo-900/20 px-3 py-2 border-b border-indigo-100 dark:border-indigo-800/50 flex items-center gap-2">
+                          <Dumbbell className="w-4 h-4 text-indigo-600" />
+                          <span className="text-sm font-semibold text-indigo-900 dark:text-indigo-200">
+                            Repeat Workout
+                          </span>
+                        </div>
+                        <div className="p-3">
+                          <p className="text-sm font-medium mb-1">{p.title}</p>
+                          <p className="text-xs text-neutral-500 mb-3">
+                            {p.workout_log_exercises?.length || 0} exercises · {p.duration_min} min
+                          </p>
+                          <button 
+                            onClick={() => confirmWorkout(p.log_date)}
+                            disabled={confirming}
+                            className="w-full bg-indigo-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 active:scale-95 transition-all disabled:opacity-50"
+                          >
+                            {confirming ? "Confirming..." : `Log for Today`}
+                          </button>
+                        </div>
                       </div>
-                      <div className="p-3">
-                        <p className="text-sm font-medium mb-1">{p.title}</p>
-                        <p className="text-xs text-neutral-500 mb-3">
-                          {p.workout_log_exercises?.length || 0} exercises · {p.duration_min} min
-                        </p>
-                        <button 
-                          onClick={() => confirmWorkout(p.log_date)}
-                          disabled={confirming}
-                          className="w-full bg-indigo-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 active:scale-95 transition-all disabled:opacity-50"
-                        >
-                          {confirming ? "Confirming..." : `Log for Today`}
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
