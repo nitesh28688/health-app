@@ -8,7 +8,7 @@ import { offlineWrite } from "@/lib/offlineWrite";
 import { awardBadge } from "@/lib/badges";
 import type { Profile } from "@/lib/useUser";
 import { PageSkeleton } from "@/lib/Skeleton";
-import { Dumbbell, Droplet, Flame, BookOpen, Target, Check, PartyPopper, Clock, Trash2 } from "lucide-react";
+import { Dumbbell, Droplet, Flame, BookOpen, Target, Check, PartyPopper, Clock } from "lucide-react";
 
 interface BmiRow { log_date: string; weight_kg: number | null; body_fat_pct: number | null; waist_cm: number | null; bmi: number | null; }
 interface DayTotal { log_date: string; kcal: number; protein_g: number; carbs_g: number; fat_g: number; water_ml: number; kcal_burned: number; }
@@ -106,8 +106,9 @@ function Trends({ profile, userId }: { profile: Profile | null; userId: string }
 
   const [allTotals, setAllTotals] = useState<DayTotal[]>([]);
   const [fasts, setFasts] = useState<FastingSession[]>([]);
-  const [deletingFastId, setDeletingFastId] = useState<string | null>(null);
 
+  // Just a short preview here — full history (grouped by month, with delete)
+  // lives on its own page now, same reasoning as weightHistory below.
   const loadFasts = useCallback(async () => {
     const { data } = await supabase
       .from("fasting_sessions")
@@ -115,18 +116,9 @@ function Trends({ profile, userId }: { profile: Profile | null; userId: string }
       .eq("user_id", userId)
       .not("ended_at", "is", null)
       .order("started_at", { ascending: false })
-      .limit(30);
+      .limit(5);
     setFasts((data as FastingSession[]) ?? []);
   }, [userId]);
-
-  async function deleteFast(id: string) {
-    if (!confirm("Delete this fasting session? This can't be undone.")) return;
-    setDeletingFastId(id);
-    const { error } = await supabase.from("fasting_sessions").delete().eq("id", id);
-    setDeletingFastId(null);
-    if (error) { alert(error.message); return; }
-    setFasts((f) => f.filter((x) => x.id !== id));
-  }
 
   const load = useCallback(async () => {
     const [bmiRes, totalsRes, streakRes] = await Promise.all([
@@ -264,9 +256,12 @@ function Trends({ profile, userId }: { profile: Profile | null; userId: string }
 
         {weightHistory.length > 0 && (
           <div className="mt-4 pt-3 border-t border-neutral-100 dark:border-neutral-900">
-            <p className="text-xs font-semibold text-neutral-400 uppercase mb-2">Check-in history</p>
-            <ul className="flex flex-col gap-1.5 max-h-64 overflow-y-auto">
-              {weightHistory.map((r) => {
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-semibold text-neutral-400 uppercase">Recent check-ins</p>
+              <Link href="/trends/weight-history" className="text-xs font-semibold text-indigo-600 dark:text-indigo-400">See all →</Link>
+            </div>
+            <ul className="flex flex-col gap-1.5">
+              {weightHistory.slice(0, 5).map((r) => {
                 const t = totalsByDate.get(r.log_date);
                 return (
                   <li key={r.log_date} className="flex items-center justify-between text-sm py-1.5 border-b border-neutral-50 dark:border-neutral-900/50 last:border-0">
@@ -304,13 +299,17 @@ function Trends({ profile, userId }: { profile: Profile | null; userId: string }
         </div>
       </section>
 
-      {/* fasting history — moved off Diary so it doesn't grow that page unbounded */}
+      {/* fasting history — dedicated page (grouped by month, full history) so
+          neither Diary nor Trends grows unbounded as fasts accumulate */}
       <section className="mt-6 rounded-2xl border border-neutral-200/60 dark:border-neutral-800/60 bg-white/50 dark:bg-neutral-900/50 backdrop-blur-md shadow-sm p-4">
-        <h2 className="font-bold mb-3 flex items-center gap-2"><Clock className="w-5 h-5 text-indigo-500" /> Fasting history</h2>
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="font-bold flex items-center gap-2"><Clock className="w-5 h-5 text-indigo-500" /> Fasting history</h2>
+          <Link href="/trends/fasting-history" className="text-xs font-semibold text-indigo-600 dark:text-indigo-400">See all →</Link>
+        </div>
         {fasts.length === 0 ? (
           <p className="text-sm text-neutral-400">No completed fasts yet.</p>
         ) : (
-          <ul className="flex flex-col gap-1.5 max-h-64 overflow-y-auto">
+          <ul className="flex flex-col gap-1.5">
             {fasts.map((h) => {
               const ms = new Date(h.ended_at!).getTime() - new Date(h.started_at).getTime();
               const hHrs = Math.floor(ms / 3600000);
@@ -318,13 +317,7 @@ function Trends({ profile, userId }: { profile: Profile | null; userId: string }
               return (
                 <li key={h.id} className="flex items-center justify-between text-sm py-1.5 border-b border-neutral-50 dark:border-neutral-900/50 last:border-0">
                   <span className="text-neutral-600 dark:text-neutral-400">{new Date(h.started_at).toLocaleDateString()}</span>
-                  <div className="flex items-center gap-3">
-                    <span className="font-mono font-medium">{hHrs}h {hMins}m</span>
-                    <button onClick={() => deleteFast(h.id)} disabled={deletingFastId === h.id}
-                      aria-label="Delete fast" className="text-neutral-400 hover:text-red-500 disabled:opacity-40">
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
+                  <span className="font-mono font-medium">{hHrs}h {hMins}m</span>
                 </li>
               );
             })}

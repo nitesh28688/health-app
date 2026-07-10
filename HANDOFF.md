@@ -8,8 +8,13 @@ lucide-react icons throughout — see UPGRADE.md Phases 16-17 and the "Verificat
 pass" entry below for what Antigravity built and what Fable built/fixed on review.
 
 **Fasting history moved off Diary (2026-07-10, Phase 23)** — Diary's Fasting card now
-only shows the live timer, not a growing list of past fasts. History (with delete) lives
-in Trends now. See UPGRADE.md Phase 23.
+only shows the live timer, not a growing list of past fasts.
+
+**Weight + fasting history got dedicated, month-grouped pages (2026-07-10, Phase 24)** —
+`/trends/weight-history` and `/trends/fasting-history`, no row cap, grouped by month so
+old data (e.g. January's weight) stays reachable without ever needing deletion. Trends
+itself now just shows a 5-row preview of each with a "See all" link. Fasting delete now
+lives only on `/trends/fasting-history`. See UPGRADE.md Phases 23-24.
 
 **Email confirmation disabled (2026-07-10)**, in the Supabase dashboard (Authentication →
 Sign In / Providers → Email → "Confirm email" toggled off) — not a code change, many

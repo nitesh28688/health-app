@@ -1293,3 +1293,30 @@ pages, not Diary). There was also no way to delete a bad/test fasting entry at a
 available in this environment (per the standing note at the top of this file) — the elapsed-
 time math, RLS policy, and delete-op choice were all confirmed by reading the actual code/
 schema rather than assumed.
+
+## Phase 24 (Fable, 2026-07-10) — Dedicated, month-grouped history pages for weight + fasting
+
+**User feedback on Phase 23**: capping fasting history at 30 and only showing weight
+check-ins was the wrong tradeoff — capping/deleting to keep a list short also destroys the
+ability to look back (e.g. "what was my weight in January"). Asked for separate pages for
+both, grouped by month, with no cap.
+
+**Built:**
+1. `web/app/trends/weight-history/page.tsx` (new) — full weight history via
+   `get_bmi_series("2000-01-01", today)` (same unbounded-range pattern already used by
+   `/goals`), grouped into month sections (most recent first), no row cap.
+2. `web/app/trends/fasting-history/page.tsx` (new) — full `fasting_sessions` history (no
+   `.limit()`), same month-grouping, with the per-row delete button (moved here from Trends).
+3. `web/app/trends/page.tsx` — both inline lists trimmed back to a 5-row preview with a
+   "See all →" link to the new pages. `loadFasts()` now fetches only 5 rows (was 30) since
+   Trends itself only ever shows a preview now; the delete button/state was removed from
+   Trends entirely since deletion now only happens on the dedicated fasting-history page.
+
+**Why grouping instead of a cap**: a month header ("July 2026") keeps a long list scannable
+without ever needing to throw data away — the user explicitly wants years of weight data
+navigable, not capped.
+
+**Verified**: `npx tsc --noEmit` clean across the whole project. Confirmed `get_bmi_series`
+accepts an arbitrary wide date range without issue (already proven by `/goals` doing the
+exact same `p_from: "2000-01-01"` call). No RLS/migration changes needed (delete already
+covered by `0022_fasting.sql`'s `for all` policy, confirmed in Phase 23).
