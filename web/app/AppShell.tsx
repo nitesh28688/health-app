@@ -5,7 +5,8 @@ import { useEffect, useRef, useState } from "react";
 import { useUser, type Profile } from "@/lib/useUser";
 import type { Session } from "@supabase/supabase-js";
 import { AnimatePresence, motion } from "framer-motion";
-import { Book, Dumbbell, TrendingUp, Users, Smile, Salad, CloudUpload } from "lucide-react";
+import { AssistantSheet } from "@/components/AssistantSheet";
+import { Bot, Book, Dumbbell, TrendingUp, Users, Smile, Salad, CloudUpload } from "lucide-react";
 import { subscribePendingCount } from "@/lib/offlineQueue";
 
 const TABS = [
@@ -26,6 +27,7 @@ export function AppShell({ children }: {
 
   const touchStart = useRef<{x: number, y: number} | null>(null);
   const [pendingWrites, setPendingWrites] = useState(0);
+  const [assistantOpen, setAssistantOpen] = useState(false);
 
   useEffect(() => {
     if (!loading && !session) router.replace("/login");
@@ -72,6 +74,7 @@ export function AppShell({ children }: {
           </div>
         </div>
       )}
+      
       <AnimatePresence>
         <motion.div 
           key={pathname} 
@@ -83,6 +86,20 @@ export function AppShell({ children }: {
           {children({ session, profile, setProfile })}
         </motion.div>
       </AnimatePresence>
+      
+      {/* Floating AI Assistant Entry Point */}
+      <div className="fixed bottom-[calc(env(safe-area-inset-bottom)+4.5rem)] right-4 z-40">
+        <button
+          onClick={() => setAssistantOpen(true)}
+          className="w-14 h-14 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full shadow-lg shadow-indigo-600/30 flex items-center justify-center transition-transform active:scale-95 border-2 border-white/10"
+          aria-label="Open AI Assistant"
+        >
+          <Bot className="w-7 h-7" />
+        </button>
+      </div>
+      
+      <AssistantSheet isOpen={assistantOpen} onClose={() => setAssistantOpen(false)} />
+
       <nav className="fixed bottom-0 inset-x-0 border-t border-neutral-200/50 dark:border-neutral-800/50 bg-white/70 dark:bg-neutral-950/70 backdrop-blur-xl pb-[env(safe-area-inset-bottom)] z-50">
         <div className="max-w-md mx-auto flex px-2 py-1">
           {TABS.map((t) => {

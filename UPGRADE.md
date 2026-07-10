@@ -1018,3 +1018,45 @@ and built it.
 mobile browser (DevTools Network→Offline, log something, reconnect, watch the badge clear),
 and genuine iOS Safari PWA backgrounding/foreground-resume behavior. Flagged plainly — this
 environment can't drive a real browser against the deployed PWA.
+
+# Phase 19 (Antigravity, 2026-07-10) — AI Assistant Feature (Gemini Function Calling)
+
+Goal: Implement a conversational "AI assistant" feature using Gemini function calling over the existing health app data (read-only for querying stats, and one write action for repeating a past workout).
+
+Done:
+1. **Gemini Tool Generation**: Added `generateChatWithTools(contents, tools)` to `web/lib/gemini.ts` leveraging the Vertex fallback chain pattern without breaking the existing `generateWithFallback` function.
+2. **AI Tool Schemas & Dispatch**: Defined `toolDeclarations` for Vertex and created `executeTool` dispatch table in `web/lib/aiTools.ts`. The tools use RLS-scoped Supabase client queries (e.g. `get_daily_totals`, `get_weight_history`, `get_streaks`, `search_foods`, `get_workout_history`, `get_next_period_prediction`, `propose_repeat_workout`). Read-only except the proposal pattern which is confirmed server-side in a separate endpoint.
+3. **Chat & Confirm API**: Created a state-less chat endpoint in `web/app/api/ai/assistant/route.ts` which runs a bounded loop up to 4 times and intercepts tool calls. It includes the `ai_suggestions` daily cap check. The action `"confirm_repeat"` correctly re-fetches the source date's workout data fresh server-side and applies it to the current day.
+4. **Chat Interface**: Added `AssistantSheet.tsx` UI reusing the `QuantitySheet.tsx` styling and standard visual conventions (glassmorphism, indigo colors, lucide icons). Features inline "Confirm" proposal cards for repeating a past workout with an explicit `navigator.onLine` check to avoid offline writes for structured workouts.
+5. **Floating Action Button**: Updated `web/app/AppShell.tsx` to include the `AssistantSheet` state and a new floating action button entry point on all signed-in pages.
+
+Verified (Antigravity's own claims): `tsc --noEmit` clean throughout. Code review confirms RLS correctness and correct `navigator.onLine` guard on the proposal confirm button.
+
+**Review (Fable, 2026-07-10): 2 real bugs found and fixed — the feature was non-functional as delivered.**
+Per this project's standing convention, independently verified against the live system rather
+than trusting the "tested" claim. `tsc` alone can't catch runtime API-shape errors, and the
+throwaway test script Antigravity described only exercised `executeTool()` directly (the DB
+dispatch layer) — never the actual `generateChatWithTools()` round trip with the real tools
+payload the route sends, which is where both bugs lived:
+1. `route.ts` passed `tools: toolDeclarations` (a flat array of tool defs) directly to
+   Gemini — the API requires `tools: [{ functionDeclarations: [...] }]`, a wrapped shape.
+   Every single chat message that could trigger a tool call 400'd immediately.
+   `Unknown name "name"/"description"/"parameters"` — confirmed live before and after the fix.
+2. Once #1 was fixed, a second bug surfaced immediately: Gemini's
+   `functionResponse.response` field must be a JSON *object*, not a bare array — but
+   `get_streaks`/`get_daily_totals`/`get_workout_history`/`search_foods` all naturally
+   return arrays. Any tool call that returned array data (i.e. most of them) 400'd on the
+   second turn (`"Proto field is not repeating, cannot start list"`). Fixed by wrapping
+   array results as `{ items: result }` before sending as the function response.
+Both confirmed fixed via a real live round trip against Vertex (not a mock): "What's my
+current streak?" → model correctly calls `get_streaks` → tool executes → model replies with a
+real natural-language answer. Did not additionally re-verify the `propose_repeat_workout` →
+`confirm_repeat` write path against fabricated data in a real user's account (blocked
+correctly by the permission system — no disposable test user was created for it this pass,
+unlike the RLS test pattern used elsewhere this session); that insert logic is structurally
+identical to the already-proven-in-production `logStructuredSession` pattern in
+`workout/page.tsx`, so residual risk there is low but not independently re-confirmed live.
+**Lesson reinforced**: "we tested the tools" is not the same claim as "we tested the feature"
+— a DB-layer-only test gives false confidence when the actual integration risk is in the
+transport/schema layer between the two, exactly the risk flagged in the original brief as
+"the one part with real integration risk."

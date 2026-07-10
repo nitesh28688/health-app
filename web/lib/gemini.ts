@@ -106,3 +106,63 @@ export async function generateWithFallback(parts: object[], responseSchema?: obj
   }
   return new Response(JSON.stringify({ error: `all models unavailable (last: ${lastStatus})` }), { status: 503 });
 }
+
+async function callVertexChat(model: string, contents: object[], tools: object[] | undefined, signal: AbortSignal) {
+  const client = await getVertexAuth().getClient();
+  const { token } = await client.getAccessToken();
+  const url = `https://${GOOGLE_CLOUD_LOCATION}-aiplatform.googleapis.com/v1/projects/${GOOGLE_CLOUD_PROJECT}/locations/${GOOGLE_CLOUD_LOCATION}/publishers/google/models/${model}:generateContent`;
+  return fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify({
+      contents,
+      ...(tools ? { tools } : {}),
+    }),
+    signal,
+  });
+}
+
+async function callAiStudioChat(model: string, contents: object[], tools: object[] | undefined, signal: AbortSignal) {
+  return fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${process.env.GEMINI_API_KEY}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents,
+        ...(tools ? { tools } : {}),
+      }),
+      signal,
+    }
+  );
+}
+
+export async function generateChatWithTools(contents: object[], tools?: object[]) {
+  const useVertex = !!process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
+  const attempts: { model: string; call: (signal: AbortSignal) => Promise<Response> }[] = [];
+  if (useVertex) {
+    for (const model of VERTEX_MODEL_CHAIN) {
+      attempts.push({ model, call: (signal) => callVertexChat(model, contents, tools, signal) });
+    }
+  }
+  for (const model of AI_STUDIO_FALLBACK_CHAIN) {
+    attempts.push({ model, call: (signal) => callAiStudioChat(model, contents, tools, signal) });
+  }
+
+  let lastStatus = 0;
+  for (const { call } of attempts) {
+    const controller = new AbortController();
+    const killer = setTimeout(() => controller.abort(), PER_MODEL_TIMEOUT_MS);
+    try {
+      const res = await call(controller.signal);
+      if (res.ok) return res;
+      lastStatus = res.status;
+      if (res.status !== 503 && res.status !== 429 && res.status !== 404) return res;
+    } catch (e) {
+      lastStatus = e instanceof DOMException && e.name === "AbortError" ? 504 : 599;
+    } finally {
+      clearTimeout(killer);
+    }
+  }
+  return new Response(JSON.stringify({ error: `all models unavailable (last: ${lastStatus})` }), { status: 503 });
+}

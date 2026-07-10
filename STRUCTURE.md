@@ -860,6 +860,9 @@ mechanism that makes an interrupted mid-batch replay safe. Structured workout
 logging and recipe creation (both multi-table dependent insert chains) deliberately
 stay online-only with an explicit guard — see Phase 18 in `UPGRADE.md` for why.
 
+**Phase 19 (Antigravity, 2026-07-10, fixed by Fable same day): AI Assistant (Gemini Function Calling).**
+A conversational "AI assistant" was added to answer natural language questions about the user's logged history (totals, trends, streaks, workouts) and propose repeating past workouts. The tools run on an RLS-scoped client in `aiTools.ts` to ensure data security. The chat route `api/ai/assistant/route.ts` runs a bounded tool-call loop and includes a `navigator.onLine` checked confirmation flow for multi-insert workout repetition. **As delivered, the feature was completely non-functional** — two Gemini API-shape bugs (`tools` needed a `{ functionDeclarations: [...] }` wrapper, not a flat array; `functionResponse.response` must be an object, not the bare arrays several tools naturally return) both caused immediate 400s on the very first tool call. Fixed and reverified with a real live round trip against Vertex — full detail and evidence in `UPGRADE.md` Phase 19's review section.
+
 **Not yet built:**
 - More frequent reminders (needs Vercel Pro cron, or a different scheduling approach).
 
