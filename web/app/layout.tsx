@@ -49,6 +49,15 @@ export default function RootLayout({
         <script
           dangerouslySetInnerHTML={{
             __html: `
+              try {
+                let theme = localStorage.getItem('theme');
+                if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                  document.documentElement.classList.add('dark');
+                } else {
+                  document.documentElement.classList.add('light');
+                }
+              } catch (_) {}
+              
               window.__deferredInstallPrompt = null;
               window.addEventListener('beforeinstallprompt', function(e) {
                 e.preventDefault();

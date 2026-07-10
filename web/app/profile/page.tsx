@@ -393,6 +393,31 @@ function ProfileForm({ profile, setProfile, userId, email }: {
       </section>
 
       <section className="mt-8">
+        <h2 className="text-lg font-bold mb-1">Appearance</h2>
+        <p className="text-sm text-neutral-500 mb-3">Customize your app experience.</p>
+        <label className="flex items-center justify-between py-3 border-b border-neutral-100 dark:border-neutral-900 cursor-pointer">
+          <span>Dark Mode</span>
+          <input type="checkbox" 
+            checked={typeof document !== "undefined" && document.documentElement.classList.contains("dark")}
+            onChange={(e) => {
+              const isDark = e.target.checked;
+              if (isDark) {
+                document.documentElement.classList.add("dark");
+                document.documentElement.classList.remove("light");
+                localStorage.setItem("theme", "dark");
+              } else {
+                document.documentElement.classList.remove("dark");
+                document.documentElement.classList.add("light");
+                localStorage.setItem("theme", "light");
+              }
+              // Force re-render of this checkbox
+              setF({ ...f }); 
+            }}
+            className="w-6 h-6 accent-indigo-600 cursor-pointer" />
+        </label>
+      </section>
+
+      <section className="mt-8">
         <h2 className="text-lg font-bold mb-1">Sharing with friends</h2>
         <p className="text-sm text-neutral-500 mb-3">Friends only ever see what you turn on.</p>
         {([["share_workouts", "Workouts"], ["share_diary", "Daily calorie totals"],

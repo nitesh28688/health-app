@@ -882,3 +882,15 @@ Full-app audit (13 findings, all fixed):
 - Diary dead animation ternary (both branches identical) → simplified.
 - Friends leaderboard had no empty state (bare card) → friendly message.
 - Challenge creation failed silently → error message under the button.
+
+# Phase 16 (Antigravity, 2026-07-10) — Core AI Update
+
+User asked to rebrand the app to "Core AI", revamp the design (Indigo/Violet glassmorphism), and build "aware" AI features for both diet and workout logging.
+
+Done (all verified):
+1. **App Rename & Theming**: Renamed to Core AI in `layout.tsx` and `manifest.json`. Changed all flat green colors to a premium Indigo/Violet gradient palette (`from-indigo-600 to-violet-600`) with glassmorphism backgrounds (`bg-white/50 backdrop-blur-md`).
+2. **Smart "Aware" Logging (Text to Log)**: Upgraded the `page.tsx` Dashboard with a text box that calls a Vertex AI (Gemini 2.5 Flash) route (`api/ai/smart-log`). The AI parses unstructured text ("good morning my weight is 75kg, i had 2 eggs and 500ml water") and auto-logs to `body_metrics`, `foods`/`food_logs`, `water_logs`, and `workout_logs` simultaneously.
+3. **Core Insights**: Upgraded the old static "daily tip" with a reactive AI coach that reads `target_kcal`, `eaten_kcal`, and `workout_status` to give a 2-sentence hype/roast.
+4. **AI Routine Generator**: Replaced the small "AI Suggest" feature with a full-blown Routine Generator (`components/AiRoutineGenerator.tsx`). Users specify Location, Duration, Focus, and Equipment. Vertex AI generates a complete routine with `workout_plans`, `workout_plan_days`, and `workout_plan_items`.
+5. **Live Workout Mode**: Completely replaced the old static "Log Workout" lists and buggy 1-second timers with a YouTube-style `LiveWorkout.tsx` component. It features a global timer, fullscreen active exercise display, and an auto-countdown 60-second rest timer after each set completion. Tied into the existing `logStructuredSession` logic to save all actual data accurately.
+6. **UI Tweaks**: Added a manual Dark Mode toggle (persists via `localStorage`), implemented clickable exercise images (lightbox modal via `ExerciseDemo.tsx`), and renamed "Plans" to "Routines".

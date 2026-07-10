@@ -41,6 +41,7 @@ tracking, avatar + progress photos, Web Push reminders + daily AI tips, admin pa
    as a real serving (self-learning), and revamped `QuantitySheet` to
    serving-first chips with a stepper — "Count pieces" is gone. Full detail in
    `UPGRADE.md` Phase 14 and `STRUCTURE.md` Round 6.6.
+7. Phase 16 (2026-07-10, Antigravity): Core AI Update. Rebranded the app to Core AI with a premium Indigo/Violet glassmorphism design. Built a "Smart Log" natural language entry powered by Gemini 2.5 Flash that logs food, water, body metrics, and workouts in one sentence. Replaced the Daily Tip with a reactive Core Insights AI coach. Rebuilt workout generation into a full AI Routine Generator component, and replaced the buggy static workout logger with a "Live Workout Mode" (fullscreen, global timer, auto-rest countdowns). Full detail in `UPGRADE.md` Phase 16 / `STRUCTURE.md` Phase 16.
 
 All built by Antigravity except Phase 13 (images), which Fable built directly.
 Every batch got an independent Fable review against the live DB rather than

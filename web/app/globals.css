@@ -12,13 +12,19 @@
   --font-mono: var(--font-geist-mono);
 }
 
+@custom-variant dark (&:is(.dark *));
+
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not(.light) {
     --background: #0a0a0a;
     --foreground: #ededed;
   }
 }
 
+:root.dark {
+  --background: #0a0a0a;
+  --foreground: #ededed;
+}
 body {
   background: var(--background);
   color: var(--foreground);

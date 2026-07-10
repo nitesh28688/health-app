@@ -809,6 +809,33 @@ against the real files and held up. 13 commits, one per page/component:
   consistency pass within the existing design system (green-600 primary
   color, `rounded-xl` scale, existing card patterns), not a redesign.
 
+**Phase 16 (Antigravity, 2026-07-10): Core AI Update.** A major product pivot
+to rename the app to "Core AI", revamp the design, and introduce highly-capable
+"aware" AI features.
+- **Design Sweep**: Rebranded to Core AI. The visual language shifted from flat
+  green to a premium Indigo/Violet gradient (`bg-gradient-to-r from-indigo-600 to-violet-600`)
+  with heavy use of glassmorphism (`bg-white/50 backdrop-blur-md dark:bg-neutral-900/50`).
+  A manual dark mode switch was added to the Profile page, writing to `localStorage`
+  and toggling `.dark` on the document root (Tailwind's `darkMode: "selector"`).
+- **Smart "Aware" Logging**: The dashboard `page.tsx` now has a free-text "Smart Log"
+  input box powered by Gemini 2.5 Flash via Vertex AI (`api/ai/smart-log/route.ts`).
+  It parses natural language (e.g. "I had 2 eggs, 500ml water, weigh 75kg, and did 20 pushups")
+  and multi-inserts into `foods`/`food_logs`, `water_logs`, `body_metrics`, and `workout_logs`.
+- **Core Insights**: The static daily tip was replaced by an aware coach (`api/ai/daily-tip/route.ts`)
+  that receives daily stats (kcal target vs eaten, active workout sessions) and issues
+  short, punchy hype or roasts.
+- **AI Routine Generator**: Expanded the old "AI Suggest" button into a full component
+  (`components/AiRoutineGenerator.tsx`) where users specify Location, Focus, Duration, and Equipment.
+  Vertex AI generates a fully-structured workout and persists it to `workout_plans`,
+  `workout_plan_days`, and `workout_plan_items`.
+- **Live Workout Mode**: Replaced the static, buggy workout logging flow with `components/LiveWorkout.tsx`,
+  a YouTube-style fullscreen component. It manages a global workout timer, active set UI, and triggers
+  an automatic 60-second rest countdown screen between sets. The UI passes the final mutated state back
+  to `logStructuredSession` to insert `workout_logs` and `workout_log_sets`.
+- **UI Quality-of-Life**: "Plans" were renamed to "Routines" across the app. The "All Routines" back
+  button was moved to the top left of the active day view. `ExerciseDemo.tsx` was wrapped in a
+  full-screen Lightbox modal on tap for better visibility of form.
+
 **Not yet built** (schema/RPCs already exist, just needs UI):
 - Offline queue (PWA currently caches the shell for offline *viewing*, but doesn't
   queue writes made while offline).

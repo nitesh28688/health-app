@@ -10,12 +10,12 @@ const admin = () =>
   });
 
 export async function POST(req: NextRequest) {
-  const { muscle, equipment } = await req.json();
-  if (!muscle || typeof muscle !== "string" || muscle.length > 50) {
+  const { time, location, equipment, focus } = await req.json();
+  if (!focus || typeof focus !== "string") {
     return NextResponse.json({ error: "bad request" }, { status: 400 });
   }
 
-  // authenticate the caller (anon key + user JWT from client)
+  // authenticate the caller
   const jwt = req.headers.get("authorization")?.replace("Bearer ", "");
   if (!jwt) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   const db = admin();
@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
   if (authErr || !userData.user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   const userId = userData.user.id;
 
-  // per-user daily cap (tracked in ai_suggestions)
+  // daily cap
   const today = new Date().toISOString().slice(0, 10);
   const { data: capRow } = await db.from("ai_suggestions").select("content")
     .eq("user_id", userId).eq("log_date", today).eq("kind", "workout_suggest").maybeSingle();
@@ -32,33 +32,28 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "daily AI limit reached, try tomorrow" }, { status: 429 });
   }
 
-  // "yoga" isn't a muscle group — the workout page passes it as the `muscle`
-  // value when the user picks the Yoga entry in the picker (same picker grid,
-  // see workout/page.tsx), so branch the prompt instead of literally asking
-  // for "exercises for the yoga muscle group". Poses are hold-based, not
-  // sets x reps, so this path asks for a duration instead and the response
-  // schema carries an extra optional field for it.
-  const isYoga = muscle === "yoga";
-  const prompt = isYoga
-    ? `Suggest a themed sequence of 3-5 yoga poses for this goal or focus: "${equipment || "general practice"}".
-Return them in JSON format, in the order they should be practiced. For each pose, provide:
-- name: the pose's common English name (add the Sanskrit name in parentheses if well known)
-- met_value: estimated MET value for holding this pose (typical range 2.0 to 4.5)
-- instructions: 1-2 short sentences on how to get into and hold the pose
-- typical_duration_sec: a typical hold time in seconds (e.g. 30)`
-    : `Suggest 3-5 exercises for the ${muscle} muscle group.
-Equipment available: ${equipment || "Any"}.
-Return them in JSON format. For each exercise, provide:
-- name: clear name of the exercise
-- met_value: estimated MET value (Metabolic Equivalent of Task, typical range 3.0 to 8.0)
-- instructions: 1-2 short sentences on how to perform it
-- typical_sets: number of sets (e.g. 3)
-- typical_reps: recommended reps (e.g. 10)`;
+  const prompt = `Act as an expert personal trainer. Generate a highly effective workout routine based on:
+Target Focus: ${focus}
+Time Available: ${time || "30"} minutes
+Location: ${location || "Gym"}
+Available Equipment: ${equipment || "Standard gym equipment"}
+
+Return a strict JSON object containing:
+- title: A catchy name for this routine (e.g. "30 Min Kettlebell Shred")
+- exercises: An array of exercises in the order they should be performed. For each:
+  - name: Exercise name
+  - met_value: Estimated MET value (3.0 to 8.0)
+  - instructions: 1-2 short sentences on form
+  - sets: Number of sets (number)
+  - reps: Reps per set (number, optional if it's duration based)
+  - duration_min: Duration in minutes (number, optional if it's rep based)
+`;
 
   const res = await generateWithFallback([{ text: prompt }], {
     type: "OBJECT",
     properties: {
-      suggestions: {
+      title: { type: "STRING" },
+      exercises: {
         type: "ARRAY",
         items: {
           type: "OBJECT",
@@ -66,20 +61,18 @@ Return them in JSON format. For each exercise, provide:
             name: { type: "STRING" },
             met_value: { type: "NUMBER" },
             instructions: { type: "STRING" },
-            typical_sets: { type: "NUMBER" },
-            typical_reps: { type: "NUMBER" },
-            typical_duration_sec: { type: "NUMBER" },
+            sets: { type: "NUMBER" },
+            reps: { type: "NUMBER" },
+            duration_min: { type: "NUMBER" },
           },
-          required: isYoga
-            ? ["name", "met_value", "instructions", "typical_duration_sec"]
-            : ["name", "met_value", "instructions", "typical_sets", "typical_reps"],
+          required: ["name", "met_value", "instructions", "sets"],
         },
       },
     },
-    required: ["suggestions"],
+    required: ["title", "exercises"],
   });
 
-  if (!res.ok) return NextResponse.json({ error: "AI unavailable — Google's models are under heavy load, try again shortly" }, { status: 502 });
+  if (!res.ok) return NextResponse.json({ error: "AI unavailable" }, { status: 502 });
   const body = await res.json();
   let result;
   try {
@@ -88,10 +81,41 @@ Return them in JSON format. For each exercise, provide:
     return NextResponse.json({ error: "AI returned invalid data" }, { status: 502 });
   }
 
+  // 1. Create the Workout Plan
+  const { data: planRow } = await db.from("workout_plans").insert({
+    owner_id: userId, title: result.title, is_public: false,
+    description: `AI Generated ${location} Workout - ${focus} (${time || 30}m)`
+  }).select("id").single();
+
+  if (planRow) {
+    // 2. Create a single Plan Day
+    const { data: dayRow } = await db.from("workout_plan_days").insert({
+      plan_id: planRow.id, day_number: 1, title: result.title
+    }).select("id").single();
+
+    if (dayRow) {
+      // 3. Create Exercises and Plan Items
+      for (let i = 0; i < result.exercises.length; i++) {
+        const ex = result.exercises[i];
+        const { data: exRow } = await db.from("exercises").insert({
+          name: ex.name, category: "Custom", owner_id: userId, met_value: ex.met_value || 5, instructions: ex.instructions
+        }).select("id").single();
+
+        if (exRow) {
+          await db.from("workout_plan_items").insert({
+            day_id: dayRow.id, exercise_id: exRow.id, order_index: i,
+            sets: ex.sets || 3, reps: ex.reps || null, duration_min: ex.duration_min || null
+          });
+        }
+      }
+    }
+  }
+
   // record usage
   await db.from("ai_suggestions").upsert(
     { user_id: userId, log_date: today, kind: "workout_suggest", content: { count: used + 1 } },
-    { onConflict: "user_id,log_date,kind" });
+    { onConflict: "user_id,log_date,kind" }
+  );
 
-  return NextResponse.json(result);
+  return NextResponse.json({ success: true, planId: planRow?.id });
 }

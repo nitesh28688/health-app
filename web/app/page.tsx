@@ -205,10 +205,35 @@ function Diary({ profile, userId }: { profile: Profile | null; userId: string })
       {date === todayLocal() && <div className="mb-4" />}
       
       {date === todayLocal() && dailyTip && showDailyTip && (
-        <div className="mb-4 rounded-xl border border-violet-200 dark:border-violet-900/50 bg-violet-50/50 dark:bg-violet-900/10 p-3 flex gap-3 relative">
-          <span className="text-xl">💡</span>
+        <div className="mb-4 rounded-xl border border-violet-200 dark:border-violet-900/50 bg-violet-50/50 dark:bg-violet-900/10 p-3 flex flex-col gap-1 relative">
+          <div className="flex items-center gap-1.5 mb-1">
+            <span className="text-base">✨</span>
+            <span className="text-xs font-bold text-violet-900 dark:text-violet-100 uppercase tracking-wider">Core Insights</span>
+          </div>
           <p className="text-sm text-violet-800 dark:text-violet-200 pr-4">{dailyTip}</p>
           <button onClick={() => setShowDailyTip(false)} className="absolute top-2 right-2 w-6 h-6 flex items-center justify-center text-violet-400 hover:text-violet-600">✕</button>
+        </div>
+      )}
+
+      {date === todayLocal() && (
+        <div className="mb-4 rounded-xl border border-indigo-200 dark:border-indigo-900/50 bg-indigo-50/30 dark:bg-indigo-900/10 p-3 shadow-sm">
+          <textarea 
+            placeholder="Log anything... e.g. 'I had 2 eggs for breakfast, drank 500ml water, and did 20 pushups'"
+            className="w-full bg-transparent text-sm resize-none focus:outline-none placeholder-indigo-400 dark:placeholder-indigo-600/50 text-indigo-900 dark:text-indigo-100"
+            rows={2}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                // TODO: Wire up text-to-log API call here
+                alert("Text-to-log coming soon!");
+              }
+            }}
+          />
+          <div className="flex justify-end mt-1">
+            <button className="bg-indigo-600 text-white text-xs font-semibold px-3 py-1.5 rounded-lg active:scale-95 transition-transform">
+              Smart Log
+            </button>
+          </div>
         </div>
       )}
 

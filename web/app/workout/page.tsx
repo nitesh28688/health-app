@@ -6,7 +6,9 @@ import { todayLocal, kcalBurned } from "@/lib/nutrition";
 import type { Profile } from "@/lib/useUser";
 import { PageSkeleton } from "@/lib/Skeleton";
 import { SetTimer } from "@/components/SetTimer";
+import { AiRoutineGenerator } from "@/components/AiRoutineGenerator";
 import { ExerciseDemo } from "@/components/ExerciseDemo";
+import { LiveWorkout, ActiveEx } from "@/components/LiveWorkout";
 
 interface Plan { id: number; name: string; goal: string | null; level: string | null; days_per_week: number | null; description: string | null; owner_id: string | null; }
 interface PlanDay { id: number; day_number: number; title: string; }
@@ -48,7 +50,8 @@ function Workout({ profile, setProfile, userId }: {
   // Structured Session State
   const [sessionOpen, setSessionOpen] = useState(false);
   const [sessionTitle, setSessionTitle] = useState("Workout");
-  const [activeExercises, setActiveExercises] = useState<ActiveExercise[]>([]);
+  const [activeExercises, setActiveExercises] = useState<ActiveEx[]>([]);
+  const [liveMode, setLiveMode] = useState(false);
   const [musclePickerOpen, setMusclePickerOpen] = useState(false);
   const [selectedMuscle, setSelectedMuscle] = useState<string | null>(null);
   const [muscleExercises, setMuscleExercises] = useState<any[]>([]);
@@ -112,6 +115,24 @@ function Workout({ profile, setProfile, userId }: {
     if (est > 0) setDuration(String(est));
   }
 
+  function startDayLive() {
+    if (!openDay) return;
+    const initialEx: ActiveEx[] = items.map(item => ({
+      id: Math.random().toString(),
+      exercise: item.exercises,
+      sets: Array.from({ length: item.sets || 1 }).map(() => ({
+        id: Math.random().toString(),
+        reps: String(item.reps || ""),
+        weight_kg: "",
+        duration_sec: String(item.duration_min ? item.duration_min * 60 : "")
+      }))
+    }));
+    setSessionTitle(`Day ${openDay.day_number}: ${openDay.title}`);
+    setActiveExercises(initialEx);
+    setOpenDay(null);
+    setLiveMode(true);
+  }
+
   async function logDay() {
     if (!openDay) return;
     const mins = parseFloat(duration) || 40;
@@ -158,7 +179,6 @@ function Workout({ profile, setProfile, userId }: {
   }
 
   // --- Structured Session Functions ---
-
   async function loadExercisesForMuscle(muscle: string) {
     setSelectedMuscle(muscle);
     setMusclePickerOpen(false);
@@ -170,49 +190,6 @@ function Workout({ profile, setProfile, userId }: {
     }
     const { data } = await q.order("name");
     setMuscleExercises(data ?? []);
-  }
-
-  async function suggestExercises() {
-    if (!selectedMuscle) return;
-    const isYoga = selectedMuscle === "yoga";
-    setAiSuggestBusy(true); setAiSuggestError(null);
-    const { data: { session } } = await supabase.auth.getSession();
-    const res = await fetch("/api/ai/suggest-exercises", {
-      method: "POST", headers: { Authorization: `Bearer ${session?.access_token}` },
-      // For yoga the "equipment" field carries the goal/focus text instead
-      // (e.g. "morning energizer", "stress relief") — the route branches on
-      // muscle === "yoga" and prompts for a themed pose sequence.
-      body: JSON.stringify({ muscle: selectedMuscle, equipment: isYoga ? (yogaGoal.trim() || undefined) : "Any" })
-    });
-    setAiSuggestBusy(false);
-    const body = await res.json().catch(() => ({}));
-    if (!res.ok) { setAiSuggestError(body.error ?? "Failed"); return; }
-
-    const existingLower = new Set(muscleExercises.map(e => e.name.toLowerCase()));
-    const newExs = (body.suggestions || []).filter((s: any) => !existingLower.has(s.name.toLowerCase()));
-
-    if (newExs.length > 0) {
-      const { data: inserted } = await supabase.from("exercises").insert(
-        newExs.map((s: any) => ({
-          name: s.name,
-          category: isYoga ? "yoga" : "strength",
-          equipment: "none",
-          primary_muscle: isYoga ? "full body" : selectedMuscle,
-          met_value: s.met_value || (isYoga ? 2.5 : 5.0),
-          instructions: s.instructions,
-          owner_id: userId
-        }))
-      ).select("id, name, met_value, instructions, category");
-      if (inserted) {
-        // exercises has no duration column (durations vary per set/session),
-        // so carry the AI's suggested hold time as a client-only field,
-        // matched back by name, to pre-fill the first set when this
-        // suggestion gets added to the session (see addExerciseToSession).
-        const durationByName = new Map(newExs.map((s: any) => [s.name.toLowerCase(), s.typical_duration_sec]));
-        const withDuration = inserted.map((ex) => ({ ...ex, suggestedDurationSec: durationByName.get(ex.name.toLowerCase()) }));
-        setMuscleExercises(prev => [...prev, ...withDuration].sort((a, b) => a.name.localeCompare(b.name)));
-      }
-    }
   }
 
   async function addCustomExercise() {
@@ -246,14 +223,15 @@ function Workout({ profile, setProfile, userId }: {
     setSelectedMuscle(null);
   }
 
-  async function logStructuredSession() {
-    if (activeExercises.length === 0) return;
+  async function logStructuredSession(finalExercises = activeExercises, overrideMins?: number) {
+    const toLog = finalExercises.length > 0 ? finalExercises : activeExercises;
+    if (toLog.length === 0) return;
     setLogging(true);
     
-    let totalMins = 0;
+    let totalMins = overrideMins || 0;
     let totalKcal = 0;
   
-    for (const ex of activeExercises) {
+    for (const ex of toLog) {
       let exMins = 0;
       for (const set of ex.sets) {
         if (set.duration_sec && parseFloat(set.duration_sec) > 0) {
@@ -263,7 +241,7 @@ function Workout({ profile, setProfile, userId }: {
         }
       }
       if (exMins === 0) exMins = 5; // default 5 mins if 0 sets
-      totalMins += exMins;
+      if (!overrideMins) totalMins += exMins;
       totalKcal += kcalBurned(ex.exercise.met_value || 5, weightKg, exMins);
     }
     if (totalMins === 0) totalMins = 30;
@@ -277,7 +255,7 @@ function Workout({ profile, setProfile, userId }: {
     
     if (logRow) {
       let sortOrder = 0;
-      for (const ex of activeExercises) {
+      for (const ex of toLog) {
         const { data: wle } = await supabase.from("workout_log_exercises").insert({
           workout_log_id: logRow.id,
           exercise_id: ex.exercise.id,
@@ -289,9 +267,6 @@ function Workout({ profile, setProfile, userId }: {
             ex.sets.map((s, idx) => ({
               workout_log_exercise_id: wle.id,
               set_number: idx + 1,
-              // `|| null` would coalesce a genuine 0 (e.g. a failed rep, a
-              // bodyweight-only set) to null since 0 is falsy — use an explicit
-              // NaN check instead so a real zero survives.
               reps: Number.isNaN(parseInt(s.reps)) ? null : parseInt(s.reps),
               weight_kg: Number.isNaN(parseFloat(s.weight_kg)) ? null : parseFloat(s.weight_kg),
               duration_sec: Number.isNaN(parseInt(s.duration_sec)) ? null : parseInt(s.duration_sec)
@@ -302,6 +277,7 @@ function Workout({ profile, setProfile, userId }: {
     }
     
     setLogging(false);
+    setLiveMode(false);
     setSessionOpen(false);
     setActiveExercises([]);
     setSessionTitle("Workout");
@@ -320,13 +296,13 @@ function Workout({ profile, setProfile, userId }: {
       <h1 className="text-2xl font-bold mb-4">Workout</h1>
 
       {activePlan ? (
-        <section className="rounded-2xl border-2 border-indigo-600 p-4">
+        <section className="rounded-2xl border-2 border-indigo-600 p-4 pt-6 relative mt-2">
+          <button onClick={() => setActive(null)}
+            className="absolute -top-3 left-4 bg-white dark:bg-[#0a0a0a] px-2 text-xs font-bold text-neutral-500 hover:text-indigo-500 transition-colors uppercase tracking-wider">
+            ← All Routines
+          </button>
           <div className="flex items-center justify-between gap-2">
-            <h2 className="font-bold">{activePlan.name}</h2>
-            <button onClick={() => setActive(null)}
-              className="shrink-0 rounded-full border border-neutral-300 dark:border-neutral-700 px-3 py-2 text-xs font-semibold text-neutral-600 dark:text-neutral-300 active:scale-[0.98]">
-              ← All plans
-            </button>
+            <h2 className="font-bold text-lg">{activePlan.name}</h2>
           </div>
           <p className="text-xs text-neutral-500 mb-3">{activePlan.level} · {activePlan.days_per_week}×/week</p>
           <div className="flex flex-col gap-2">
@@ -341,7 +317,15 @@ function Workout({ profile, setProfile, userId }: {
         </section>
       ) : (
         <section>
-          <p className="text-sm text-neutral-500 mb-3">Pick a free plan to get started:</p>
+          <AiRoutineGenerator onGenerated={(planId) => {
+            // refresh plans and set active
+            supabase.from("workout_plans").select("*").order("id")
+              .then(({ data }) => {
+                setPlans((data as Plan[]) ?? []);
+                setActive(planId);
+              });
+          }} />
+          <p className="text-sm text-neutral-500 mb-3">Pick a free routine to get started:</p>
           <div className="flex flex-col gap-3">
             {plans.map((p) => (
               <div key={p.id} className="rounded-2xl border border-neutral-200/60 dark:border-neutral-800/60 bg-white/50 dark:bg-neutral-900/50 backdrop-blur-md shadow-sm p-4">
@@ -350,7 +334,7 @@ function Workout({ profile, setProfile, userId }: {
                 <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">{p.description}</p>
                 <button onClick={() => setActive(p.id)}
                   className="mt-3 w-full rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md shadow-indigo-500/20 transition-all hover:shadow-lg hover:shadow-indigo-500/30 py-2.5 font-semibold active:scale-[0.98]">
-                  Start this plan
+                  Start this routine
                 </button>
               </div>
             ))}
@@ -409,7 +393,7 @@ function Workout({ profile, setProfile, userId }: {
             <div className="flex items-center justify-between mb-4">
               <button onClick={() => setSessionOpen(false)} className="text-neutral-500 text-sm font-semibold px-2 py-2 -ml-2">Cancel</button>
               <input value={sessionTitle} onChange={e => setSessionTitle(e.target.value)} className="bg-transparent text-center font-bold text-lg max-w-[200px]" />
-              <button onClick={logStructuredSession} disabled={logging || activeExercises.length === 0} className="text-indigo-600 text-sm font-semibold disabled:opacity-50 px-2 py-2 -mr-2">Save</button>
+              <button onClick={() => { setSessionOpen(false); setLiveMode(true); }} disabled={activeExercises.length === 0} className="text-indigo-600 text-sm font-bold disabled:opacity-50 px-2 py-2 -mr-2">▶ Start</button>
             </div>
             
             <div className="flex-1 flex flex-col gap-4">
@@ -497,21 +481,11 @@ function Workout({ profile, setProfile, userId }: {
                 className="w-11 h-11 -mr-2 flex items-center justify-center text-neutral-400 shrink-0">✕</button>
             </div>
 
-            {selectedMuscle === "yoga" && (
-              <input placeholder="Focus for AI Suggest (e.g. morning energizer, stress relief) — optional"
-                value={yogaGoal} onChange={e => setYogaGoal(e.target.value)}
-                className="w-full mb-3 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-white/50 dark:bg-neutral-900/50 shadow-sm focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition-all px-3 py-2 text-sm" />
-            )}
-
             <div className="flex gap-2 mb-4">
-              <button onClick={() => setCustomAddOpen(!customAddOpen)} className="flex-1 text-sm border border-neutral-200 dark:border-neutral-800 rounded-xl py-2 font-medium">
-                + Custom
-              </button>
-              <button onClick={suggestExercises} disabled={aiSuggestBusy} className="flex-1 text-sm bg-violet-50 dark:bg-violet-950/30 text-violet-600 dark:text-violet-400 border border-violet-200 dark:border-violet-900 rounded-xl py-2 font-medium disabled:opacity-50">
-                {aiSuggestBusy ? "Suggesting…" : "✨ AI Suggest"}
+              <button onClick={() => setCustomAddOpen(!customAddOpen)} className="w-full text-sm border border-neutral-200 dark:border-neutral-800 rounded-xl py-2 font-medium">
+                + Add Custom Exercise
               </button>
             </div>
-            {aiSuggestError && <p className="text-xs text-red-500 mb-3">{aiSuggestError}</p>}
             
             {customAddOpen && (
               <div className="mb-4 flex gap-2">
@@ -574,10 +548,16 @@ function Workout({ profile, setProfile, userId }: {
                 ≈🔥{dayKcal(items, parseFloat(duration) || 0)} kcal
               </span>
             </div>
-            <button onClick={logDay} disabled={logging}
-              className="mt-4 w-full rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md shadow-indigo-500/20 transition-all hover:shadow-lg hover:shadow-indigo-500/30 py-3.5 font-semibold disabled:opacity-50 active:scale-[0.98]">
-              ✓ Done — log it
-            </button>
+            <div className="flex gap-3 mt-4">
+              <button onClick={startDayLive} disabled={items.length === 0}
+                className="flex-[2] rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md shadow-indigo-500/20 transition-all hover:shadow-lg hover:shadow-indigo-500/30 py-3.5 font-bold disabled:opacity-50 active:scale-[0.98]">
+                ▶ Start Live Workout
+              </button>
+              <button onClick={logDay} disabled={logging}
+                className="flex-1 rounded-xl bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 py-3.5 font-semibold disabled:opacity-50 active:scale-[0.98]">
+                Log only
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -611,6 +591,15 @@ function Workout({ profile, setProfile, userId }: {
             </button>
           </div>
         </div>
+      )}
+
+      {liveMode && (
+        <LiveWorkout 
+          initialExercises={activeExercises} 
+          sessionTitle={sessionTitle} 
+          onFinish={logStructuredSession} 
+          onCancel={() => setLiveMode(false)} 
+        />
       )}
     </main>
   );

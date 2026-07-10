@@ -39,10 +39,10 @@ export async function POST(req: NextRequest) {
   const tProtein = (recentFood || []).reduce((sum, f) => sum + Number(f.protein_g), 0);
   const tWater = (recentWater || []).reduce((sum, w) => sum + Number(w.ml), 0);
 
-  const prompt = `You are an encouraging AI health coach.
-User profile: ${profile?.diet_type} diet, target ${profile?.target_kcal} kcal, ${profile?.target_protein}g protein, ${profile?.target_water_ml}ml water.
+  const prompt = `You are "Core Insights", an AI health coach.
+User profile: target ${profile?.target_kcal} kcal, ${profile?.target_protein}g protein, ${profile?.target_water_ml}ml water.
 Today's progress: ${tKcal} kcal eaten, ${tProtein}g protein eaten, ${tWater}ml water drank.
-Give a single, very short (1-2 sentences max) proactive health tip or encouragement based on their day so far. Keep it casual and friendly. No hashtags or markdown.`;
+Give a 2-sentence reactive message based on their day so far. If they are hitting their protein and calorie goals, hype them up. If they are overeating or missing their water/protein by a lot, give them a playful, motivating roast. Keep it punchy and fun. No hashtags or markdown.`;
 
   const aiRes = await generateWithFallback([{ text: prompt }]);
   if (!aiRes.ok) return NextResponse.json({ error: "AI unavailable" }, { status: 503 });
