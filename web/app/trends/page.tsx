@@ -54,7 +54,7 @@ function KcalBars({ days, target }: { days: DayTotal[]; target: number }) {
         return (
           <div key={d.log_date} className="flex-1 flex flex-col items-center gap-1">
             <div className="w-full rounded-t-md bg-neutral-100 dark:bg-neutral-900 flex flex-col justify-end h-[88px]">
-              <div className={`w-full rounded-t-md ${over ? "bg-amber-500" : "bg-green-600"}`}
+              <div className={`w-full rounded-t-md ${over ? "bg-amber-500" : "bg-indigo-600"}`}
                 style={{ height: `${h}%` }} title={`${Math.round(kcal)} kcal`} />
             </div>
             <span className="text-[10px] text-neutral-400">
@@ -80,7 +80,7 @@ function GoalRing({ pct }: { pct: number }) {
           className="text-neutral-200 dark:text-neutral-800" />
         <circle cx="32" cy="32" r={radius} stroke="currentColor" strokeWidth="6" fill="transparent"
           strokeDasharray={circumference} strokeDashoffset={offset} strokeLinecap="round"
-          className={clamped >= 100 ? "text-amber-500" : "text-green-500"} />
+          className={clamped >= 100 ? "text-amber-500" : "text-indigo-500"} />
       </svg>
       <span className="absolute text-sm font-bold">{Math.round(clamped)}%</span>
     </div>
@@ -166,7 +166,7 @@ function Trends({ profile, userId }: { profile: Profile | null; userId: string }
           const s = streaks.find((x) => x.kind === k);
           const cur = s?.current_streak ?? 0;
           return (
-            <div key={k} className="rounded-2xl border border-neutral-200 dark:border-neutral-800 p-3 text-center">
+            <div key={k} className="rounded-2xl border border-neutral-200/60 dark:border-neutral-800/60 bg-white/50 dark:bg-neutral-900/50 backdrop-blur-md shadow-sm p-3 text-center">
               <p className="text-2xl">{cur > 0 ? "🔥" : STREAK_META[k].icon}</p>
               <p className="text-xl font-bold">{cur}</p>
               <p className="text-[11px] text-neutral-500">{STREAK_META[k].label} · best {s?.best_streak ?? 0}</p>
@@ -177,13 +177,13 @@ function Trends({ profile, userId }: { profile: Profile | null; userId: string }
 
       {/* goal progress — visible card with a ring, not a buried text link */}
       {profile?.target_weight_kg ? (
-        <Link href="/goals" className="mt-6 flex items-center gap-4 rounded-2xl border border-neutral-200 dark:border-neutral-800 p-4 active:bg-neutral-50 dark:active:bg-neutral-900">
+        <Link href="/goals" className="mt-6 flex items-center gap-4 rounded-2xl border border-neutral-200/60 dark:border-neutral-800/60 bg-white/50 dark:bg-neutral-900/50 backdrop-blur-md shadow-sm p-4 active:bg-neutral-50 dark:active:bg-neutral-900">
           <GoalRing pct={goalPct} />
           <div className="flex-1 min-w-0">
             <h2 className="font-bold">Goal Progress</h2>
             {goal ? (
               goal.reached ? (
-                <p className="text-sm text-green-600 dark:text-green-400 font-semibold mt-0.5">🎉 Goal reached!</p>
+                <p className="text-sm text-indigo-600 dark:text-indigo-400 font-semibold mt-0.5">🎉 Goal reached!</p>
               ) : (
                 <>
                   <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-0.5">
@@ -212,7 +212,7 @@ function Trends({ profile, userId }: { profile: Profile | null; userId: string }
       )}
 
       {/* weight + BMI */}
-      <section className="mt-6 rounded-2xl border border-neutral-200 dark:border-neutral-800 p-4">
+      <section className="mt-6 rounded-2xl border border-neutral-200/60 dark:border-neutral-800/60 bg-white/50 dark:bg-neutral-900/50 backdrop-blur-md shadow-sm p-4">
         <div className="flex items-baseline justify-between mb-2">
           <h2 className="font-bold">Weight (90 days)</h2>
           {lastBmi != null && (
@@ -223,9 +223,9 @@ function Trends({ profile, userId }: { profile: Profile | null; userId: string }
         <div className="flex gap-2 mt-3">
           <input inputMode="decimal" placeholder="Today's weight (kg)" value={weight}
             onChange={(e) => setWeight(e.target.value)}
-            className="flex-1 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-transparent px-4 py-3 text-base" />
+            className="flex-1 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-white/50 dark:bg-neutral-900/50 shadow-sm focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition-all px-4 py-3 text-base" />
           <button onClick={logWeight} disabled={!(parseFloat(weight) > 0)}
-            className="rounded-xl bg-green-600 text-white px-5 py-3 font-semibold disabled:opacity-40 active:scale-[0.98]">
+            className="rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md shadow-indigo-500/20 transition-all hover:shadow-lg hover:shadow-indigo-500/30 px-5 py-3 font-semibold disabled:opacity-40 active:scale-[0.98]">
             {savedMsg ? "✓" : "Log"}
           </button>
         </div>
@@ -264,7 +264,7 @@ function Trends({ profile, userId }: { profile: Profile | null; userId: string }
       </section>
 
       {/* calories week */}
-      <section className="mt-6 rounded-2xl border border-neutral-200 dark:border-neutral-800 p-4">
+      <section className="mt-6 rounded-2xl border border-neutral-200/60 dark:border-neutral-800/60 bg-white/50 dark:bg-neutral-900/50 backdrop-blur-md shadow-sm p-4">
         <h2 className="font-bold mb-3">Calories · last 7 days
           <span className="text-sm font-normal text-neutral-500"> · target {Math.round(profile?.target_kcal ?? 2000)}</span>
         </h2>

@@ -74,7 +74,7 @@ function Progress({ userId }: { userId: string }) {
         <button onClick={() => router.back()} aria-label="Back" className="w-11 h-11 rounded-full border border-neutral-200 dark:border-neutral-800 text-lg flex items-center justify-center">←</button>
         <h1 className="text-2xl font-bold flex-1">📸 Progress Photos</h1>
         <button onClick={() => fileInput.current?.click()} disabled={busy}
-          className="rounded-xl bg-green-600 text-white px-4 py-2.5 font-semibold text-sm disabled:opacity-50 active:scale-[0.98]">
+          className="rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md shadow-indigo-500/20 transition-all hover:shadow-lg hover:shadow-indigo-500/30 px-4 py-2.5 font-semibold text-sm disabled:opacity-50 active:scale-[0.98]">
           {busy ? "Uploading…" : "+ Add"}
         </button>
         <input ref={fileInput} type="file" accept="image/*" onChange={onPick} className="hidden" />
@@ -110,7 +110,7 @@ function Progress({ userId }: { userId: string }) {
             return (
               <div key={p.id} className="relative">
                 <button onClick={() => toggleCompare(p)}
-                  className={`block w-full aspect-square rounded-xl overflow-hidden border-2 ${selected ? "border-green-600" : "border-transparent"}`}>
+                  className={`block w-full aspect-square rounded-xl overflow-hidden border-2 ${selected ? "border-indigo-600" : "border-transparent"}`}>
                   <img src={p.url} alt="" className="w-full h-full object-cover" />
                 </button>
                 <p className="text-[10px] text-center text-neutral-400 mt-0.5">{p.taken_at.slice(5)}</p>

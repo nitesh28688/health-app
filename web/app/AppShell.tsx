@@ -30,6 +30,7 @@ export function AppShell({ children }: {
   }, [loading, session, router]);
 
   function onTouchStart(e: React.TouchEvent) {
+    if ((e.target as Element).closest('.fixed.inset-0')) return;
     touchStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
   }
   function onTouchEnd(e: React.TouchEvent) {
@@ -75,9 +76,9 @@ export function AppShell({ children }: {
             return (
               <Link key={t.href} href={t.href} replace
                 className={`flex-1 flex flex-col items-center justify-center py-2 min-h-[52px] text-[10px] transition-all relative ${
-                  isActive ? "text-green-600 font-semibold" : "text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300"}`}>
+                  isActive ? "text-indigo-600 font-semibold" : "text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300"}`}>
                 {isActive && (
-                  <motion.div layoutId="tab-bubble" className="absolute inset-1 bg-green-100 dark:bg-green-900/30 rounded-xl" transition={{ type: "spring", bounce: 0.2, duration: 0.6 }} />
+                  <motion.div layoutId="tab-bubble" className="absolute inset-1 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl" transition={{ type: "spring", bounce: 0.2, duration: 0.6 }} />
                 )}
                 <Icon className={`w-5 h-5 mb-1 relative z-10 transition-transform ${isActive ? "scale-110" : ""}`} strokeWidth={isActive ? 2.5 : 2} />
                 <span className="relative z-10">{t.label}</span>

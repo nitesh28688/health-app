@@ -15,10 +15,10 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Health App",
+  title: "Core AI",
   description: "Macro tracking, workouts and streaks for friends & family",
   manifest: "/manifest.json",
-  appleWebApp: { capable: true, statusBarStyle: "default", title: "Health" },
+  appleWebApp: { capable: true, statusBarStyle: "default", title: "Core AI" },
   icons: {
     icon: [
       { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
@@ -29,7 +29,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#16a34a",
+  themeColor: "#4f46e5",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
@@ -58,7 +58,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className="min-h-full flex flex-col pt-[env(safe-area-inset-top)]">
+      <body className="min-h-full flex flex-col pt-[env(safe-area-inset-top)] bg-gradient-to-br from-indigo-50/40 via-white to-violet-50/40 dark:from-indigo-950/20 dark:via-[#0a0a0a] dark:to-[#0a0a0a]">
         <SwRegister />
         {children}
         <InstallPrompt />

@@ -171,9 +171,9 @@ function AddFood({ userId }: { userId: string }) {
 
       <input autoFocus placeholder="Search foods… (e.g. dal, roti, poha)" value={q}
         onChange={(e) => setQ(e.target.value)}
-        className="w-full rounded-xl border border-neutral-300 dark:border-neutral-700 bg-transparent px-4 py-3 text-base" />
+        className="w-full rounded-xl border border-neutral-300 dark:border-neutral-700 bg-white/50 dark:bg-neutral-900/50 shadow-sm focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition-all px-4 py-3 text-base" />
       <div className="flex gap-2 mt-3">
-        <Link href="/recipes" className="flex-1 flex items-center justify-center gap-1.5 rounded-xl border border-green-200 dark:border-green-900/50 bg-green-50 dark:bg-green-900/10 text-sm text-green-600 font-semibold py-2.5 active:scale-[0.98]">
+        <Link href="/recipes" className="flex-1 flex items-center justify-center gap-1.5 rounded-xl border border-indigo-200 dark:border-indigo-900/50 bg-indigo-50 dark:bg-indigo-900/10 text-sm text-indigo-600 font-semibold py-2.5 active:scale-[0.98]">
           🍲 My recipes →
         </Link>
         <button onClick={() => photoInput.current?.click()} disabled={photoBusy}

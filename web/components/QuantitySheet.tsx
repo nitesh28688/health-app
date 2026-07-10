@@ -179,20 +179,20 @@ export function QuantitySheet({
           {servings.map((s) => (
             <button key={s.id} onClick={() => selectServing(s)}
               className={`rounded-full border px-3 py-2 text-sm font-medium ${
-                unit === s.id ? "border-green-600 text-green-600 bg-green-600/10" : "border-neutral-300 dark:border-neutral-700"}`}>
+                unit === s.id ? "border-indigo-600 text-indigo-600 bg-indigo-600/10" : "border-neutral-300 dark:border-neutral-700"}`}>
               {s.label} <span className="opacity-60">· {Math.round(s.grams)}g</span>
             </button>
           ))}
           {!food.is_liquid && servings.length === 0 && (
             <button onClick={selectCustomPiece}
               className={`rounded-full border px-3 py-2 text-sm font-medium ${
-                unit === CUSTOM_PIECE ? "border-green-600 text-green-600 bg-green-600/10" : "border-neutral-300 dark:border-neutral-700"}`}>
+                unit === CUSTOM_PIECE ? "border-indigo-600 text-indigo-600 bg-indigo-600/10" : "border-neutral-300 dark:border-neutral-700"}`}>
               piece <span className="opacity-60">· {gEach > 0 ? `${Math.round(gEach)}g` : "?"}</span>
             </button>
           )}
           <button onClick={selectGrams}
             className={`rounded-full border px-3 py-2 text-sm font-medium ${
-              unit === "grams" ? "border-green-600 text-green-600 bg-green-600/10" : "border-neutral-300 dark:border-neutral-700"}`}>
+              unit === "grams" ? "border-indigo-600 text-indigo-600 bg-indigo-600/10" : "border-neutral-300 dark:border-neutral-700"}`}>
             {baseUnitLabel}
           </button>
         </div>
@@ -236,7 +236,7 @@ export function QuantitySheet({
                   placeholder="g each"
                   value={gramsEach}
                   onChange={(e) => setGramsEach(e.target.value)}
-                  className={`w-24 rounded-xl border bg-transparent px-3 py-2 text-sm text-center ${
+                  className={`w-24 rounded-xl border bg-white/50 dark:bg-neutral-900/50 shadow-sm focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition-all px-3 py-2 text-sm text-center ${
                     needsWeight ? "border-amber-500" : "border-neutral-300 dark:border-neutral-700"}`}
                 />
                 <span className="text-xs text-neutral-400">
@@ -253,7 +253,7 @@ export function QuantitySheet({
               <p className="text-xs text-neutral-400">
                 = {amt} × {gEach > 0 ? gEach : knownServing?.grams}g = {Math.round(g)}g{" "}
                 <button onClick={() => { setShowAdjust(true); setTimeout(() => gramsEachRef.current?.focus(), 0); }}
-                  className="text-green-600 font-medium underline underline-offset-2">
+                  className="text-indigo-600 font-medium underline underline-offset-2">
                   adjust weight
                 </button>
               </p>
@@ -275,7 +275,7 @@ export function QuantitySheet({
             onSave(g, label);
           }}
           disabled={!(g > 0)}
-          className="mt-4 w-full rounded-xl bg-green-600 text-white py-3.5 font-semibold disabled:opacity-40 active:scale-[0.98]"
+          className="mt-4 w-full rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md shadow-indigo-500/20 transition-all hover:shadow-lg hover:shadow-indigo-500/30 py-3.5 font-semibold disabled:opacity-40 active:scale-[0.98]"
         >
           Save
         </button>

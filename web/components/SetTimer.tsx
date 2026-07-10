@@ -61,7 +61,7 @@ export function SetTimer({
     return (
       <button
         onClick={() => { setStartedAt(Date.now()); setNow(Date.now()); }}
-        className="w-11 h-11 flex items-center justify-center rounded-lg bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 shrink-0"
+        className="w-11 h-11 flex items-center justify-center rounded-lg bg-indigo-100 text-green-700 dark:bg-indigo-900/30 dark:text-indigo-400 shrink-0"
         title="Start Timer"
       >
         <Play className="w-4 h-4 ml-0.5" />

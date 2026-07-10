@@ -51,24 +51,24 @@ function Medications({ userId }: { userId: string }) {
       <div className="flex items-center gap-3 mb-4">
         <button onClick={() => router.back()} aria-label="Back" className="w-11 h-11 rounded-full border border-neutral-200 dark:border-neutral-800 text-lg flex items-center justify-center">←</button>
         <h1 className="text-2xl font-bold flex-1">💊 Medications</h1>
-        <button onClick={() => setAdding((a) => !a)} className="rounded-xl bg-green-600 text-white px-4 py-2.5 font-semibold text-sm active:scale-[0.98]">
+        <button onClick={() => setAdding((a) => !a)} className="rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md shadow-indigo-500/20 transition-all hover:shadow-lg hover:shadow-indigo-500/30 px-4 py-2.5 font-semibold text-sm active:scale-[0.98]">
           {adding ? "Close" : "+ New"}
         </button>
       </div>
 
       {adding && (
-        <div className="rounded-2xl border border-neutral-200 dark:border-neutral-800 p-4 mb-4 flex flex-col gap-3">
+        <div className="rounded-2xl border border-neutral-200/60 dark:border-neutral-800/60 bg-white/50 dark:bg-neutral-900/50 backdrop-blur-md shadow-sm p-4 mb-4 flex flex-col gap-3">
           <input placeholder="Medication name" value={name} onChange={(e) => setName(e.target.value)}
-            className="rounded-xl border border-neutral-300 dark:border-neutral-700 bg-transparent px-4 py-3 text-base" />
+            className="rounded-xl border border-neutral-300 dark:border-neutral-700 bg-white/50 dark:bg-neutral-900/50 shadow-sm focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition-all px-4 py-3 text-base" />
           <input placeholder="Dosage (e.g. 500mg, 1 tablet)" value={dosage} onChange={(e) => setDosage(e.target.value)}
-            className="rounded-xl border border-neutral-300 dark:border-neutral-700 bg-transparent px-4 py-3 text-base" />
+            className="rounded-xl border border-neutral-300 dark:border-neutral-700 bg-white/50 dark:bg-neutral-900/50 shadow-sm focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition-all px-4 py-3 text-base" />
           <div>
             <p className="text-sm text-neutral-500 mb-1.5">Reminder times</p>
             <div className="flex flex-wrap gap-2">
               {times.map((t, i) => (
                 <input key={i} type="time" value={t}
                   onChange={(e) => setTimes(times.map((x, j) => j === i ? e.target.value : x))}
-                  className="rounded-lg border border-neutral-300 dark:border-neutral-700 bg-transparent px-3 py-2 text-sm" />
+                  className="rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white/50 dark:bg-neutral-900/50 shadow-sm focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition-all px-3 py-2 text-sm" />
               ))}
               <button onClick={() => setTimes([...times, "20:00"])}
                 className="rounded-lg border border-dashed border-neutral-300 dark:border-neutral-700 px-3 py-2 text-sm text-neutral-500">
@@ -77,7 +77,7 @@ function Medications({ userId }: { userId: string }) {
             </div>
           </div>
           <button onClick={save} disabled={!name.trim()}
-            className="rounded-xl bg-green-600 text-white py-3 font-semibold disabled:opacity-40 active:scale-[0.98]">
+            className="rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md shadow-indigo-500/20 transition-all hover:shadow-lg hover:shadow-indigo-500/30 py-3 font-semibold disabled:opacity-40 active:scale-[0.98]">
             Save medication
           </button>
         </div>
@@ -102,8 +102,8 @@ function Medications({ userId }: { userId: string }) {
                 <button onClick={() => logTaken(m.id)} disabled={takenIds.has(m.id)}
                   className={`text-xs rounded-lg px-3 min-h-11 font-semibold active:scale-[0.98] ${
                     takenIds.has(m.id)
-                      ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400"
-                      : "bg-green-600 text-white"}`}>
+                      ? "bg-indigo-100 dark:bg-indigo-900/30 text-green-700 dark:text-indigo-400"
+                      : "bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md shadow-indigo-500/20 transition-all hover:shadow-lg hover:shadow-indigo-500/30"}`}>
                   {takenIds.has(m.id) ? "✓ Taken" : "Taken"}
                 </button>
                 <button onClick={() => toggleActive(m)}

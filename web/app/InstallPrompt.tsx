@@ -87,7 +87,7 @@ export function InstallPrompt() {
       </div>
       {!iosMode && (
         <button onClick={install}
-          className="mt-3 w-full rounded-xl bg-green-600 text-white py-2.5 font-semibold text-sm">
+          className="mt-3 w-full rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md shadow-indigo-500/20 transition-all hover:shadow-lg hover:shadow-indigo-500/30 py-2.5 font-semibold text-sm">
           Install
         </button>
       )}

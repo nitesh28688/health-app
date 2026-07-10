@@ -112,7 +112,7 @@ function Challenges({ userId }: { userId: string }) {
         {(["active", "discover", "create"] as const).map(k => (
           <button key={k} onClick={() => setActiveTab(k)}
             className={`flex-1 rounded-xl py-2.5 text-sm font-semibold border capitalize ${
-              activeTab === k ? "bg-green-600 text-white border-green-600"
+              activeTab === k ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md shadow-indigo-500/20 transition-all hover:shadow-lg hover:shadow-indigo-500/30 border-indigo-600"
                 : "border-neutral-300 dark:border-neutral-700 text-neutral-600 dark:text-neutral-400"}`}>
             {k}
           </button>
@@ -129,7 +129,7 @@ function Challenges({ userId }: { userId: string }) {
             active.map(c => {
               const scores = scoreboards[c.id] || [];
               return (
-                <div key={c.id} className="rounded-2xl border border-neutral-200 dark:border-neutral-800 p-4">
+                <div key={c.id} className="rounded-2xl border border-neutral-200/60 dark:border-neutral-800/60 bg-white/50 dark:bg-neutral-900/50 backdrop-blur-md shadow-sm p-4">
                   <div className="mb-3">
                     <h2 className="font-bold text-lg">{c.name}</h2>
                     <p className="text-xs text-neutral-500">{formatKind(c.kind)} · {c.start_date.slice(5)} to {c.end_date.slice(5)}</p>
@@ -167,12 +167,12 @@ function Challenges({ userId }: { userId: string }) {
             </p>
           ) : (
             discover.map(c => (
-              <div key={c.id} className="rounded-2xl border border-neutral-200 dark:border-neutral-800 p-4 flex justify-between items-center">
+              <div key={c.id} className="rounded-2xl border border-neutral-200/60 dark:border-neutral-800/60 bg-white/50 dark:bg-neutral-900/50 backdrop-blur-md shadow-sm p-4 flex justify-between items-center">
                 <div>
                   <h2 className="font-bold text-lg">{c.name}</h2>
                   <p className="text-xs text-neutral-500">{formatKind(c.kind)} · {c.start_date.slice(5)} to {c.end_date.slice(5)}</p>
                 </div>
-                <button onClick={() => join(c.id)} className="rounded-lg bg-green-600 text-white text-xs px-4 py-2 font-semibold">Join</button>
+                <button onClick={() => join(c.id)} className="rounded-lg bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md shadow-indigo-500/20 transition-all hover:shadow-lg hover:shadow-indigo-500/30 text-xs px-4 py-2 font-semibold">Join</button>
               </div>
             ))
           )}
@@ -180,7 +180,7 @@ function Challenges({ userId }: { userId: string }) {
       )}
 
       {activeTab === "create" && (
-        <div className="rounded-2xl border border-neutral-200 dark:border-neutral-800 p-5">
+        <div className="rounded-2xl border border-neutral-200/60 dark:border-neutral-800/60 bg-white/50 dark:bg-neutral-900/50 backdrop-blur-md shadow-sm p-5">
           <h2 className="font-bold text-lg mb-4">New Challenge</h2>
           <div className="flex flex-col gap-4">
             <div>
@@ -214,7 +214,7 @@ function Challenges({ userId }: { userId: string }) {
             </div>
             
             <button onClick={createChallenge} disabled={creating || !newName.trim()}
-              className="mt-2 w-full rounded-xl bg-green-600 text-white py-3.5 font-semibold disabled:opacity-50 active:scale-[0.98]">
+              className="mt-2 w-full rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md shadow-indigo-500/20 transition-all hover:shadow-lg hover:shadow-indigo-500/30 py-3.5 font-semibold disabled:opacity-50 active:scale-[0.98]">
               {creating ? "Creating..." : "Create & Join"}
             </button>
             {createError && <p className="text-sm text-amber-600 mt-2">{createError}</p>}

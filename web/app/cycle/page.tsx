@@ -66,11 +66,11 @@ function Cycle({ userId }: { userId: string }) {
         </div>
       )}
 
-      <section className="rounded-2xl border border-neutral-200 dark:border-neutral-800 p-4 mb-4">
+      <section className="rounded-2xl border border-neutral-200/60 dark:border-neutral-800/60 bg-white/50 dark:bg-neutral-900/50 backdrop-blur-md shadow-sm p-4 mb-4">
         <h2 className="font-bold mb-3">Log a period</h2>
         <input type="date" value={periodStart} max={todayLocal()}
           onChange={(e) => setPeriodStart(e.target.value)}
-          className="w-full rounded-xl border border-neutral-300 dark:border-neutral-700 bg-transparent px-4 py-3 text-base mb-3" />
+          className="w-full rounded-xl border border-neutral-300 dark:border-neutral-700 bg-white/50 dark:bg-neutral-900/50 shadow-sm focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition-all px-4 py-3 text-base mb-3" />
         <div className="flex gap-2 mb-3">
           {(["light", "medium", "heavy"] as const).map((f) => (
             <button key={f} onClick={() => setFlow(f)}
@@ -81,7 +81,7 @@ function Cycle({ userId }: { userId: string }) {
           ))}
         </div>
         <input placeholder="Symptoms (optional)" value={symptoms} onChange={(e) => setSymptoms(e.target.value)}
-          className="w-full rounded-xl border border-neutral-300 dark:border-neutral-700 bg-transparent px-4 py-3 text-base mb-3" />
+          className="w-full rounded-xl border border-neutral-300 dark:border-neutral-700 bg-white/50 dark:bg-neutral-900/50 shadow-sm focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition-all px-4 py-3 text-base mb-3" />
         <button onClick={logPeriod} disabled={saving}
           className="w-full rounded-xl bg-pink-600 text-white py-3 font-semibold disabled:opacity-50 active:scale-[0.98]">
           {saving ? "Saving…" : "Log period start"}

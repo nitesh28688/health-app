@@ -11,9 +11,10 @@ import { PhoneInput } from "@/lib/PhoneInput";
 import { PageSkeleton } from "@/lib/Skeleton";
 import { pushSupported, currentPushSubscription, enablePush, disablePush } from "@/lib/push";
 import { compressImage } from "@/lib/imageCompress";
+import { Camera, Image as ImageIcon } from "lucide-react";
 
 const inputCls =
-  "rounded-xl border border-neutral-300 dark:border-neutral-700 bg-transparent px-4 py-3 text-base w-full";
+  "rounded-xl border border-neutral-300 dark:border-neutral-700 bg-white/50 dark:bg-neutral-900/50 px-4 py-3 text-base w-full focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition-all shadow-sm";
 const labelCls = "text-sm font-medium text-neutral-600 dark:text-neutral-400 mb-1 block";
 
 function ProfileForm({ profile, setProfile, userId, email }: {
@@ -181,12 +182,14 @@ function ProfileForm({ profile, setProfile, userId, email }: {
       <div className="flex items-center gap-4 mb-5">
         <label className="relative shrink-0 cursor-pointer">
           {profile.avatar_url ? (
-            <img src={profile.avatar_url} alt="" className="w-16 h-16 rounded-full object-cover border border-neutral-200 dark:border-neutral-800" />
+            <img src={profile.avatar_url} alt="" className="w-16 h-16 rounded-full object-cover border border-neutral-200 dark:border-neutral-800 shadow-sm" />
           ) : (
-            <div className="w-16 h-16 rounded-full bg-neutral-100 dark:bg-neutral-900 flex items-center justify-center text-2xl">🙂</div>
+            <div className="w-16 h-16 rounded-full bg-indigo-50 dark:bg-indigo-950/30 flex items-center justify-center text-indigo-500 shadow-sm">
+              <Camera className="w-7 h-7" />
+            </div>
           )}
-          <span className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-green-600 text-white text-xs flex items-center justify-center">
-            {avatarBusy ? "…" : "📷"}
+          <span className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-gradient-to-r from-indigo-500 to-violet-600 text-white shadow-md flex items-center justify-center">
+            {avatarBusy ? "…" : <Camera className="w-3.5 h-3.5" />}
           </span>
           <input type="file" accept="image/*" onChange={onAvatarPicked} className="hidden" disabled={avatarBusy} />
         </label>
@@ -197,8 +200,10 @@ function ProfileForm({ profile, setProfile, userId, email }: {
       </div>
       {avatarError && <p className="text-xs text-amber-600 mb-4">{avatarError}</p>}
       <div className="flex items-center gap-4 mt-2 mb-8">
-        <Link href="/progress" className="text-sm text-green-600 dark:text-green-400 font-semibold">📸 Progress photos →</Link>
-        <Link href="/goals" className="text-sm text-green-600 dark:text-green-400 font-semibold">🎯 Goal progress →</Link>
+        <Link href="/progress" className="flex items-center gap-1.5 text-sm text-indigo-600 dark:text-indigo-400 font-semibold transition-colors hover:text-indigo-700 dark:hover:text-indigo-300">
+          <ImageIcon className="w-4 h-4" />
+          Progress photos →
+        </Link>
       </div>
 
       <section className="flex flex-col gap-4">
@@ -280,9 +285,9 @@ function ProfileForm({ profile, setProfile, userId, email }: {
         <div className="flex gap-2 mb-3">
           {(["lose", "maintain", "gain"] as const).map((g) => (
             <button key={g} onClick={() => { setGoal(g); setSuggestedFor(null); }}
-              className={`flex-1 rounded-xl py-2.5 text-sm font-semibold border transition-colors ${
-                goal === g ? "bg-green-600 text-white border-green-600"
-                  : "border-neutral-300 dark:border-neutral-700 text-neutral-600 dark:text-neutral-400"}`}>
+              className={`flex-1 rounded-xl py-2.5 text-sm font-semibold border transition-all shadow-sm ${
+                goal === g ? "bg-gradient-to-r from-indigo-500 to-violet-600 text-white border-transparent shadow-indigo-500/20"
+                  : "border-neutral-300 dark:border-neutral-700 text-neutral-600 dark:text-neutral-400 bg-white/50 dark:bg-neutral-900/50"}`}>
               {g === "lose" ? "Lose fat" : g === "maintain" ? "Maintain" : "Gain muscle"}
             </button>
           ))}
@@ -307,11 +312,11 @@ function ProfileForm({ profile, setProfile, userId, email }: {
           </select>
         </div>
         <button onClick={suggest} disabled={!canSuggest || !goal}
-          className="w-full rounded-xl border border-green-600 text-green-600 py-2.5 font-semibold text-sm disabled:opacity-40 mb-1">
+          className="w-full rounded-xl border border-indigo-600 text-indigo-600 dark:text-indigo-400 dark:border-indigo-500 py-2.5 font-semibold text-sm disabled:opacity-40 mb-1 transition-all active:scale-[0.98]">
           {goal ? "✨ Suggest targets from my stats" : "☝️ Pick a goal above first"}
         </button>
         {suggestedFor && (
-          <p className="text-xs text-green-600 mb-4 text-center">Calculated for: {suggestedFor} ✓</p>
+          <p className="text-xs text-indigo-600 dark:text-indigo-400 mb-4 text-center font-medium">Calculated for: {suggestedFor} ✓</p>
         )}
         {!suggestedFor && <div className="mb-4" />}
         <div className="grid grid-cols-2 gap-3">
@@ -338,8 +343,8 @@ function ProfileForm({ profile, setProfile, userId, email }: {
         <div className="flex items-center justify-between py-3 border-b border-neutral-100 dark:border-neutral-900">
           <span>Push notifications</span>
           <button onClick={toggleNotifications} disabled={notifBusy}
-            className={`rounded-full px-4 py-2 text-sm font-semibold ${
-              notifStatus === "enabled" ? "bg-green-600 text-white" : "border border-neutral-300 dark:border-neutral-700"}`}>
+            className={`rounded-full px-4 py-2 text-sm font-semibold transition-all shadow-sm ${
+              notifStatus === "enabled" ? "bg-gradient-to-r from-indigo-500 to-violet-600 text-white shadow-indigo-500/20" : "border border-neutral-300 dark:border-neutral-700 bg-white/50 dark:bg-neutral-900/50"}`}>
             {notifBusy ? "…" : notifStatus === "enabled" ? "On ✓" : notifStatus === "unsupported" ? "Unavailable" : "Turn on"}
           </button>
         </div>
@@ -359,7 +364,7 @@ function ProfileForm({ profile, setProfile, userId, email }: {
               <span>Track menstrual cycle</span>
               <input type="checkbox" checked={f.track_cycle}
                 onChange={(e) => setF({ ...f, track_cycle: e.target.checked })}
-                className="w-6 h-6 accent-green-600" />
+                className="w-6 h-6 accent-indigo-600 cursor-pointer" />
             </label>
             {f.track_cycle && (
               <Link href="/cycle" className="flex items-center justify-between py-3 border-b border-neutral-100 dark:border-neutral-900">
@@ -377,7 +382,7 @@ function ProfileForm({ profile, setProfile, userId, email }: {
           {BADGES.map((b) => {
             const earned = earnedBadges.has(b.code);
             return (
-              <div key={b.code} className={`rounded-xl border p-3 flex flex-col items-center text-center ${earned ? "border-amber-200 bg-amber-50/30 dark:border-amber-900/50 dark:bg-amber-900/10" : "border-neutral-200 dark:border-neutral-800 opacity-50 grayscale"}`}>
+              <div key={b.code} className={`rounded-xl border p-3 flex flex-col items-center text-center shadow-sm transition-all ${earned ? "border-indigo-200 bg-indigo-50/50 dark:border-indigo-900/50 dark:bg-indigo-900/20" : "border-neutral-200 dark:border-neutral-800 opacity-50 grayscale bg-white/30 dark:bg-neutral-900/30"}`}>
                 <span className="text-3xl mb-1">{b.icon}</span>
                 <span className="font-bold text-xs leading-tight mb-1">{b.name}</span>
                 <span className="text-[10px] text-neutral-500 leading-tight">{b.description}</span>
@@ -396,14 +401,14 @@ function ProfileForm({ profile, setProfile, userId, email }: {
             <span>{label}</span>
             <input type="checkbox" checked={f[k]}
               onChange={(e) => setF({ ...f, [k]: e.target.checked })}
-              className="w-6 h-6 accent-green-600" />
+              className="w-6 h-6 accent-indigo-600 cursor-pointer" />
           </label>
         ))}
       </section>
 
       {error && <p className="text-red-500 text-sm mt-4">{error}</p>}
       <button onClick={save}
-        className="mt-6 w-full rounded-xl bg-green-600 text-white py-3.5 font-semibold active:scale-[0.98]">
+        className="mt-6 w-full rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white py-3.5 font-semibold active:scale-[0.98] transition-all shadow-md shadow-indigo-500/20 hover:shadow-lg hover:shadow-indigo-500/30">
         {saved ? "Saved ✓" : "Save"}
       </button>
       <button

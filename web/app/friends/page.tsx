@@ -95,13 +95,13 @@ function Friends({ userId }: { userId: string }) {
     <main className="px-4 pt-6 pb-24">
       <div className="flex items-center justify-between mb-3">
         <h1 className="text-2xl font-bold">Friends</h1>
-        <Link href="/challenges" className="text-sm font-semibold text-green-600 bg-green-50 dark:bg-green-950/30 px-3 py-1.5 rounded-lg border border-green-200 dark:border-green-900">Challenges →</Link>
+        <Link href="/challenges" className="text-sm font-semibold text-indigo-600 bg-indigo-50 dark:bg-indigo-950/30 px-3 py-1.5 rounded-lg border border-indigo-200 dark:border-indigo-900">Challenges →</Link>
       </div>
       <div className="flex gap-2 mb-4">
         {([["feed", "Feed"], ["board", "Leaderboard"], ["people", "People"]] as const).map(([k, label]) => (
           <button key={k} onClick={() => setTab(k)}
             className={`flex-1 rounded-xl py-2.5 text-sm font-semibold border ${
-              tab === k ? "bg-green-600 text-white border-green-600"
+              tab === k ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md shadow-indigo-500/20 transition-all hover:shadow-lg hover:shadow-indigo-500/30 border-indigo-600"
                 : "border-neutral-300 dark:border-neutral-700 text-neutral-600 dark:text-neutral-400"}`}>
             {label}{k === "people" && incoming.length > 0 ? ` (${incoming.length})` : ""}
           </button>
@@ -132,7 +132,7 @@ function Friends({ userId }: { userId: string }) {
                     <p className="text-sm text-neutral-600 dark:text-neutral-300 truncate">{feedLine(f)}</p>
                   </div>
                   <button onClick={() => cheer(f)} aria-label="Cheer"
-                    className={`w-11 h-11 rounded-full text-lg flex items-center justify-center active:scale-[0.98] shrink-0 ${cheered.has(key) ? "bg-green-600/15" : ""}`}>
+                    className={`w-11 h-11 rounded-full text-lg flex items-center justify-center active:scale-[0.98] shrink-0 ${cheered.has(key) ? "bg-indigo-600/15" : ""}`}>
                     👏
                   </button>
                 </li>
@@ -170,7 +170,7 @@ function Friends({ userId }: { userId: string }) {
         <div>
           <input placeholder="Find by username…" value={q} onChange={(e) => setQ(e.target.value)}
             autoCapitalize="none"
-            className="w-full rounded-xl border border-neutral-300 dark:border-neutral-700 bg-transparent px-4 py-3 text-base" />
+            className="w-full rounded-xl border border-neutral-300 dark:border-neutral-700 bg-white/50 dark:bg-neutral-900/50 shadow-sm focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition-all px-4 py-3 text-base" />
           {results.filter((r) => !relatedIds.has(r.id)).map((r) => (
             <div key={r.id} className="flex items-center gap-3 py-3 border-b border-neutral-100 dark:border-neutral-900">
               <div className="flex-1">
@@ -178,7 +178,7 @@ function Friends({ userId }: { userId: string }) {
                 <p className="text-xs text-neutral-500">@{r.username}</p>
               </div>
               <button onClick={() => request(r.id)}
-                className="rounded-lg bg-green-600 text-white text-xs px-4 py-2.5 font-semibold active:scale-[0.98]">Add friend</button>
+                className="rounded-lg bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md shadow-indigo-500/20 transition-all hover:shadow-lg hover:shadow-indigo-500/30 text-xs px-4 py-2.5 font-semibold active:scale-[0.98]">Add friend</button>
             </div>
           ))}
 
@@ -190,7 +190,7 @@ function Friends({ userId }: { userId: string }) {
                 <p className="text-xs text-neutral-500">@{profiles[f.requester_id]?.username}</p>
               </div>
               <button onClick={() => accept(f)}
-                className="rounded-lg bg-green-600 text-white text-xs px-4 py-2.5 font-semibold active:scale-[0.98]">Accept</button>
+                className="rounded-lg bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md shadow-indigo-500/20 transition-all hover:shadow-lg hover:shadow-indigo-500/30 text-xs px-4 py-2.5 font-semibold active:scale-[0.98]">Accept</button>
               <button onClick={() => unfriend(f)} aria-label="Reject request"
                 className="w-11 h-11 shrink-0 flex items-center justify-center rounded-lg border border-neutral-300 dark:border-neutral-700 text-neutral-500 active:scale-[0.98]">✕</button>
             </div>

@@ -35,7 +35,7 @@ interface UserDetail {
 
 function Tile({ label, value }: { label: string; value: number | string }) {
   return (
-    <div className="rounded-2xl border border-neutral-200 dark:border-neutral-800 p-4">
+    <div className="rounded-2xl border border-neutral-200/60 dark:border-neutral-800/60 bg-white/50 dark:bg-neutral-900/50 backdrop-blur-md shadow-sm p-4">
       <p className="text-2xl font-bold">{value}</p>
       <p className="text-xs text-neutral-500 mt-1">{label}</p>
     </div>
@@ -160,7 +160,7 @@ export default function AdminPage() {
                   {users.map((u) => (
                     <li key={u.id}>
                       <button onClick={() => openUser(u.id)}
-                        className="w-full text-left rounded-xl border border-neutral-200 dark:border-neutral-800 p-3 active:bg-neutral-50 dark:active:bg-neutral-900">
+                        className="w-full text-left rounded-xl border border-neutral-200/60 dark:border-neutral-800/60 bg-white/50 dark:bg-neutral-900/50 backdrop-blur-md shadow-sm p-3 active:bg-neutral-50 dark:active:bg-neutral-900">
                         <p className="font-medium text-sm flex items-center gap-1.5">
                           {u.display_name ?? "(no name)"} {u.is_admin && <span title="Admin">👑</span>}
                           {!u.email_confirmed && <span className="text-amber-500 text-xs">unconfirmed</span>}
@@ -188,7 +188,7 @@ export default function AdminPage() {
                 ) : (
                   <ul className="flex flex-col gap-2">
                     {aiFoods.map((f) => (
-                      <li key={f.id} className="rounded-xl border border-neutral-200 dark:border-neutral-800 p-3 flex items-center gap-3">
+                      <li key={f.id} className="rounded-xl border border-neutral-200/60 dark:border-neutral-800/60 bg-white/50 dark:bg-neutral-900/50 backdrop-blur-md shadow-sm p-3 flex items-center gap-3">
                         <div className="flex-1 min-w-0">
                           <p className="font-medium truncate">{f.name} {f.is_verified && "✅"}</p>
                           <p className="text-xs text-neutral-500">
@@ -197,7 +197,7 @@ export default function AdminPage() {
                         </div>
                         {!f.is_verified && (
                           <button onClick={() => verify(f.id)}
-                            className="rounded-lg bg-green-600 text-white text-xs px-3 py-2 font-semibold active:scale-[0.98]">Verify</button>
+                            className="rounded-lg bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md shadow-indigo-500/20 transition-all hover:shadow-lg hover:shadow-indigo-500/30 text-xs px-3 py-2 font-semibold active:scale-[0.98]">Verify</button>
                         )}
                         <button onClick={() => remove(f.id)}
                           className="rounded-lg border border-red-300 dark:border-red-900 text-red-600 dark:text-red-400 text-xs px-3 py-2 font-semibold active:scale-[0.98]">Delete</button>

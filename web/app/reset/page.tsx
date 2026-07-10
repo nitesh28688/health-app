@@ -36,17 +36,17 @@ export default function ResetPage() {
       {!ready ? (
         <p className="text-neutral-500 mt-4">
           Waiting for your reset link… If you landed here without one, go back to{" "}
-          <a href="/login" className="text-green-600 font-semibold">sign in</a> and tap
+          <a href="/login" className="text-indigo-600 font-semibold">sign in</a> and tap
           “Forgot password?”.
         </p>
       ) : (
         <form onSubmit={save} className="flex flex-col gap-4 mt-4">
           <input type="password" required minLength={8} placeholder="New password (min 8 chars)"
             value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password"
-            className="rounded-xl border border-neutral-300 dark:border-neutral-700 bg-transparent px-4 py-3 text-base" />
+            className="rounded-xl border border-neutral-300 dark:border-neutral-700 bg-white/50 dark:bg-neutral-900/50 shadow-sm focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition-all px-4 py-3 text-base" />
           {error && <p className="text-red-500 text-sm">{error}</p>}
           <button disabled={busy}
-            className="rounded-xl bg-green-600 text-white py-3 font-semibold disabled:opacity-50 active:scale-[0.98]">
+            className="rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md shadow-indigo-500/20 transition-all hover:shadow-lg hover:shadow-indigo-500/30 py-3 font-semibold disabled:opacity-50 active:scale-[0.98]">
             {busy ? "Saving…" : "Save & sign in"}
           </button>
         </form>

@@ -320,7 +320,7 @@ function Workout({ profile, setProfile, userId }: {
       <h1 className="text-2xl font-bold mb-4">Workout</h1>
 
       {activePlan ? (
-        <section className="rounded-2xl border-2 border-green-600 p-4">
+        <section className="rounded-2xl border-2 border-indigo-600 p-4">
           <div className="flex items-center justify-between gap-2">
             <h2 className="font-bold">{activePlan.name}</h2>
             <button onClick={() => setActive(null)}
@@ -344,12 +344,12 @@ function Workout({ profile, setProfile, userId }: {
           <p className="text-sm text-neutral-500 mb-3">Pick a free plan to get started:</p>
           <div className="flex flex-col gap-3">
             {plans.map((p) => (
-              <div key={p.id} className="rounded-2xl border border-neutral-200 dark:border-neutral-800 p-4">
+              <div key={p.id} className="rounded-2xl border border-neutral-200/60 dark:border-neutral-800/60 bg-white/50 dark:bg-neutral-900/50 backdrop-blur-md shadow-sm p-4">
                 <h2 className="font-bold">{p.name}</h2>
                 <p className="text-xs text-neutral-500">{p.level} · {p.days_per_week}×/week · {p.goal?.replace("_", " ")}</p>
                 <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">{p.description}</p>
                 <button onClick={() => setActive(p.id)}
-                  className="mt-3 w-full rounded-xl bg-green-600 text-white py-2.5 font-semibold active:scale-[0.98]">
+                  className="mt-3 w-full rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md shadow-indigo-500/20 transition-all hover:shadow-lg hover:shadow-indigo-500/30 py-2.5 font-semibold active:scale-[0.98]">
                   Start this plan
                 </button>
               </div>
@@ -362,7 +362,7 @@ function Workout({ profile, setProfile, userId }: {
           confusable with each other or with body text at a glance */}
       <div className="mt-6 flex gap-3">
         <button onClick={() => setSessionOpen(true)}
-          className="flex-1 rounded-xl bg-green-600 text-white py-3 font-semibold active:scale-[0.98]">
+          className="flex-1 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md shadow-indigo-500/20 transition-all hover:shadow-lg hover:shadow-indigo-500/30 py-3 font-semibold active:scale-[0.98]">
           + Log Workout
         </button>
         <button onClick={() => setCustomOpen(true)}
@@ -409,12 +409,12 @@ function Workout({ profile, setProfile, userId }: {
             <div className="flex items-center justify-between mb-4">
               <button onClick={() => setSessionOpen(false)} className="text-neutral-500 text-sm font-semibold px-2 py-2 -ml-2">Cancel</button>
               <input value={sessionTitle} onChange={e => setSessionTitle(e.target.value)} className="bg-transparent text-center font-bold text-lg max-w-[200px]" />
-              <button onClick={logStructuredSession} disabled={logging || activeExercises.length === 0} className="text-green-600 text-sm font-semibold disabled:opacity-50 px-2 py-2 -mr-2">Save</button>
+              <button onClick={logStructuredSession} disabled={logging || activeExercises.length === 0} className="text-indigo-600 text-sm font-semibold disabled:opacity-50 px-2 py-2 -mr-2">Save</button>
             </div>
             
             <div className="flex-1 flex flex-col gap-4">
               {activeExercises.map((ae, exIdx) => (
-                <div key={ae.id} className="rounded-xl border border-neutral-200 dark:border-neutral-800 p-4">
+                <div key={ae.id} className="rounded-xl border border-neutral-200/60 dark:border-neutral-800/60 bg-white/50 dark:bg-neutral-900/50 backdrop-blur-md shadow-sm p-4">
                   <div className="flex justify-between items-center mb-3">
                     <div className="flex items-center gap-3 min-w-0">
                       <ExerciseDemo urls={ae.exercise.image_urls} size={44} />
@@ -429,13 +429,13 @@ function Workout({ profile, setProfile, userId }: {
                         <span className="text-xs text-neutral-400 w-4">{setIdx + 1}</span>
                         <input inputMode="decimal" placeholder="kg" value={set.weight_kg} onChange={(e) => {
                           const n = [...activeExercises]; n[exIdx].sets[setIdx].weight_kg = e.target.value; setActiveExercises(n);
-                        }} className="flex-1 rounded-md border border-neutral-300 dark:border-neutral-700 bg-transparent px-2 py-1.5 text-sm text-center" />
+                        }} className="flex-1 min-w-0 rounded-md border border-neutral-300 dark:border-neutral-700 bg-white/50 dark:bg-neutral-900/50 shadow-sm focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition-all px-2 py-1.5 text-sm text-center" />
                         <input inputMode="numeric" placeholder="reps" value={set.reps} onChange={(e) => {
                           const n = [...activeExercises]; n[exIdx].sets[setIdx].reps = e.target.value; setActiveExercises(n);
-                        }} className="flex-1 rounded-md border border-neutral-300 dark:border-neutral-700 bg-transparent px-2 py-1.5 text-sm text-center" />
+                        }} className="flex-1 min-w-0 rounded-md border border-neutral-300 dark:border-neutral-700 bg-white/50 dark:bg-neutral-900/50 shadow-sm focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition-all px-2 py-1.5 text-sm text-center" />
                         <input inputMode="numeric" placeholder="sec" value={set.duration_sec} onChange={(e) => {
                           const n = [...activeExercises]; n[exIdx].sets[setIdx].duration_sec = e.target.value; setActiveExercises(n);
-                        }} className="flex-1 rounded-md border border-neutral-300 dark:border-neutral-700 bg-transparent px-2 py-1.5 text-sm text-center" />
+                        }} className="flex-1 min-w-0 rounded-md border border-neutral-300 dark:border-neutral-700 bg-white/50 dark:bg-neutral-900/50 shadow-sm focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition-all px-2 py-1.5 text-sm text-center" />
                         <SetTimer
                           targetSeconds={parseInt(set.duration_sec) || undefined}
                           onStop={(secs) => {
@@ -459,7 +459,7 @@ function Workout({ profile, setProfile, userId }: {
                 </div>
               ))}
 
-              <button onClick={() => setMusclePickerOpen(true)} className="w-full rounded-xl border border-green-600 text-green-600 py-3.5 font-semibold active:scale-[0.98]">
+              <button onClick={() => setMusclePickerOpen(true)} className="w-full rounded-xl border border-indigo-600 text-indigo-600 py-3.5 font-semibold active:scale-[0.98]">
                 + Add Exercise
               </button>
             </div>
@@ -478,7 +478,7 @@ function Workout({ profile, setProfile, userId }: {
             </div>
             <div className="grid grid-cols-2 gap-2">
               {MUSCLES.map(m => (
-                <button key={m} onClick={() => loadExercisesForMuscle(m)} className="rounded-xl border border-neutral-200 dark:border-neutral-800 p-3 text-sm capitalize text-left">
+                <button key={m} onClick={() => loadExercisesForMuscle(m)} className="rounded-xl border border-neutral-200/60 dark:border-neutral-800/60 bg-white/50 dark:bg-neutral-900/50 backdrop-blur-md shadow-sm p-3 text-sm capitalize text-left">
                   {m}
                 </button>
               ))}
@@ -500,7 +500,7 @@ function Workout({ profile, setProfile, userId }: {
             {selectedMuscle === "yoga" && (
               <input placeholder="Focus for AI Suggest (e.g. morning energizer, stress relief) — optional"
                 value={yogaGoal} onChange={e => setYogaGoal(e.target.value)}
-                className="w-full mb-3 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-transparent px-3 py-2 text-sm" />
+                className="w-full mb-3 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-white/50 dark:bg-neutral-900/50 shadow-sm focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition-all px-3 py-2 text-sm" />
             )}
 
             <div className="flex gap-2 mb-4">
@@ -515,15 +515,15 @@ function Workout({ profile, setProfile, userId }: {
             
             {customAddOpen && (
               <div className="mb-4 flex gap-2">
-                <input placeholder="Exercise name" value={customAddName} onChange={e => setCustomAddName(e.target.value)} className="flex-1 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-transparent px-3 py-2 text-sm" />
-                <button onClick={addCustomExercise} disabled={!customAddName.trim()} className="bg-green-600 text-white px-3 py-2 rounded-xl text-sm font-semibold disabled:opacity-50">Add</button>
+                <input placeholder="Exercise name" value={customAddName} onChange={e => setCustomAddName(e.target.value)} className="flex-1 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-white/50 dark:bg-neutral-900/50 shadow-sm focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition-all px-3 py-2 text-sm" />
+                <button onClick={addCustomExercise} disabled={!customAddName.trim()} className="bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md shadow-indigo-500/20 transition-all hover:shadow-lg hover:shadow-indigo-500/30 px-3 py-2 rounded-xl text-sm font-semibold disabled:opacity-50">Add</button>
               </div>
             )}
             
             <ul className="flex flex-col gap-2 overflow-y-auto">
               {muscleExercises.map(ex => (
                 <li key={ex.id}>
-                  <button onClick={() => addExerciseToSession(ex)} className="w-full text-left rounded-xl border border-neutral-200 dark:border-neutral-800 p-3 text-sm active:bg-neutral-50 dark:active:bg-neutral-900 flex gap-3 items-center">
+                  <button onClick={() => addExerciseToSession(ex)} className="w-full text-left rounded-xl border border-neutral-200/60 dark:border-neutral-800/60 bg-white/50 dark:bg-neutral-900/50 backdrop-blur-md shadow-sm p-3 text-sm active:bg-neutral-50 dark:active:bg-neutral-900 flex gap-3 items-center">
                     <ExerciseDemo urls={ex.image_urls} />
                     <div className="min-w-0">
                       <span className="font-medium">{ex.name}</span>
@@ -567,7 +567,7 @@ function Workout({ profile, setProfile, userId }: {
             </ul>
             <div className="flex items-center gap-3">
               <input inputMode="numeric" value={duration} onChange={(e) => setDuration(e.target.value)}
-                className="w-24 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-transparent px-4 py-3 text-base text-center" />
+                className="w-24 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-white/50 dark:bg-neutral-900/50 shadow-sm focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition-all px-4 py-3 text-base text-center" />
               <span className="text-neutral-500 text-sm">minutes</span>
               <div className="flex-1" />
               <span className="text-sm text-orange-500 font-semibold">
@@ -575,7 +575,7 @@ function Workout({ profile, setProfile, userId }: {
               </span>
             </div>
             <button onClick={logDay} disabled={logging}
-              className="mt-4 w-full rounded-xl bg-green-600 text-white py-3.5 font-semibold disabled:opacity-50 active:scale-[0.98]">
+              className="mt-4 w-full rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md shadow-indigo-500/20 transition-all hover:shadow-lg hover:shadow-indigo-500/30 py-3.5 font-semibold disabled:opacity-50 active:scale-[0.98]">
               ✓ Done — log it
             </button>
           </div>
@@ -595,18 +595,18 @@ function Workout({ profile, setProfile, userId }: {
             <div className="flex flex-col gap-3">
               <input placeholder="What did you do? (e.g. Swimming, Cricket, Gym — legs)" value={customTitle}
                 onChange={(e) => setCustomTitle(e.target.value)}
-                className="rounded-xl border border-neutral-300 dark:border-neutral-700 bg-transparent px-4 py-3 text-base" />
+                className="rounded-xl border border-neutral-300 dark:border-neutral-700 bg-white/50 dark:bg-neutral-900/50 shadow-sm focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition-all px-4 py-3 text-base" />
               <div className="flex items-center gap-3">
                 <input inputMode="numeric" value={customDuration} onChange={(e) => setCustomDuration(e.target.value)}
-                  className="w-24 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-transparent px-4 py-3 text-base text-center" />
+                  className="w-24 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-white/50 dark:bg-neutral-900/50 shadow-sm focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition-all px-4 py-3 text-base text-center" />
                 <span className="text-neutral-500 text-sm">minutes</span>
               </div>
               <textarea placeholder="Notes — exercises, sets/reps, weights lifted, how it felt… (optional, helps the AI coach)"
                 value={customNotes} onChange={(e) => setCustomNotes(e.target.value)} rows={3}
-                className="rounded-xl border border-neutral-300 dark:border-neutral-700 bg-transparent px-4 py-3 text-base resize-none" />
+                className="rounded-xl border border-neutral-300 dark:border-neutral-700 bg-white/50 dark:bg-neutral-900/50 shadow-sm focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition-all px-4 py-3 text-base resize-none" />
             </div>
             <button onClick={logCustom} disabled={logging || !customTitle.trim()}
-              className="mt-4 w-full rounded-xl bg-green-600 text-white py-3.5 font-semibold disabled:opacity-50 active:scale-[0.98]">
+              className="mt-4 w-full rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md shadow-indigo-500/20 transition-all hover:shadow-lg hover:shadow-indigo-500/30 py-3.5 font-semibold disabled:opacity-50 active:scale-[0.98]">
               {logging ? "Saving…" : "Log it"}
             </button>
           </div>

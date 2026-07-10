@@ -59,7 +59,7 @@ function RecipeBuilder({ userId, onDone }: { userId: string; onDone: () => void 
   return (
     <div className="mt-4">
       <input placeholder="Recipe name (e.g. Mom's rajma)" value={name} onChange={(e) => setName(e.target.value)}
-        className="w-full rounded-xl border border-neutral-300 dark:border-neutral-700 bg-transparent px-4 py-3 text-base" />
+        className="w-full rounded-xl border border-neutral-300 dark:border-neutral-700 bg-white/50 dark:bg-neutral-900/50 shadow-sm focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition-all px-4 py-3 text-base" />
 
       <h3 className="font-semibold mt-4 mb-2 text-sm">Raw ingredients</h3>
       {ings.map((i, idx) => (
@@ -73,7 +73,7 @@ function RecipeBuilder({ userId, onDone }: { userId: string; onDone: () => void 
         </div>
       ))}
       <input placeholder="Search ingredient to add…" value={q} onChange={(e) => setQ(e.target.value)}
-        className="w-full rounded-xl border border-dashed border-neutral-300 dark:border-neutral-700 bg-transparent px-4 py-3 text-base" />
+        className="w-full rounded-xl border border-dashed border-neutral-300 dark:border-neutral-700 bg-white/50 dark:bg-neutral-900/50 shadow-sm focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition-all px-4 py-3 text-base" />
       {results.slice(0, 5).map((f) => (
         <button key={f.id}
           onClick={() => { setIngs([...ings, { food: f, qty: "" }]); setQ(""); setResults([]); }}
@@ -87,7 +87,7 @@ function RecipeBuilder({ userId, onDone }: { userId: string; onDone: () => void 
           <label className="text-sm text-neutral-500">Cooked weight (g) — optional but makes it accurate</label>
           <input inputMode="decimal" placeholder={rawTotal > 0 ? `raw total: ${Math.round(rawTotal)}g` : ""}
             value={yieldG} onChange={(e) => setYieldG(e.target.value)}
-            className="w-full rounded-xl border border-neutral-300 dark:border-neutral-700 bg-transparent px-4 py-3 text-base mt-1" />
+            className="w-full rounded-xl border border-neutral-300 dark:border-neutral-700 bg-white/50 dark:bg-neutral-900/50 shadow-sm focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition-all px-4 py-3 text-base mt-1" />
         </div>
         {ings.length > 0 && <p className="text-sm font-semibold pt-5">≈{estKcal} kcal/100g</p>}
       </div>
@@ -95,7 +95,7 @@ function RecipeBuilder({ userId, onDone }: { userId: string; onDone: () => void 
 
       {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
       <button onClick={save} disabled={busy}
-        className="mt-4 w-full rounded-xl bg-green-600 text-white py-3.5 font-semibold disabled:opacity-50 active:scale-[0.98]">
+        className="mt-4 w-full rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md shadow-indigo-500/20 transition-all hover:shadow-lg hover:shadow-indigo-500/30 py-3.5 font-semibold disabled:opacity-50 active:scale-[0.98]">
         Save recipe
       </button>
     </div>
@@ -132,7 +132,7 @@ function Recipes({ userId }: { userId: string }) {
         <button onClick={() => router.back()} aria-label="Back" className="w-11 h-11 rounded-full border border-neutral-200 dark:border-neutral-800 text-lg flex items-center justify-center">←</button>
         <h1 className="text-2xl font-bold flex-1">My recipes</h1>
         <button onClick={() => setBuilding(!building)}
-          className="rounded-xl bg-green-600 text-white px-4 py-2.5 font-semibold text-sm active:scale-[0.98]">
+          className="rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md shadow-indigo-500/20 transition-all hover:shadow-lg hover:shadow-indigo-500/30 px-4 py-2.5 font-semibold text-sm active:scale-[0.98]">
           {building ? "Close" : "+ New"}
         </button>
       </div>
@@ -154,7 +154,7 @@ function Recipes({ userId }: { userId: string }) {
                 </div>
                 <button onClick={() => toggleShare(r)}
                   className={`text-xs rounded-lg px-3 py-2 font-semibold border ${
-                    r.shared ? "border-green-600 text-green-600" : "border-neutral-300 dark:border-neutral-700 text-neutral-500"}`}>
+                    r.shared ? "border-indigo-600 text-indigo-600" : "border-neutral-300 dark:border-neutral-700 text-neutral-500"}`}>
                   {r.shared ? "Shared ✓" : "Share"}
                 </button>
                 <button onClick={() => remove(r)} aria-label="Delete recipe" className="w-11 h-11 flex items-center justify-center text-neutral-400 shrink-0">✕</button>

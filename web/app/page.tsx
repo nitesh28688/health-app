@@ -42,7 +42,7 @@ function dateLabel(d: string) {
   return new Date(d + "T12:00:00").toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" });
 }
 
-function Ring({ full, val, max, unit, colorClass = "text-green-500" }: { full: string; val: number; max: number; unit: string; colorClass?: string }) {
+function Ring({ full, val, max, unit, colorClass = "text-indigo-500" }: { full: string; val: number; max: number; unit: string; colorClass?: string }) {
   const pct = Math.min(100, max > 0 ? (val / max) * 100 : 0);
   const radius = 20;
   const circumference = 2 * Math.PI * radius;
@@ -200,7 +200,7 @@ function Diary({ profile, userId }: { profile: Profile | null; userId: string })
       </div>
       {date !== todayLocal() && (
         <button onClick={() => setDate(todayLocal())}
-          className="block mx-auto mb-4 text-xs text-green-600 font-semibold">Jump to today</button>
+          className="block mx-auto mb-4 text-xs text-indigo-600 font-semibold">Jump to today</button>
       )}
       {date === todayLocal() && <div className="mb-4" />}
       
@@ -228,7 +228,7 @@ function Diary({ profile, userId }: { profile: Profile | null; userId: string })
           </div>
         </>
       ) : (
-      <div className="rounded-2xl border border-neutral-200 dark:border-neutral-800 p-4">
+      <div className="rounded-2xl border border-neutral-200/60 dark:border-neutral-800/60 bg-white/50 dark:bg-neutral-900/50 backdrop-blur-md shadow-sm p-4">
         <div className="flex items-baseline justify-between">
           <p className="text-3xl font-bold">{Math.round(tKcal)}<span className="text-base font-normal text-neutral-500"> / {Math.round(profile?.target_kcal ?? 2000)} kcal</span></p>
           {burned > 0 && <p className="text-sm text-orange-500">🔥 {Math.round(burned)}</p>}
@@ -237,7 +237,7 @@ function Diary({ profile, userId }: { profile: Profile | null; userId: string })
           <Ring full="Protein" val={Number(totals?.protein_g ?? 0)} max={profile?.target_protein ?? 100} unit="g" colorClass="text-blue-500" />
           <Ring full="Carbs" val={Number(totals?.carbs_g ?? 0)} max={profile?.target_carbs ?? 250} unit="g" colorClass="text-purple-500" />
           <Ring full="Fat" val={Number(totals?.fat_g ?? 0)} max={profile?.target_fat ?? 65} unit="g" colorClass="text-amber-500" />
-          <Ring full="Fiber" val={Number(totals?.fiber_g ?? 0)} max={profile?.target_fiber ?? 30} unit="g" colorClass="text-green-500" />
+          <Ring full="Fiber" val={Number(totals?.fiber_g ?? 0)} max={profile?.target_fiber ?? 30} unit="g" colorClass="text-indigo-500" />
         </div>
         {/* water */}
         <div className="flex items-center gap-2 mt-4">
@@ -305,12 +305,12 @@ function Diary({ profile, userId }: { profile: Profile | null; userId: string })
                 {mealKcal > 0 && <span className="text-sm font-normal text-neutral-500"> · {Math.round(mealKcal)} kcal</span>}
               </h2>
               <Link href={`/add?meal=${m.key}&date=${date}`}
-                className="w-11 h-11 rounded-full bg-green-600 text-white flex items-center justify-center text-xl leading-none pb-0.5">+</Link>
+                className="w-11 h-11 rounded-full bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md shadow-indigo-500/20 transition-all hover:shadow-lg hover:shadow-indigo-500/30 flex items-center justify-center text-xl leading-none pb-0.5">+</Link>
             </div>
             {items.length === 0 ? (
               <div className="flex items-center justify-between pl-1">
                 <p className="text-sm text-neutral-400">Nothing logged</p>
-                <button onClick={() => copyMeal(m.key)} className="text-xs text-green-600 font-semibold bg-green-50 dark:bg-green-950/30 px-3 py-2 rounded-lg border border-green-200 dark:border-green-900 active:scale-[0.98]">
+                <button onClick={() => copyMeal(m.key)} className="text-xs text-indigo-600 font-semibold bg-indigo-50 dark:bg-indigo-950/30 px-3 py-2 rounded-lg border border-indigo-200 dark:border-indigo-900 active:scale-[0.98]">
                   ↻ Repeat yesterday
                 </button>
               </div>

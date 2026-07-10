@@ -39,7 +39,7 @@ function Goals({ profile }: { profile: Profile }) {
         <div className="text-center mt-10">
           <p className="text-neutral-500 mb-4">You haven't set a goal weight yet.</p>
           <button onClick={() => router.push("/profile")}
-            className="rounded-xl bg-green-600 text-white px-6 py-3 font-semibold active:scale-[0.98]">
+            className="rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md shadow-indigo-500/20 transition-all hover:shadow-lg hover:shadow-indigo-500/30 px-6 py-3 font-semibold active:scale-[0.98]">
             Set it in Profile
           </button>
         </div>
@@ -50,7 +50,7 @@ function Goals({ profile }: { profile: Profile }) {
         </div>
       ) : (
         <div className="flex flex-col gap-5">
-          <div className="rounded-2xl border border-neutral-200 dark:border-neutral-800 p-5">
+          <div className="rounded-2xl border border-neutral-200/60 dark:border-neutral-800/60 bg-white/50 dark:bg-neutral-900/50 backdrop-blur-md shadow-sm p-5">
             <h2 className="text-lg font-bold mb-4">Current vs. Goal</h2>
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -72,14 +72,14 @@ function Goals({ profile }: { profile: Profile }) {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-neutral-200 dark:border-neutral-800 p-5">
+          <div className="rounded-2xl border border-neutral-200/60 dark:border-neutral-800/60 bg-white/50 dark:bg-neutral-900/50 backdrop-blur-md shadow-sm p-5">
             <h2 className="text-lg font-bold mb-4">Projection</h2>
             {progress.reached ? (
-              <p className="text-green-600 dark:text-green-400 font-bold text-lg">🎉 You've reached your goal!</p>
+              <p className="text-indigo-600 dark:text-indigo-400 font-bold text-lg">🎉 You've reached your goal!</p>
             ) : progress.estimatedDate ? (
               <>
                 <p className="text-sm text-neutral-500 mb-1">Estimated date to reach goal:</p>
-                <p className="text-2xl font-bold text-green-600 dark:text-green-400 mb-4">
+                <p className="text-2xl font-bold text-indigo-600 dark:text-indigo-400 mb-4">
                   {new Date(progress.estimatedDate + "T12:00:00").toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}
                 </p>
                 <p className="text-sm text-neutral-500">
