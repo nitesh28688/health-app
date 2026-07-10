@@ -1197,3 +1197,29 @@ Fixed all three to `category: "strength"` (matches the existing default `addCust
 already uses in `workout/page.tsx` for non-yoga exercises). Reproduced the exact reported
 error live against the dedicated test account with the old value, confirmed the fix succeeds
 with the new one, cleaned up. `npx tsc --noEmit` clean.
+
+# Phase 22 (Fable, 2026-07-10) — AI-suggested workouts reuse real exercise photos
+
+User asked whether "Start Live Session" workouts could show exercise photos — the seeded
+library (874/879 exercises, from `free-exercise-db`) already has real demo photos, but every
+AI-suggested exercise unconditionally created a brand-new custom row with no `image_urls`,
+even when a near-identical library exercise already existed.
+
+**Built:** `supabase/migrations/0025_match_exercise.sql` — `match_exercise(p_name)`, a
+trigram-similarity lookup (reuses the `pg_trgm` extension + `idx_exercises_name_trgm` index
+already in place, no new index) against the public library (`owner_id is null`), threshold
+`similarity > 0.35`. `AssistantSheet.tsx`'s `startLiveWorkout()` now calls this before
+creating a new exercise — reuses the matched row (and its photos) if found, only falls back
+to a fresh image-less custom row when nothing close enough exists.
+
+**Verified live** (user ran the migration via Supabase SQL Editor — no direct DDL access from
+this environment): tested against both a general exercise-name set and the exact names an
+earlier live `suggest_workout` call actually returned ("Barbell Bench Press", "Incline
+Dumbbell Press", "Dumbbell Flyes", "Close-Grip Bench Press", "Overhead Dumbbell Extension",
+"Triceps Pushdowns (Cable)") — 6/6 matched to a real library exercise with 2 photos each
+(e.g. "Close-Grip Bench Press" → "Close-Grip Barbell Bench Press"). Nonsense input correctly
+returns no match. `npx tsc --noEmit` clean.
+
+Not applied to `SmartLogSheet.tsx`'s or `suggest-exercises/route.ts`'s exercise-creation paths
+(same underlying duplicate-exercise pattern exists there) — out of scope for this specific
+ask, worth doing as a small follow-up if requested.

@@ -138,25 +138,35 @@ export function AssistantSheet({
       
       const newExercises = [];
       for (const ex of proposal.exercises) {
-        const { data: inserted, error: insertErr } = await supabase.from("exercises").insert({
-          name: ex.name,
-          // "Custom" isn't a valid category — exercises_category_check only
-          // allows strength/cardio/flexibility/core/yoga (0003_workouts.sql).
-          // Confirmed live 2026-07-10: this exact insert 400'd with
-          // "violates check constraint \"exercises_category_check\"".
-          category: "strength",
-          equipment: "none",
-          primary_muscle: "full body",
-          met_value: ex.met_value || 5.0,
-          instructions: ex.instructions || null,
-          owner_id: userId
-        }).select("id, name, met_value, instructions, category").single();
-        
-        if (insertErr) throw insertErr;
-        
+        // Reuse an existing library exercise (and its real demo photo) if the
+        // AI's suggested name is a close match — e.g. "Barbell Bench Press"
+        // vs the seeded "Bench Press, Barbell". Only creates a fresh,
+        // image-less custom row when nothing close enough exists.
+        const { data: match } = await supabase.rpc("match_exercise", { p_name: ex.name });
+        let exerciseRow = match?.[0];
+
+        if (!exerciseRow) {
+          const { data: inserted, error: insertErr } = await supabase.from("exercises").insert({
+            name: ex.name,
+            // "Custom" isn't a valid category — exercises_category_check only
+            // allows strength/cardio/flexibility/core/yoga (0003_workouts.sql).
+            // Confirmed live 2026-07-10: this exact insert 400'd with
+            // "violates check constraint \"exercises_category_check\"".
+            category: "strength",
+            equipment: "none",
+            primary_muscle: "full body",
+            met_value: ex.met_value || 5.0,
+            instructions: ex.instructions || null,
+            owner_id: userId
+          }).select("id, name, met_value, instructions, category, image_urls").single();
+
+          if (insertErr) throw insertErr;
+          exerciseRow = inserted;
+        }
+
         newExercises.push({
           id: Math.random().toString(),
-          exercise: inserted,
+          exercise: exerciseRow,
           sets: Array.from({ length: ex.sets || 3 }).map(() => ({
             id: Math.random().toString(),
             reps: String(ex.reps || ""),
