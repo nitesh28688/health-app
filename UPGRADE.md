@@ -1130,3 +1130,20 @@ skipping everything would have silently re-logged the original full exercise lis
 nothing. Fixed by routing that specific case through `onCancel()` instead of `onFinish([])`,
 avoiding the parent's ambiguous fallback entirely rather than touching the shared
 `logStructuredSession` write path. Not click-tested live — user should try it for real.
+
+## Phase 20 (Antigravity, 2026-07-10) — Smart Log: Fix & Wire End-to-End
+
+The Smart Log textarea (`app/page.tsx`) was a visual stub — uncontrolled input, no `onChange`, no API call, `Enter` fired `alert("Text-to-log coming soon!")`. The backend route (`api/ai/text-to-log/route.ts`) existed but had two structural bugs: every food was hardcoded to `qty_g: 100, qty_unit_label: "1 serving"` regardless of what was described, and every workout was hardcoded to `duration_min: 15, kcal_burned: 100`. It also wrote directly to the DB with no confirmation step, unlike every other multi-insert flow in the app.
+
+Fixed:
+1. **Backend refactored**: The route no longer writes anything to the DB. It returns a `proposal` JSON to the client. The Gemini prompt was rewritten to extract real `qty_g`/`qty_unit_label` per food (as described, e.g. "3 eggs" → `qty_g: 150, qty_unit_label: "3 eggs"`) and real `duration_min`/`met_value` per exercise. `kcal_burned` is computed server-side using the same MET formula as `kcalBurned()` in `nutrition.ts`, keyed off the user's actual logged weight (not a fixed 70kg fallback).
+2. **`SmartLogSheet.tsx` created**: Confirmation bottom sheet. Displays weight/water/foods/exercises parsed from the proposal with actual scaled macros (using `logSnapshot()` for display — same math as everywhere else). "Confirm & Log" button executes the multi-table inserts: weight/water/food-logs via `offlineWrite()`, structured workout log via direct Supabase calls (online-only, matching the Phase 18 guard convention for multi-table chains). `navigator.onLine` checked before confirming.
+3. **`app/page.tsx` wired**: Controlled `smartLogText` state, `submitSmartLog()` async function, "Thinking..." loading state on the button, `smartLogError` inline display, `SmartLogSheet` mounted when proposal lands, auto-refreshes diary via `load()` on confirm.
+
+Verified: `tsc --noEmit` clean. Live round trip against the real `/api/ai/text-to-log` endpoint with input `"I had 3 scrambled eggs for breakfast, drank 600ml water, weigh 80kg, and did 3 sets of 10 pushups lasting 20 minutes"`:
+- HTTP 200 OK
+- `weight_kg: 80`, `water_ml: 600` ✓ 
+- `foods[0]: { name: "scrambled eggs", qty_g: 150, qty_unit_label: "3 eggs", kcal: 155 (per 100g), meal: "breakfast" }` ✓ — qty_g not hardcoded 100
+- `exercises[0]: { name: "pushups", sets: 3, reps: 10, duration_min: 20, met_value: 5, kcal_burned: 133 }` ✓ — duration not hardcoded 15, kcal_burned not hardcoded 100
+- `results` field absent — confirmed no DB writes on the API side ✓
+

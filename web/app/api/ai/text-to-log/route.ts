@@ -10,8 +10,8 @@ const admin = () =>
 export async function POST(req: NextRequest) {
   const jwt = req.headers.get("authorization")?.replace("Bearer ", "");
   if (!jwt) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  
-  const { text, log_date } = await req.json();
+
+  const { text } = await req.json();
   if (!text || typeof text !== "string") {
     return NextResponse.json({ error: "bad request" }, { status: 400 });
   }
@@ -19,27 +19,25 @@ export async function POST(req: NextRequest) {
   const db = admin();
   const { data: userData, error: authErr } = await db.auth.getUser(jwt);
   if (authErr || !userData.user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  const userId = userData.user.id;
 
-  const today = log_date || new Date().toISOString().slice(0, 10);
+  // Look up the user's current weight so we can properly estimate kcal burned
+  const { data: latestMetric } = await db
+    .from("body_metrics")
+    .select("weight_kg")
+    .eq("user_id", userData.user.id)
+    .order("log_date", { ascending: false })
+    .limit(1)
+    .single();
+  const userWeightKg = latestMetric?.weight_kg ?? 70; // safe fallback
 
-  const prompt = `Extract health logging data from this text: "${text}"
-Return a strict JSON object with:
-- weight_kg (number, optional)
-- water_ml (number, optional)
-- foods (array of objects, optional): For each food mentioned, estimate:
-  - name (string)
-  - kcal (number)
-  - protein_g (number)
-  - carbs_g (number)
-  - fat_g (number)
-  - meal (string: breakfast, lunch, dinner, or snack)
-- exercises (array of objects, optional): For each exercise:
-  - name (string)
-  - sets (number, default 1)
-  - reps (number, optional)
-  - weight_kg (number, optional)
-  - duration_min (number, optional)`;
+  const prompt = `You are a health logging assistant. Parse this message and extract everything that should be logged: "${text}"
+
+Return a strict JSON object. Follow these exact rules:
+- foods: for each food, estimate the realistic quantity in grams (qty_g) and a display label (qty_unit_label, e.g. "2 eggs", "1 bowl", "200g"). All per-100g macros (kcal, protein_g, carbs_g, fat_g, fiber_g) must be realistic per-100g values for that food. Do NOT scale them to the quantity.
+- exercises: for each exercise, provide duration_min (total workout duration) and met_value (standard MET value: walking=3.5, running=9, cycling=6, pushups=5, weightlifting=5, yoga=2.5).
+- weight_kg: if mentioned, as a number.
+- water_ml: if mentioned, as a number (500ml = 500, "2 glasses" = 500).
+Do not invent anything not mentioned. Return empty arrays if nothing is found.`;
 
   const res = await generateWithFallback([{ text: prompt }], {
     type: "OBJECT",
@@ -52,13 +50,16 @@ Return a strict JSON object with:
           type: "OBJECT",
           properties: {
             name: { type: "STRING" },
+            qty_g: { type: "NUMBER" },
+            qty_unit_label: { type: "STRING" },
+            meal: { type: "STRING", enum: ["breakfast", "lunch", "dinner", "snack"] },
             kcal: { type: "NUMBER" },
             protein_g: { type: "NUMBER" },
             carbs_g: { type: "NUMBER" },
             fat_g: { type: "NUMBER" },
-            meal: { type: "STRING", enum: ["breakfast", "lunch", "dinner", "snack"] },
+            fiber_g: { type: "NUMBER" },
           },
-          required: ["name", "kcal", "protein_g", "carbs_g", "fat_g", "meal"],
+          required: ["name", "qty_g", "qty_unit_label", "meal", "kcal", "protein_g", "carbs_g", "fat_g", "fiber_g"],
         },
       },
       exercises: {
@@ -71,8 +72,9 @@ Return a strict JSON object with:
             reps: { type: "NUMBER" },
             weight_kg: { type: "NUMBER" },
             duration_min: { type: "NUMBER" },
+            met_value: { type: "NUMBER" },
           },
-          required: ["name", "sets"],
+          required: ["name", "sets", "duration_min", "met_value"],
         },
       },
     },
@@ -80,83 +82,55 @@ Return a strict JSON object with:
 
   if (!res.ok) return NextResponse.json({ error: "AI unavailable" }, { status: 502 });
   const body = await res.json();
-  let parsed;
+  let parsed: {
+    weight_kg?: number;
+    water_ml?: number;
+    foods?: {
+      name: string;
+      qty_g: number;
+      qty_unit_label: string;
+      meal: string;
+      kcal: number;
+      protein_g: number;
+      carbs_g: number;
+      fat_g: number;
+      fiber_g: number;
+    }[];
+    exercises?: {
+      name: string;
+      sets: number;
+      reps?: number;
+      weight_kg?: number;
+      duration_min: number;
+      met_value: number;
+    }[];
+  };
   try {
     parsed = JSON.parse(body.candidates[0].content.parts[0].text);
   } catch {
     return NextResponse.json({ error: "AI returned invalid data" }, { status: 502 });
   }
 
-  const results: any = {};
+  // Compute kcal_burned for each exercise using the MET formula.
+  // kcal = MET × weight_kg × (duration_min / 60)
+  // This matches kcalBurned() in lib/nutrition.ts — done here so the
+  // frontend can display per-exercise estimates in the confirmation sheet
+  // without importing server-side logic.
+  const exercisesWithBurn = (parsed.exercises ?? []).map((ex) => ({
+    ...ex,
+    kcal_burned: Math.round(ex.met_value * userWeightKg * (ex.duration_min / 60)),
+  }));
 
-  // 1. Weight
-  if (parsed.weight_kg) {
-    await db.from("body_metrics").upsert(
-      { user_id: userId, log_date: today, weight_kg: parsed.weight_kg },
-      { onConflict: "user_id,log_date" }
-    );
-    results.weight = true;
-  }
-
-  // 2. Water
-  if (parsed.water_ml) {
-    await db.from("water_logs").insert({ user_id: userId, log_date: today, ml: parsed.water_ml });
-    results.water = true;
-  }
-
-  // 3. Foods
-  if (parsed.foods && parsed.foods.length > 0) {
-    for (const f of parsed.foods) {
-      // Create a temporary food item
-      const { data: foodRow } = await db.from("foods").insert({
-        name: f.name, source: "ai_log", owner_id: userId, 
-        kcal: f.kcal, protein_g: f.protein_g, carbs_g: f.carbs_g, fat_g: f.fat_g
-      }).select("id").single();
-      
-      if (foodRow) {
-        await db.from("food_logs").insert({
-          user_id: userId, log_date: today, food_id: foodRow.id,
-          meal: f.meal || "snack", qty_g: 100, qty_unit_label: "1 serving",
-          kcal: f.kcal, protein_g: f.protein_g, carbs_g: f.carbs_g, fat_g: f.fat_g, fiber_g: 0
-        });
-      }
-    }
-    results.foods = parsed.foods.length;
-  }
-
-  // 4. Exercises
-  if (parsed.exercises && parsed.exercises.length > 0) {
-    const { data: logRow } = await db.from("workout_logs").insert({
-      user_id: userId, log_date: today, title: "Smart Log Workout", duration_min: 15, kcal_burned: 100
-    }).select("id").single();
-
-    if (logRow) {
-      for (const ex of parsed.exercises) {
-        const { data: exRow } = await db.from("exercises").insert({
-          name: ex.name, category: "Custom", owner_id: userId, met_value: 4
-        }).select("id").single();
-
-        if (exRow) {
-          const { data: wle } = await db.from("workout_log_exercises").insert({
-            log_id: logRow.id, exercise_id: exRow.id, order_index: 0
-          }).select("id").single();
-          
-          if (wle) {
-            const setsData = [];
-            for (let i = 0; i < ex.sets; i++) {
-              setsData.push({
-                exercise_id: wle.id, set_number: i + 1,
-                weight_kg: ex.weight_kg || null, reps: ex.reps || null,
-                duration_sec: ex.duration_min ? ex.duration_min * 60 : null
-              });
-            }
-            await db.from("workout_log_sets").insert(setsData);
-          }
-        }
-      }
-      results.workout = true;
-    }
-  }
-
-  return NextResponse.json({ success: true, parsed, results });
+  // Return the proposal to the client. Nothing is written to the DB here.
+  // The frontend shows the user a confirmation sheet and performs the inserts
+  // only if the user confirms.
+  return NextResponse.json({
+    proposal: {
+      weight_kg: parsed.weight_kg ?? null,
+      water_ml: parsed.water_ml ?? null,
+      foods: parsed.foods ?? [],
+      exercises: exercisesWithBurn,
+      user_weight_kg: userWeightKg, // sent back so the client can recompute if needed
+    },
+  });
 }

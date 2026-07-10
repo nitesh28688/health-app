@@ -11,7 +11,8 @@ import type { Profile } from "@/lib/useUser";
 import { Skeleton } from "@/lib/Skeleton";
 import { QuantitySheet } from "@/components/QuantitySheet";
 import { offlineWrite } from "@/lib/offlineWrite";
-import { Pencil, X, Sunrise, Sun, Moon, Coffee, Droplet, Flame, Sparkles, Bot, Shield, CalendarDays } from "lucide-react";
+import { Pencil, X, Sunrise, Sun, Moon, Coffee, Droplet, Flame, Sparkles, Bot, Shield, CalendarDays, Loader2 } from "lucide-react";
+import { SmartLogSheet, type SmartLogProposal } from "@/components/SmartLogSheet";
 
 const MEALS = [
   { key: "breakfast", label: "Breakfast", icon: <Sunrise className="w-5 h-5 text-amber-500" /> },
@@ -91,6 +92,11 @@ function Diary({ profile, userId }: { profile: Profile | null; userId: string })
   const [editingLog, setEditingLog] = useState<{ log: LogRow; food: any } | null>(null);
   const [dailyTip, setDailyTip] = useState<string | null>(null);
   const [showDailyTip, setShowDailyTip] = useState(true);
+  // Smart Log state
+  const [smartLogText, setSmartLogText] = useState("");
+  const [smartLogBusy, setSmartLogBusy] = useState(false);
+  const [smartLogProposal, setSmartLogProposal] = useState<SmartLogProposal | null>(null);
+  const [smartLogError, setSmartLogError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const [logsRes, totalsRes] = await Promise.all([
@@ -186,6 +192,30 @@ function Diary({ profile, userId }: { profile: Profile | null; userId: string })
   const burned = Number(totals?.kcal_burned ?? 0);
   const microEntries = micros ? Object.entries(micros).filter(([k]) => MICRO_LABELS[k]) : [];
 
+  async function submitSmartLog() {
+    const text = smartLogText.trim();
+    if (!text || smartLogBusy) return;
+    setSmartLogBusy(true);
+    setSmartLogError(null);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not signed in");
+      const res = await fetch("/api/ai/text-to-log", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ text }),
+      });
+      if (!res.ok) throw new Error("AI unavailable — please try again.");
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      setSmartLogProposal(data.proposal);
+    } catch (err: any) {
+      setSmartLogError(err?.message ?? "Something went wrong.");
+    } finally {
+      setSmartLogBusy(false);
+    }
+  }
+
   return (
     <main className="px-4 pt-4">
       {/* date nav */}
@@ -220,21 +250,30 @@ function Diary({ profile, userId }: { profile: Profile | null; userId: string })
 
       {date === todayLocal() && (
         <div className="mb-4 rounded-xl border border-indigo-200 dark:border-indigo-900/50 bg-indigo-50/30 dark:bg-indigo-900/10 p-3 shadow-sm">
-          <textarea 
+          <textarea
+            value={smartLogText}
+            onChange={(e) => setSmartLogText(e.target.value)}
             placeholder="Log anything... e.g. 'I had 2 eggs for breakfast, drank 500ml water, and did 20 pushups'"
             className="w-full bg-transparent text-sm resize-none focus:outline-none placeholder-indigo-400 dark:placeholder-indigo-600/50 text-indigo-900 dark:text-indigo-100"
             rows={2}
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
-                // TODO: Wire up text-to-log API call here
-                alert("Text-to-log coming soon!");
+                submitSmartLog();
               }
             }}
           />
+          {smartLogError && (
+            <p className="text-xs text-red-500 mt-1">{smartLogError}</p>
+          )}
           <div className="flex justify-end mt-1">
-            <button className="bg-indigo-600 text-white text-xs font-semibold px-3 py-1.5 rounded-lg active:scale-95 transition-transform">
-              Smart Log
+            <button
+              id="smart-log-submit"
+              onClick={submitSmartLog}
+              disabled={smartLogBusy || !smartLogText.trim()}
+              className="bg-indigo-600 disabled:opacity-50 text-white text-xs font-semibold px-3 py-1.5 rounded-lg active:scale-95 transition-transform flex items-center gap-1.5"
+            >
+              {smartLogBusy ? <><Loader2 className="w-3 h-3 animate-spin" />Thinking...</> : "Smart Log"}
             </button>
           </div>
         </div>
@@ -386,6 +425,18 @@ function Diary({ profile, userId }: { profile: Profile | null; userId: string })
             const snap = logSnapshot(editingLog.food, grams, label);
             await offlineWrite({ table: "food_logs", op: "update", payload: snap, match: { id: editingLog.log.id } });
             setEditingLog(null);
+            load();
+          }}
+        />
+      )}
+      {smartLogProposal && (
+        <SmartLogSheet
+          proposal={smartLogProposal}
+          logDate={date}
+          onClose={() => setSmartLogProposal(null)}
+          onConfirmed={() => {
+            setSmartLogText("");
+            setSmartLogProposal(null);
             load();
           }}
         />
