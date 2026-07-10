@@ -1223,3 +1223,44 @@ returns no match. `npx tsc --noEmit` clean.
 Not applied to `SmartLogSheet.tsx`'s or `suggest-exercises/route.ts`'s exercise-creation paths
 (same underlying duplicate-exercise pattern exists there) — out of scope for this specific
 ask, worth doing as a small follow-up if requested.
+
+# Phase 23 (Fable, 2026-07-10) — Core Insights daily tip: fix staleness + broaden context
+
+User's complaint: "Core Insights" was supposed to hype/roast based on the day, but only ever
+seemed to warn about water.
+
+**Root cause, found in `web/app/api/ai/daily-tip/route.ts`**: the tip was cached purely by
+calendar date (`onConflict: user_id,log_date,kind`) and generated on first page load. If a
+user opened the app early with nothing logged yet, the AI — seeing near-zero kcal/protein/
+water — generated a generic "log something, drink water" nudge, which then stayed frozen
+for the rest of the day no matter how much got eaten or worked out afterward. The prompt's
+context was also thin: only today's kcal/protein/water totals, nothing about workouts,
+streaks, or trends — not much material to genuinely react to even on a fresh generation.
+
+**Fixed:**
+1. **Cache now invalidates on real change, not just date.** The cached entry stores the
+   exact totals (kcal/protein/water/workout_kcal) it was generated from; a new request only
+   reuses the cache if none of those have changed since — otherwise it regenerates. The
+   client already re-fetches this on every Diary-tab visit (`page.tsx`'s existing
+   `useEffect`), so no client changes were needed — logging a meal, drinking water, or
+   finishing a workout and coming back to Diary now naturally produces a fresh, current tip.
+2. **Richer context**: prompt now includes today's actual workout activity (title/duration/
+   kcal_burned) and the current diary-logging streak (`get_streaks` RPC), alongside kcal/
+   protein/water — real material for hype or roast, not just water status.
+3. **Added a light daily cap** (15 regenerations/user/day, tracked via `ai_suggestions` kind
+   `daily_tip_calls`, separate from the tip cache itself) — bounds worst-case cost from
+   someone revisiting the Diary tab constantly; falls back to the last real tip rather than
+   an error if hit, since this is low-stakes.
+4. Every failure path (AI unavailable, bad response, cap hit) now falls back to the last
+   cached tip instead of surfacing an error, when one exists — a stale tip is a much better
+   experience than a blank/broken card for something this low-stakes.
+
+**Verified live**: two real Vertex calls with the new richer prompt shape — a simulated good
+day (95g protein, a logged chest workout, a 12-day streak) produced a tip that specifically
+named the workout, the streak, and the calorie/protein progress; a simulated bad day
+(2900kcal, 20g protein, 100ml water, no workout) produced a genuinely different, playful
+roast about the specific combination of overeating and under-hydrating. Confirms real
+variety, not the same generic message. Separately verified the cache-invalidation comparison
+logic in isolation across 4 scenarios (no change → reuse; new food logged → regenerate; new
+workout logged → regenerate; no cache yet → always regenerate) — all correct.
+`npx tsc --noEmit` clean.
