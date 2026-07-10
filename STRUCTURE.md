@@ -835,6 +835,9 @@ to rename the app to "Core AI", revamp the design, and introduce highly-capable
 - **UI Quality-of-Life**: "Plans" were renamed to "Routines" across the app. The "All Routines" back
   button was moved to the top left of the active day view. `ExerciseDemo.tsx` was wrapped in a
   full-screen Lightbox modal on tap for better visibility of form.
+- **Icon Overhaul**: Across the entire application, text-based emojis (like 💪, 🍲) were completely
+  replaced with crisp SVG icons from `lucide-react`. This unifies the aesthetic into a more
+  professional and classy look.
 
 **Not yet built** (schema/RPCs already exist, just needs UI):
 - Offline queue (PWA currently caches the shell for offline *viewing*, but doesn't
