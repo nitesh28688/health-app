@@ -37,6 +37,7 @@ function Cycle({ userId }: { userId: string }) {
     load();
   }
   async function remove(id: number) {
+    if (!confirm("Delete this cycle entry?")) return;
     await supabase.from("cycle_logs").delete().eq("id", id);
     load();
   }

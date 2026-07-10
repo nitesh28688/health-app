@@ -100,6 +100,7 @@ export default function AdminPage() {
     setAiFoods((f) => f.map((x) => (x.id === id ? { ...x, is_verified: true } : x)));
   }
   async function remove(id: number) {
+    if (!confirm("Delete this AI food? Anyone who logged it keeps their snapshot, but it disappears from search.")) return;
     await supabase.from("foods").delete().eq("id", id);
     setAiFoods((f) => f.filter((x) => x.id !== id));
   }
@@ -199,7 +200,7 @@ export default function AdminPage() {
                             className="rounded-lg bg-green-600 text-white text-xs px-3 py-2 font-semibold active:scale-[0.98]">Verify</button>
                         )}
                         <button onClick={() => remove(f.id)}
-                          className="rounded-lg border border-red-300 text-red-600 text-xs px-3 py-2 font-semibold active:scale-[0.98]">Delete</button>
+                          className="rounded-lg border border-red-300 dark:border-red-900 text-red-600 dark:text-red-400 text-xs px-3 py-2 font-semibold active:scale-[0.98]">Delete</button>
                       </li>
                     ))}
                   </ul>

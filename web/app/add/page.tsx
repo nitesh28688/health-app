@@ -33,6 +33,7 @@ function AddFood({ userId }: { userId: string }) {
   const [aiElapsed, setAiElapsed] = useState(0);
   const [photoBusy, setPhotoBusy] = useState(false);
   const [photoMsg, setPhotoMsg] = useState<string | null>(null);
+  const [saveMsg, setSaveMsg] = useState<string | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const photoInput = useRef<HTMLInputElement>(null);
 
@@ -235,14 +236,22 @@ function AddFood({ userId }: { userId: string }) {
       {picked && (
         <QuantitySheet
           food={picked}
-          onClose={() => setPicked(null)}
+          onClose={() => { setPicked(null); setSaveMsg(null); }}
           onSave={async (grams, label) => {
+            setSaveMsg(null);
             const snap = logSnapshot(picked, grams, label);
             const { error } = await supabase.from("food_logs").insert({
               user_id: userId, log_date: date, meal, food_id: picked.id, ...snap });
-            if (!error) router.push("/");
+            // Never fail silently — a stuck sheet with no message reads as "app is broken"
+            if (error) { setSaveMsg(`Couldn't save: ${error.message}`); return; }
+            router.push("/");
           }}
         />
+      )}
+      {picked && saveMsg && (
+        <p className="fixed bottom-24 left-4 right-4 z-[70] rounded-xl bg-amber-50 dark:bg-amber-950/80 border border-amber-300 dark:border-amber-800 text-amber-700 dark:text-amber-300 text-sm px-4 py-3 text-center">
+          {saveMsg}
+        </p>
       )}
     </main>
   );

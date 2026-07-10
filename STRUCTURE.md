@@ -619,6 +619,23 @@ OFF retest.** Three cleanup passes on the branded-foods data:
     "tomato" surfaces "Tomatoes, sun-dried" before plain raw — but both are real,
     correct produce entries, not wrong-product matches like the original bug.
 
+**Round 6.7 (2026-07-10): Phase 15 — user-reported fixes + polish sweep.** Workout:
+"← All plans" pill replaces the near-invisible "change" text link on the active plan
+card; calorie estimates are now per-exercise (each exercise's own MET × its estimated
+time share — `itemEstMins()`/`dayKcal()` in `app/workout/page.tsx` — scaled to the
+entered minutes), each exercise shows its own 🔥 kcal in the day sheet, and the
+duration input pre-fills with the day's real estimated length. Trends: Goal Progress
+is a visible ring card (`GoalRing` in `app/trends/page.tsx`, reuses
+`estimateGoalProgress` on the already-loaded 90-day series) linking to /goals; the
+buried underline link is gone; a dashed "Set a goal weight" card shows when no target
+exists. Sweep fixes: medications "Taken" now gives ✓ feedback and disables (was
+silent, invited duplicate logs); every destructive delete (progress photos, recipes,
+cycle entries, medications, admin AI foods) is confirm()-gated; QuantitySheet and all
+four workout bottom-sheets have a visible ✕ close (were backdrop-tap only); diary
+add-food save and challenge creation surface errors instead of failing silently;
+friends leaderboard has an empty state; goal accents standardized on green (blue
+removed); dark-mode variants added to the workout AI-Suggest chip and admin Delete.
+
 **Round 6.6 (2026-07-10): serving-first quantity entry (Phase 14 — supersedes the
 "count pieces" flow described in Round 6.5 below).** The "oz" chips users saw were
 data, not UI: 5,525 of 14,379 `food_servings` rows carried imperial labels from the

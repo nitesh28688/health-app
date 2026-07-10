@@ -161,11 +161,17 @@ export function QuantitySheet({
         onClick={(e) => e.stopPropagation()}
         className="rounded-t-3xl bg-white dark:bg-neutral-950 p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] max-w-md w-full mx-auto"
       >
-        <p className="font-bold">{food.name}</p>
-        <p className="text-xs text-neutral-500 mb-4">
-          {food.brand && `${food.brand} · `}
-          {Math.round(Number(food.kcal))} kcal /100g
-        </p>
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <p className="font-bold">{food.name}</p>
+            <p className="text-xs text-neutral-500 mb-4">
+              {food.brand && `${food.brand} · `}
+              {Math.round(Number(food.kcal))} kcal /100g
+            </p>
+          </div>
+          <button onClick={onClose} aria-label="Close"
+            className="w-11 h-11 -mt-2 -mr-2 flex items-center justify-center text-neutral-400 shrink-0">✕</button>
+        </div>
 
         {/* Unit picker: known servings first (with their weight visible), then a
             "piece · ?" AI option for foods nobody has measured yet, grams/ml last. */}

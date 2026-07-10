@@ -32,12 +32,18 @@ function Medications({ userId }: { userId: string }) {
     await supabase.from("medications").update({ active: !m.active }).eq("id", m.id);
     load();
   }
-  async function remove(id: number) {
+  async function remove(id: number, medName: string) {
+    if (!confirm(`Delete "${medName}" and its reminders?`)) return;
     await supabase.from("medications").delete().eq("id", id);
     load();
   }
+  // Visible feedback on "Taken" — without it the tap looks like it did nothing
+  // and people tap again, creating duplicate logs.
+  const [takenIds, setTakenIds] = useState<Set<number>>(new Set());
   async function logTaken(medicationId: number) {
-    await supabase.from("medication_logs").insert({ medication_id: medicationId, user_id: userId });
+    if (takenIds.has(medicationId)) return;
+    const { error } = await supabase.from("medication_logs").insert({ medication_id: medicationId, user_id: userId });
+    if (!error) setTakenIds((prev) => new Set(prev).add(medicationId));
   }
 
   return (
@@ -93,13 +99,18 @@ function Medications({ userId }: { userId: string }) {
                   <p className="font-medium text-sm">{m.name} {m.dosage && <span className="text-neutral-400">· {m.dosage}</span>}</p>
                   <p className="text-xs text-neutral-500">{m.times.join(", ")}</p>
                 </div>
-                <button onClick={() => logTaken(m.id)}
-                  className="text-xs rounded-lg bg-green-600 text-white px-3 py-2 font-semibold active:scale-[0.98]">Taken</button>
+                <button onClick={() => logTaken(m.id)} disabled={takenIds.has(m.id)}
+                  className={`text-xs rounded-lg px-3 min-h-11 font-semibold active:scale-[0.98] ${
+                    takenIds.has(m.id)
+                      ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400"
+                      : "bg-green-600 text-white"}`}>
+                  {takenIds.has(m.id) ? "✓ Taken" : "Taken"}
+                </button>
                 <button onClick={() => toggleActive(m)}
-                  className="text-xs rounded-lg border border-neutral-300 dark:border-neutral-700 px-2 py-2">
+                  className="text-xs rounded-lg border border-neutral-300 dark:border-neutral-700 px-2.5 min-h-11">
                   {m.active ? "Pause" : "Resume"}
                 </button>
-                <button onClick={() => remove(m.id)} aria-label="Delete medication" className="w-11 h-11 flex items-center justify-center text-neutral-400 shrink-0">✕</button>
+                <button onClick={() => remove(m.id, m.name)} aria-label="Delete medication" className="w-11 h-11 flex items-center justify-center text-neutral-400 shrink-0">✕</button>
               </div>
             </li>
           ))}

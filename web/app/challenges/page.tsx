@@ -36,6 +36,7 @@ function Challenges({ userId }: { userId: string }) {
     return todayLocal(d);
   });
   const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const [cRes, pRes] = await Promise.all([
@@ -70,7 +71,8 @@ function Challenges({ userId }: { userId: string }) {
   async function createChallenge() {
     if (!newName.trim() || !newStart || !newEnd || creating) return;
     setCreating(true);
-    const { data } = await supabase.from("challenges").insert({
+    setCreateError(null);
+    const { data, error } = await supabase.from("challenges").insert({
       creator_id: userId, name: newName.trim(), kind: newKind, start_date: newStart, end_date: newEnd
     }).select("id").single();
     if (data) {
@@ -78,6 +80,8 @@ function Challenges({ userId }: { userId: string }) {
       setActiveTab("active");
       setNewName("");
       load();
+    } else {
+      setCreateError(error?.message ?? "Couldn't create the challenge — try again.");
     }
     setCreating(false);
   }
@@ -213,6 +217,7 @@ function Challenges({ userId }: { userId: string }) {
               className="mt-2 w-full rounded-xl bg-green-600 text-white py-3.5 font-semibold disabled:opacity-50 active:scale-[0.98]">
               {creating ? "Creating..." : "Create & Join"}
             </button>
+            {createError && <p className="text-sm text-amber-600 mt-2">{createError}</p>}
           </div>
         </div>
       )}

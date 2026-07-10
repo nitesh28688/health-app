@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { AppShell } from "../AppShell";
 import { supabase } from "@/lib/supabase";
-import { todayLocal, bmiCategory } from "@/lib/nutrition";
+import { todayLocal, bmiCategory, estimateGoalProgress } from "@/lib/nutrition";
 import { awardBadge } from "@/lib/badges";
 import type { Profile } from "@/lib/useUser";
 import { PageSkeleton } from "@/lib/Skeleton";
@@ -67,6 +67,26 @@ function KcalBars({ days, target }: { days: DayTotal[]; target: number }) {
   );
 }
 
+/** Static progress ring for the Goal Progress card. */
+function GoalRing({ pct }: { pct: number }) {
+  const radius = 26;
+  const circumference = 2 * Math.PI * radius;
+  const clamped = Math.max(0, Math.min(100, pct));
+  const offset = circumference - (clamped / 100) * circumference;
+  return (
+    <div className="relative flex items-center justify-center w-20 h-20 shrink-0">
+      <svg className="w-full h-full transform -rotate-90" viewBox="0 0 64 64">
+        <circle cx="32" cy="32" r={radius} stroke="currentColor" strokeWidth="6" fill="transparent"
+          className="text-neutral-200 dark:text-neutral-800" />
+        <circle cx="32" cy="32" r={radius} stroke="currentColor" strokeWidth="6" fill="transparent"
+          strokeDasharray={circumference} strokeDashoffset={offset} strokeLinecap="round"
+          className={clamped >= 100 ? "text-amber-500" : "text-green-500"} />
+      </svg>
+      <span className="absolute text-sm font-bold">{Math.round(clamped)}%</span>
+    </div>
+  );
+}
+
 const STREAK_META: Record<string, { icon: string; label: string }> = {
   diary: { icon: "📖", label: "Logging" },
   workout: { icon: "💪", label: "Workouts" },
@@ -120,6 +140,16 @@ function Trends({ profile, userId }: { profile: Profile | null; userId: string }
 
   const weightPts = bmiRows.filter((r) => r.weight_kg != null)
     .map((r) => ({ x: r.log_date, y: Number(r.weight_kg) }));
+  // Goal progress from the already-loaded 90-day series — same helper /goals uses.
+  const goal = profile?.target_weight_kg
+    ? estimateGoalProgress(bmiRows, Number(profile.target_weight_kg))
+    : null;
+  const goalSpan = goal ? goal.startWeight - Number(profile!.target_weight_kg) : 0;
+  const goalPct = goal
+    ? goal.reached || Math.abs(goalSpan) < 0.01
+      ? 100
+      : ((goal.startWeight - goal.currentWeight) / goalSpan) * 100
+    : 0;
   const lastBmi = [...bmiRows].reverse().find((r) => r.bmi != null)?.bmi;
   const totalsByDate = new Map(allTotals.map((t) => [t.log_date, t]));
   const weightHistory = [...bmiRows].filter((r) => r.weight_kg != null).reverse();
@@ -145,6 +175,42 @@ function Trends({ profile, userId }: { profile: Profile | null; userId: string }
         })}
       </div>
 
+      {/* goal progress — visible card with a ring, not a buried text link */}
+      {profile?.target_weight_kg ? (
+        <Link href="/goals" className="mt-6 flex items-center gap-4 rounded-2xl border border-neutral-200 dark:border-neutral-800 p-4 active:bg-neutral-50 dark:active:bg-neutral-900">
+          <GoalRing pct={goalPct} />
+          <div className="flex-1 min-w-0">
+            <h2 className="font-bold">Goal Progress</h2>
+            {goal ? (
+              goal.reached ? (
+                <p className="text-sm text-green-600 dark:text-green-400 font-semibold mt-0.5">🎉 Goal reached!</p>
+              ) : (
+                <>
+                  <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-0.5">
+                    {goal.currentWeight} kg → <b>{Number(profile.target_weight_kg)} kg</b>
+                  </p>
+                  <p className="text-xs text-neutral-500 mt-0.5">
+                    {Math.abs(goal.kgToGo).toFixed(1)} kg to go
+                    {goal.estimatedDate && ` · ETA ${new Date(goal.estimatedDate + "T12:00:00").toLocaleDateString("en-IN", { day: "numeric", month: "short" })}`}
+                  </p>
+                </>
+              )
+            ) : (
+              <p className="text-xs text-neutral-500 mt-0.5">Log your weight a few times to see your trajectory.</p>
+            )}
+          </div>
+          <span className="text-neutral-400 shrink-0">→</span>
+        </Link>
+      ) : (
+        <Link href="/profile" className="mt-6 flex items-center justify-between gap-3 rounded-2xl border border-dashed border-neutral-300 dark:border-neutral-700 p-4 active:bg-neutral-50 dark:active:bg-neutral-900">
+          <div>
+            <h2 className="font-bold">Set a goal weight 🎯</h2>
+            <p className="text-xs text-neutral-500 mt-0.5">Track progress toward your target with a projection date.</p>
+          </div>
+          <span className="text-neutral-400 shrink-0">→</span>
+        </Link>
+      )}
+
       {/* weight + BMI */}
       <section className="mt-6 rounded-2xl border border-neutral-200 dark:border-neutral-800 p-4">
         <div className="flex items-baseline justify-between mb-2">
@@ -165,7 +231,6 @@ function Trends({ profile, userId }: { profile: Profile | null; userId: string }
         </div>
         <p className="mt-2 text-xs text-neutral-400">
           Log waist &amp; body fat % in <Link href="/profile" className="underline">Profile</Link>.
-          See <Link href="/goals" className="underline text-blue-600 dark:text-blue-400">Goal Progress</Link>.
         </p>
 
         {weightHistory.length > 0 && (

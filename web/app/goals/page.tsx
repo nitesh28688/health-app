@@ -38,7 +38,8 @@ function Goals({ profile }: { profile: Profile }) {
       {!profile.target_weight_kg ? (
         <div className="text-center mt-10">
           <p className="text-neutral-500 mb-4">You haven't set a goal weight yet.</p>
-          <button onClick={() => router.push("/profile")} className="text-blue-600 dark:text-blue-400 font-semibold underline">
+          <button onClick={() => router.push("/profile")}
+            className="rounded-xl bg-green-600 text-white px-6 py-3 font-semibold active:scale-[0.98]">
             Set it in Profile
           </button>
         </div>
@@ -78,7 +79,7 @@ function Goals({ profile }: { profile: Profile }) {
             ) : progress.estimatedDate ? (
               <>
                 <p className="text-sm text-neutral-500 mb-1">Estimated date to reach goal:</p>
-                <p className="text-2xl font-bold text-blue-600 dark:text-blue-400 mb-4">
+                <p className="text-2xl font-bold text-green-600 dark:text-green-400 mb-4">
                   {new Date(progress.estimatedDate + "T12:00:00").toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}
                 </p>
                 <p className="text-sm text-neutral-500">

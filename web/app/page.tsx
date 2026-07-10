@@ -212,7 +212,7 @@ function Diary({ profile, userId }: { profile: Profile | null; userId: string })
         </div>
       )}
 
-      <div key={date} className={slideDir === "left" ? "page-enter" : slideDir === "right" ? "page-enter" : ""}>
+      <div key={date} className={slideDir ? "page-enter" : ""}>
       
       {date === todayLocal() && <FastingTimer userId={userId} />}
 

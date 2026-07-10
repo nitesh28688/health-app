@@ -84,24 +84,42 @@ function Workout({ profile, setProfile, userId }: {
     setOpenDay(null);
   }
 
+  // Per-exercise time estimate: an item's own duration if the plan sets one,
+  // otherwise ~1.5 min per set (work + rest). This is what makes the kcal
+  // estimate exercise-based — each exercise burns at its own MET for its own
+  // share of the session, not a flat average across the day.
+  function itemEstMins(i: PlanItem) {
+    return i.duration_min ? Number(i.duration_min) : (i.sets ?? 3) * 1.5;
+  }
+  function dayKcal(dayItems: PlanItem[], totalMins: number) {
+    if (dayItems.length === 0) return kcalBurned(4.5, weightKg, totalMins);
+    const estTotal = dayItems.reduce((s, i) => s + itemEstMins(i), 0) || 1;
+    const scale = totalMins / estTotal; // user-entered minutes stretch/shrink each exercise proportionally
+    return Math.round(dayItems.reduce(
+      (s, i) => s + kcalBurned(Number(i.exercises?.met_value ?? 4), weightKg, itemEstMins(i) * scale), 0));
+  }
+
   async function openDayView(d: PlanDay) {
     setOpenDay(d);
     const { data } = await supabase.from("workout_plan_items")
       .select("id,sets,reps,duration_min,exercises(name,met_value,instructions)")
       .eq("plan_day_id", d.id).order("sort_order");
-    setItems((data as unknown as PlanItem[]) ?? []);
+    const loaded = (data as unknown as PlanItem[]) ?? [];
+    setItems(loaded);
+    // Pre-fill the duration with this day's real estimated length instead of a
+    // fixed 40 — so the kcal preview differs day to day out of the box.
+    const est = Math.round(loaded.reduce((s, i) => s + itemEstMins(i), 0));
+    if (est > 0) setDuration(String(est));
   }
 
   async function logDay() {
     if (!openDay) return;
     const mins = parseFloat(duration) || 40;
-    const avgMet = items.length
-      ? items.reduce((s, i) => s + Number(i.exercises?.met_value ?? 4), 0) / items.length : 4.5;
     setLogging(true);
     await supabase.from("workout_logs").insert({
       user_id: userId, log_date: todayLocal(), plan_day_id: openDay.id,
       title: openDay.title, duration_min: mins,
-      kcal_burned: kcalBurned(avgMet, weightKg, mins),
+      kcal_burned: dayKcal(items, mins),
     });
     setLogging(false);
     setOpenDay(null);
@@ -303,9 +321,12 @@ function Workout({ profile, setProfile, userId }: {
 
       {activePlan ? (
         <section className="rounded-2xl border-2 border-green-600 p-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-2">
             <h2 className="font-bold">{activePlan.name}</h2>
-            <button onClick={() => setActive(null)} className="text-xs text-neutral-400">change</button>
+            <button onClick={() => setActive(null)}
+              className="shrink-0 rounded-full border border-neutral-300 dark:border-neutral-700 px-3 py-2 text-xs font-semibold text-neutral-600 dark:text-neutral-300 active:scale-[0.98]">
+              ← All plans
+            </button>
           </div>
           <p className="text-xs text-neutral-500 mb-3">{activePlan.level} · {activePlan.days_per_week}×/week</p>
           <div className="flex flex-col gap-2">
@@ -450,7 +471,11 @@ function Workout({ profile, setProfile, userId }: {
       {musclePickerOpen && (
         <div className="fixed inset-0 z-[60] flex flex-col justify-end bg-black/40" onClick={() => setMusclePickerOpen(false)}>
           <div onClick={(e) => e.stopPropagation()} className="rounded-t-3xl bg-white dark:bg-neutral-950 p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] max-w-md w-full mx-auto max-h-[80vh] overflow-y-auto">
-            <h2 className="font-bold text-lg mb-3">Pick a muscle group</h2>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="font-bold text-lg">Pick a muscle group</h2>
+              <button onClick={() => setMusclePickerOpen(false)} aria-label="Close"
+                className="w-11 h-11 -mr-2 flex items-center justify-center text-neutral-400">✕</button>
+            </div>
             <div className="grid grid-cols-2 gap-2">
               {MUSCLES.map(m => (
                 <button key={m} onClick={() => loadExercisesForMuscle(m)} className="rounded-xl border border-neutral-200 dark:border-neutral-800 p-3 text-sm capitalize text-left">
@@ -466,7 +491,11 @@ function Workout({ profile, setProfile, userId }: {
       {selectedMuscle && (
         <div className="fixed inset-0 z-[70] flex flex-col justify-end bg-black/40" onClick={() => setSelectedMuscle(null)}>
           <div onClick={(e) => e.stopPropagation()} className="rounded-t-3xl bg-white dark:bg-neutral-950 p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] max-w-md w-full mx-auto max-h-[80vh] overflow-y-auto flex flex-col">
-            <h2 className="font-bold text-lg mb-3 capitalize">{selectedMuscle === "yoga" ? "Yoga" : `${selectedMuscle} Exercises`}</h2>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="font-bold text-lg capitalize">{selectedMuscle === "yoga" ? "Yoga" : `${selectedMuscle} Exercises`}</h2>
+              <button onClick={() => setSelectedMuscle(null)} aria-label="Close"
+                className="w-11 h-11 -mr-2 flex items-center justify-center text-neutral-400 shrink-0">✕</button>
+            </div>
 
             {selectedMuscle === "yoga" && (
               <input placeholder="Focus for AI Suggest (e.g. morning energizer, stress relief) — optional"
@@ -478,8 +507,8 @@ function Workout({ profile, setProfile, userId }: {
               <button onClick={() => setCustomAddOpen(!customAddOpen)} className="flex-1 text-sm border border-neutral-200 dark:border-neutral-800 rounded-xl py-2 font-medium">
                 + Custom
               </button>
-              <button onClick={suggestExercises} disabled={aiSuggestBusy} className="flex-1 text-sm bg-violet-50 text-violet-600 border border-violet-200 rounded-xl py-2 font-medium disabled:opacity-50">
-                {aiSuggestBusy ? "..." : "✨ AI Suggest"}
+              <button onClick={suggestExercises} disabled={aiSuggestBusy} className="flex-1 text-sm bg-violet-50 dark:bg-violet-950/30 text-violet-600 dark:text-violet-400 border border-violet-200 dark:border-violet-900 rounded-xl py-2 font-medium disabled:opacity-50">
+                {aiSuggestBusy ? "Suggesting…" : "✨ AI Suggest"}
               </button>
             </div>
             {aiSuggestError && <p className="text-xs text-red-500 mb-3">{aiSuggestError}</p>}
@@ -513,24 +542,36 @@ function Workout({ profile, setProfile, userId }: {
         <div className="fixed inset-0 z-[60] flex flex-col justify-end bg-black/40" onClick={() => setOpenDay(null)}>
           <div onClick={(e) => e.stopPropagation()}
             className="rounded-t-3xl bg-white dark:bg-neutral-950 p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] max-w-md w-full mx-auto max-h-[80vh] overflow-y-auto">
-            <h2 className="font-bold text-lg mb-3">Day {openDay.day_number} · {openDay.title}</h2>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="font-bold text-lg">Day {openDay.day_number} · {openDay.title}</h2>
+              <button onClick={() => setOpenDay(null)} aria-label="Close"
+                className="w-11 h-11 -mr-2 flex items-center justify-center text-neutral-400 shrink-0">✕</button>
+            </div>
             <ul className="flex flex-col gap-2 mb-4">
-              {items.map((i) => (
-                <li key={i.id} className="rounded-xl bg-neutral-50 dark:bg-neutral-900 px-3 py-2.5">
-                  <p className="font-medium text-sm">{i.exercises?.name}</p>
-                  <p className="text-xs text-neutral-500">
-                    {i.duration_min ? `${i.duration_min} min` : `${i.sets} × ${i.reps}`}
-                  </p>
-                </li>
-              ))}
+              {items.map((i) => {
+                const estTotal = items.reduce((s, x) => s + itemEstMins(x), 0) || 1;
+                const scale = (parseFloat(duration) || estTotal) / estTotal;
+                const itemKcal = kcalBurned(Number(i.exercises?.met_value ?? 4), weightKg, itemEstMins(i) * scale);
+                return (
+                  <li key={i.id} className="rounded-xl bg-neutral-50 dark:bg-neutral-900 px-3 py-2.5 flex justify-between items-center gap-2">
+                    <div className="min-w-0">
+                      <p className="font-medium text-sm">{i.exercises?.name}</p>
+                      <p className="text-xs text-neutral-500">
+                        {i.duration_min ? `${i.duration_min} min` : `${i.sets} × ${i.reps}`}
+                      </p>
+                    </div>
+                    <span className="text-xs text-orange-500 shrink-0">🔥{Math.round(itemKcal)}</span>
+                  </li>
+                );
+              })}
             </ul>
             <div className="flex items-center gap-3">
               <input inputMode="numeric" value={duration} onChange={(e) => setDuration(e.target.value)}
                 className="w-24 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-transparent px-4 py-3 text-base text-center" />
               <span className="text-neutral-500 text-sm">minutes</span>
               <div className="flex-1" />
-              <span className="text-sm text-orange-500">
-                ≈🔥{kcalBurned(items.length ? items.reduce((s, i) => s + Number(i.exercises?.met_value ?? 4), 0) / items.length : 4.5, weightKg, parseFloat(duration) || 0)} kcal
+              <span className="text-sm text-orange-500 font-semibold">
+                ≈🔥{dayKcal(items, parseFloat(duration) || 0)} kcal
               </span>
             </div>
             <button onClick={logDay} disabled={logging}
@@ -546,7 +587,11 @@ function Workout({ profile, setProfile, userId }: {
         <div className="fixed inset-0 z-[60] flex flex-col justify-end bg-black/40" onClick={() => setCustomOpen(false)}>
           <div onClick={(e) => e.stopPropagation()}
             className="rounded-t-3xl bg-white dark:bg-neutral-950 p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] max-w-md w-full mx-auto">
-            <h2 className="font-bold text-lg mb-3">Log freeform workout</h2>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="font-bold text-lg">Log freeform workout</h2>
+              <button onClick={() => setCustomOpen(false)} aria-label="Close"
+                className="w-11 h-11 -mr-2 flex items-center justify-center text-neutral-400">✕</button>
+            </div>
             <div className="flex flex-col gap-3">
               <input placeholder="What did you do? (e.g. Swimming, Cricket, Gym — legs)" value={customTitle}
                 onChange={(e) => setCustomTitle(e.target.value)}

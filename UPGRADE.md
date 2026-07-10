@@ -853,3 +853,32 @@ Done (all verified live):
 
 Not click-tested live (auth-gated, established limitation) — user smoke test:
 search "boiled egg white", expect serving chips with gram weights, stepper, no oz.
+
+# Phase 15 (Fable, 2026-07-10) — user-reported fixes + whole-app polish sweep
+
+User reports, all fixed:
+1. Active workout plan had no visible way back — tiny grey "change" text link
+   replaced with a real "← All plans" pill button.
+2. Calorie burn was a flat average (avg MET × minutes) so every day looked the
+   same — now per-exercise: each exercise burns at its own MET for its estimated
+   time share (duration_min, or sets × 1.5min), scaled to the entered total.
+   Each exercise shows its own 🔥 kcal in the day sheet, and the duration field
+   pre-fills with the day's real estimated length instead of always 40.
+3. Trends' Goal Progress was a buried underlined text link — now a visible card
+   with a progress ring (% to target), current→goal, kg to go, ETA; whole card
+   links to /goals. No target set → "Set a goal weight 🎯" card linking Profile.
+
+Full-app audit (13 findings, all fixed):
+- Medications "Taken" gave zero feedback (looked broken, invited duplicate taps)
+  → turns into "✓ Taken" and disables; Pause/Resume tap targets to 44px.
+- Diary add-food Save failed silently on insert error → error toast in sheet.
+- Progress-photo, recipe, cycle-entry, medication, admin-AI-food deletes had no
+  confirm — all destructive actions now confirm() first (admin already did for users).
+- QuantitySheet + 4 workout sheets were backdrop-dismiss-only → visible ✕ close.
+- Goals empty-state CTA was an underlined blue text link → green primary button.
+- Blue-vs-green accent inconsistency for goal links (Profile, Goals) → all green.
+- Workout "AI Suggest" chip had no dark-mode variant → added.
+- Admin Delete button light-only red border → dark variant.
+- Diary dead animation ternary (both branches identical) → simplified.
+- Friends leaderboard had no empty state (bare card) → friendly message.
+- Challenge creation failed silently → error message under the button.

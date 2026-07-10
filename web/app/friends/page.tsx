@@ -145,6 +145,11 @@ function Friends({ userId }: { userId: string }) {
       {tab === "board" && (
         <div className="rounded-2xl border border-neutral-200 dark:border-neutral-800 overflow-hidden">
           <p className="text-xs text-neutral-500 px-4 pt-3">This week (since Monday)</p>
+          {board.length === 0 && (
+            <p className="text-sm text-neutral-400 text-center px-4 py-8">
+              No activity yet this week — log a workout or your diary to get on the board! 💪
+            </p>
+          )}
           {board.map((r, i) => (
             <div key={r.user_id} className={`flex items-center gap-3 px-4 py-3 ${i > 0 ? "border-t border-neutral-100 dark:border-neutral-900" : ""}`}>
               <span className="text-lg w-7">{i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `${i + 1}.`}</span>

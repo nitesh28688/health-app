@@ -48,6 +48,7 @@ function Progress({ userId }: { userId: string }) {
   }
 
   async function remove(id: number) {
+    if (!confirm("Delete this photo permanently?")) return;
     const { data: { session } } = await supabase.auth.getSession();
     await fetch("/api/upload/photo", {
       method: "DELETE",

@@ -120,6 +120,7 @@ function Recipes({ userId }: { userId: string }) {
     setRecipes(recipes.map((x) => x.id === r.id ? { ...x, shared: !x.shared } : x));
   }
   async function remove(r: Recipe) {
+    if (!confirm(`Delete recipe "${r.name}"?`)) return;
     const { error } = await supabase.from("foods").delete().eq("id", r.id);
     if (error) { alert("Can't delete — this recipe is already logged in a diary."); return; }
     setRecipes(recipes.filter((x) => x.id !== r.id));

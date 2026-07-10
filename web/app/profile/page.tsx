@@ -198,7 +198,7 @@ function ProfileForm({ profile, setProfile, userId, email }: {
       {avatarError && <p className="text-xs text-amber-600 mb-4">{avatarError}</p>}
       <div className="flex items-center gap-4 mt-2 mb-8">
         <Link href="/progress" className="text-sm text-green-600 dark:text-green-400 font-semibold">📸 Progress photos →</Link>
-        <Link href="/goals" className="text-sm text-blue-600 dark:text-blue-400 font-semibold">🎯 Goal progress →</Link>
+        <Link href="/goals" className="text-sm text-green-600 dark:text-green-400 font-semibold">🎯 Goal progress →</Link>
       </div>
 
       <section className="flex flex-col gap-4">

@@ -27,7 +27,14 @@ tracking, avatar + progress photos, Web Push reminders + daily AI tips, admin pa
    crossfading photos, self-hosted on R2, sourced from the already-seeded
    free-exercise-db data (public domain) that just never got imported before.
 4. UI/UX Consistency Overhaul (Batch 3) — Systematically fixed button/link visual weights, tap target sizes (~44px minimum for mobile), dark mode coverage, and Empty/Loading/Error states across all 14 app routes.
-5. Phase 14 (2026-07-10, Fable): serving-first quantity entry. Removed 5,888
+5. Phase 15 (2026-07-10, Fable): user-reported fixes + polish sweep. Workout
+   "← All plans" back button, per-exercise calorie estimates (own MET × time
+   share, per-exercise 🔥 kcal shown), Goal Progress ring card on Trends,
+   plus a 13-finding audit sweep: Taken-button feedback, confirm-gated
+   deletes everywhere, visible ✕ on all bottom sheets, silent-failure error
+   surfacing, empty states, dark-mode gaps, green accent standardization.
+   Detail in `UPGRADE.md` Phase 15 / `STRUCTURE.md` Round 6.7.
+6. Phase 14 (2026-07-10, Fable): serving-first quantity entry. Removed 5,888
    imperial/junk `food_servings` rows ("oz"/"lb" chips users saw were data, not
    UI), seeded natural servings for every INDB food via Vertex, made AI
    food/photo estimates return servings, made piece-weight persist its answer
