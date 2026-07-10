@@ -192,7 +192,7 @@ export function AssistantSheet({
               <Bot className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="font-semibold">Core Insights</h2>
+              <h2 className="font-semibold">Core Assistant</h2>
               <p className="text-xs text-neutral-500">Ask about your history</p>
             </div>
           </div>
