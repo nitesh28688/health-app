@@ -1,52 +1,101 @@
-// Shared Gemini call with a model fallback chain, all free-tier on the same
-// GEMINI_API_KEY, no extra setup.
+// Shared Gemini call with a model fallback chain.
 //
-// gemini-2.5-flash goes first (2026-07-09): confirmed live that gemini-flash-latest
-// (Google's rolling "newest" alias) is genuinely flaky — 2 of 3 test calls hung with
-// no response at all, 1 succeeded in 5.8s — while gemini-2.5-flash answered in ~2s
-// on 3 of 3 calls. Nutrition estimation doesn't need the newest model, it needs a
-// reliable one; "latest" is now the fallback instead of the first attempt, kept
-// around for whenever it's actually up. gemini-2.0-flash is the last-resort fallback.
+// 2026-07-10: migrated primary path to Vertex AI (billed against the user's own GCP
+// credit, project `health-app-502004`) so the app isn't capped by AI Studio's shared
+// free-tier 20-requests/day/model/project quota (confirmed live 2026-07-09 — that cap
+// is shared across every family member and every AI feature, not per-user). AI Studio
+// (GEMINI_API_KEY) is kept as a final fallback tier for resilience if Vertex itself
+// has an outage or the service account/billing ever breaks.
+//
+// Verified live against Vertex (2026-07-10) before wiring this in: gemini-2.5-flash
+// and gemini-2.5-flash-lite both respond; gemini-2.0-flash(-001) and
+// gemini-flash-latest — the old AI-Studio-era model IDs — 404 on Vertex, they don't
+// exist as publisher models in this project/region. Also confirmed Vertex requires an
+// explicit `role: "user"` on each contents entry (AI Studio defaults this silently,
+// Vertex 400s without it), and that multimodal snake_case `inline_data`/`mime_type`
+// fields work unchanged on Vertex — no changes needed in photo-estimate/route.ts.
 //
 // Per-model timeout: a 503 fails fast, but an overloaded model can also just hang
 // without ever responding. Without a timeout that hang ate the caller's entire budget
-// before the chain ever reached a healthy model. 9s/model keeps 3 attempts under the
-// client's 30s abort (app/add/page.tsx) with room to spare. A timeout must be treated
-// the same as a 503 (try the next model), not left to throw uncaught.
-const MODEL_FALLBACK_CHAIN = ["gemini-2.5-flash", "gemini-flash-latest", "gemini-2.0-flash"];
+// before the chain ever reached a healthy model. A timeout must be treated the same as
+// a 503 (try the next model), not left to throw uncaught.
+const VERTEX_MODEL_CHAIN = ["gemini-2.5-flash", "gemini-2.5-flash-lite"];
+const AI_STUDIO_FALLBACK_CHAIN = ["gemini-2.5-flash", "gemini-flash-latest", "gemini-2.0-flash"];
 const PER_MODEL_TIMEOUT_MS = 9000;
 
+const GOOGLE_CLOUD_PROJECT = process.env.GOOGLE_CLOUD_PROJECT;
+const GOOGLE_CLOUD_LOCATION = process.env.GOOGLE_CLOUD_LOCATION || "us-central1";
+
+// Lazily constructed — avoids crashing module load if the service account env var
+// isn't set (e.g. local dev without Vertex configured, falls straight to AI Studio).
+let vertexAuth: import("google-auth-library").GoogleAuth | null = null;
+function getVertexAuth() {
+  if (!vertexAuth) {
+    const { GoogleAuth } = require("google-auth-library");
+    vertexAuth = new GoogleAuth({
+      credentials: JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON!),
+      scopes: ["https://www.googleapis.com/auth/cloud-platform"],
+    });
+  }
+  return vertexAuth!;
+}
+
+async function callVertex(model: string, parts: object[], responseSchema: object | undefined, signal: AbortSignal) {
+  const client = await getVertexAuth().getClient();
+  const { token } = await client.getAccessToken();
+  const url = `https://${GOOGLE_CLOUD_LOCATION}-aiplatform.googleapis.com/v1/projects/${GOOGLE_CLOUD_PROJECT}/locations/${GOOGLE_CLOUD_LOCATION}/publishers/google/models/${model}:generateContent`;
+  return fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify({
+      contents: [{ role: "user", parts }],
+      ...(responseSchema ? { generationConfig: { responseMimeType: "application/json", responseSchema } } : {}),
+    }),
+    signal,
+  });
+}
+
+async function callAiStudio(model: string, parts: object[], responseSchema: object | undefined, signal: AbortSignal) {
+  return fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${process.env.GEMINI_API_KEY}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ parts }],
+        ...(responseSchema ? { generationConfig: { responseMimeType: "application/json", responseSchema } } : {}),
+      }),
+      signal,
+    }
+  );
+}
+
 export async function generateWithFallback(parts: object[], responseSchema?: object) {
+  const useVertex = !!process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
+  const attempts: { model: string; call: (signal: AbortSignal) => Promise<Response> }[] = [];
+  if (useVertex) {
+    for (const model of VERTEX_MODEL_CHAIN) {
+      attempts.push({ model, call: (signal) => callVertex(model, parts, responseSchema, signal) });
+    }
+  }
+  for (const model of AI_STUDIO_FALLBACK_CHAIN) {
+    attempts.push({ model, call: (signal) => callAiStudio(model, parts, responseSchema, signal) });
+  }
+
   let lastStatus = 0;
-  for (const model of MODEL_FALLBACK_CHAIN) {
+  for (const { call } of attempts) {
     const controller = new AbortController();
     const killer = setTimeout(() => controller.abort(), PER_MODEL_TIMEOUT_MS);
     try {
-      const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${process.env.GEMINI_API_KEY}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: [{ parts }],
-            ...(responseSchema ? { generationConfig: { responseMimeType: "application/json", responseSchema } } : {}),
-          }),
-          signal: controller.signal,
-        }
-      );
+      const res = await call(controller.signal);
       if (res.ok) return res;
       lastStatus = res.status;
-      // 503 = overloaded, 429 = quota exceeded — both worth trying the next model.
-      // Confirmed 2026-07-09: Gemini's free-tier quota is scoped
-      // "PerProjectPerModel", not per-project-total — gemini-2.5-flash being
-      // exhausted says nothing about gemini-flash-latest or gemini-2.0-flash,
-      // each has its own separate daily allowance. The original "other errors
-      // fail identically on every model" reasoning is true for a bad API key or
-      // a malformed request, but was wrong for 429 specifically, and silently
-      // meant the fallback chain never actually engaged on the single most
-      // likely real-world failure (a shared, easily-exhausted 20/day quota
-      // across the whole app, not per end-user).
-      if (res.status !== 503 && res.status !== 429) return res;
+      // 503 = overloaded, 429 = quota exceeded, 404 = model not available on this
+      // backend — all worth trying the next entry in the chain rather than failing
+      // the whole request. Confirmed 2026-07-09: Gemini's free-tier quota is scoped
+      // "PerProjectPerModel", not per-project-total, so one model being exhausted
+      // says nothing about the others.
+      if (res.status !== 503 && res.status !== 429 && res.status !== 404) return res;
     } catch (e) {
       // Timeout (our own abort) or a network-level failure — same treatment as a
       // 503: this model isn't answering, move on to the next one in the chain.
