@@ -889,9 +889,16 @@ User asked to rebrand the app to "Core AI", revamp the design (Indigo/Violet gla
 
 Done (all verified):
 1. **App Rename & Theming**: Renamed to Core AI in `layout.tsx` and `manifest.json`. Changed all flat green colors to a premium Indigo/Violet gradient palette (`from-indigo-600 to-violet-600`) with glassmorphism backgrounds (`bg-white/50 backdrop-blur-md`).
-2. **Smart "Aware" Logging (Text to Log)**: Upgraded the `page.tsx` Dashboard with a text box that calls a Vertex AI (Gemini 2.5 Flash) route (`api/ai/smart-log`). The AI parses unstructured text ("good morning my weight is 75kg, i had 2 eggs and 500ml water") and auto-logs to `body_metrics`, `foods`/`food_logs`, `water_logs`, and `workout_logs` simultaneously.
-3. **Core Insights**: Upgraded the old static "daily tip" with a reactive AI coach that reads `target_kcal`, `eaten_kcal`, and `workout_status` to give a 2-sentence hype/roast.
-4. **AI Routine Generator**: Replaced the small "AI Suggest" feature with a full-blown Routine Generator (`components/AiRoutineGenerator.tsx`). Users specify Location, Duration, Focus, and Equipment. Vertex AI generates a complete routine with `workout_plans`, `workout_plan_days`, and `workout_plan_items`.
-5. **Live Workout Mode**: Completely replaced the old static "Log Workout" lists and buggy 1-second timers with a YouTube-style `LiveWorkout.tsx` component. It features a global timer, fullscreen active exercise display, and an auto-countdown 60-second rest timer after each set completion. Tied into the existing `logStructuredSession` logic to save all actual data accurately.
+...
 6. **UI Tweaks**: Added a manual Dark Mode toggle (persists via `localStorage`), implemented clickable exercise images (lightbox modal via `ExerciseDemo.tsx`), and renamed "Plans" to "Routines".
 7. **Icon Overhaul**: Systematically replaced all text-based emojis (💪, 🔥, 💧, 🍲, 💊, 🌸, 🤖, etc.) across the entire app with premium SVG icons from `lucide-react` (e.g., `Dumbbell`, `Flame`, `Droplet`, `ChefHat`, `Pill`, `Activity`, `Bot`) to finalize the classy, professional aesthetic.
+
+# Phase 17 (Antigravity, 2026-07-10) — Social & Recipe Enhancements
+
+User requested a simpler way to add custom recipes (without needing to weigh everything in grams) and more social features for the Friends page without exceeding the Supabase 500 MB free tier.
+
+Done (all verified):
+1. **AI Recipe Import**: Added a "Smart Import" feature in the Recipe Builder (`api/ai/parse-recipe`). It uses Vertex AI (Gemini 2.5 Flash) to parse natural language recipes (e.g. "Mom's Rajma, 2 cups kidney beans..."), estimates raw gram weights, and auto-matches them against the food database using the `search_foods` RPC.
+2. **Serving-based Yield**: Added a "Servings" input option in the Recipe Builder alongside "Cooked Weight (g)". If servings are provided, it automatically adds a row to `food_servings` so the recipe can be logged in "servings" instead of raw grams in the diary.
+3. **Pre-canned Hype Messages**: Revamped the 'Cheer' button on the Friends feed. Instead of just a single cheer, users can click to reveal a popover with pre-canned hype options (🔥, 💪, or 'Beast mode!'). These are stored in the existing `emoji` text column of the `cheers` table to avoid any database schema or storage bloat.
+4. **Feed Cheers Display**: Upgraded the Friends feed to actually fetch and display all cheers directed at the feed items inline, grouped by the sender's display name.

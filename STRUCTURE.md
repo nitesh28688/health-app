@@ -839,6 +839,12 @@ to rename the app to "Core AI", revamp the design, and introduce highly-capable
   replaced with crisp SVG icons from `lucide-react`. This unifies the aesthetic into a more
   professional and classy look.
 
+**Phase 17 (Antigravity, 2026-07-10): Social & Recipe Enhancements**
+- **AI Recipe Import**: Added a "Smart Import" feature in the Recipe Builder (`api/ai/parse-recipe`). It uses Vertex AI (Gemini 2.5 Flash) to parse natural language recipes, estimates raw gram weights, and auto-matches them against the food database using the `search_foods` RPC.
+- **Serving-based Yield**: Added a "Servings" input option in the Recipe Builder. If provided, it automatically adds a row to `food_servings` so the recipe can be logged in "servings" in the diary.
+- **Pre-canned Hype Messages**: Revamped the 'Cheer' button on the Friends feed. Users can click to reveal a popover with pre-canned hype options (🔥, 💪, or 'Beast mode!'). These are stored in the existing `emoji` text column of the `cheers` table.
+- **Feed Cheers Display**: Upgraded the Friends feed to fetch and display all cheers directed at the feed items inline, grouped by the sender's display name.
+
 **Not yet built** (schema/RPCs already exist, just needs UI):
 - Offline queue (PWA currently caches the shell for offline *viewing*, but doesn't
   queue writes made while offline).

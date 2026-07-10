@@ -9,7 +9,7 @@ import { Dumbbell, Flame, BookOpen, Scale, ChefHat, HandHeart } from "lucide-rea
 
 interface PubProfile { id: string; username: string; display_name: string | null; }
 interface Friendship { requester_id: string; addressee_id: string; status: string; }
-interface FeedItem { friend_id: string; username: string; display_name: string; log_date: string; kind: string; payload: Record<string, unknown>; }
+interface FeedItem { user_id: string; username: string; display_name: string; log_date: string; kind: string; payload: Record<string, unknown>; }
 interface LbRow { user_id: string; username: string; display_name: string; workout_days: number; workout_min: number; diary_days: number; }
 
 function mondayOf(d = new Date()) {
@@ -36,6 +36,8 @@ function Friends({ userId }: { userId: string }) {
   const [q, setQ] = useState("");
   const [results, setResults] = useState<PubProfile[]>([]);
   const [cheered, setCheered] = useState<Set<string>>(new Set());
+  const [allCheers, setAllCheers] = useState<Record<string, { from: string; emoji: string }[]>>({});
+  const [activeHypeItem, setActiveHypeItem] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const [feedRes, boardRes, frRes] = await Promise.all([
@@ -43,10 +45,26 @@ function Friends({ userId }: { userId: string }) {
       supabase.rpc("get_leaderboard", { p_from: mondayOf(), p_to: todayLocal() }),
       supabase.from("friendships").select("requester_id,addressee_id,status"),
     ]);
-    setFeed((feedRes.data as FeedItem[]) ?? []);
+    const feedData = (feedRes.data as FeedItem[]) ?? [];
+    setFeed(feedData);
     setBoard((boardRes.data as LbRow[]) ?? []);
     const frs = (frRes.data as Friendship[]) ?? [];
     setFriendships(frs);
+    
+    const uids = [...new Set(feedData.map(f => f.user_id))];
+    if (uids.length > 0) {
+      const { data: cheersData } = await supabase.from("cheers")
+        .select("to_user, from_user, log_date, kind, emoji, profiles!cheers_from_user_fkey(display_name)")
+        .in("to_user", uids);
+      const grouped: Record<string, { from: string; emoji: string }[]> = {};
+      (cheersData as any[] || []).forEach(c => {
+        const key = `${c.to_user}|${c.log_date}|${c.kind}`;
+        if (!grouped[key]) grouped[key] = [];
+        grouped[key].push({ from: c.profiles?.display_name || "Someone", emoji: c.emoji });
+      });
+      setAllCheers(grouped);
+    }
+
     // resolve usernames for friendship rows
     const ids = [...new Set(frs.flatMap((f) => [f.requester_id, f.addressee_id]))].filter((i) => i !== userId);
     if (ids.length) {
@@ -85,11 +103,16 @@ function Friends({ userId }: { userId: string }) {
       .eq("requester_id", f.requester_id).eq("addressee_id", f.addressee_id);
     load();
   }
-  async function cheer(f: FeedItem) {
+  async function sendHype(f: FeedItem, emojiText: string) {
     const kind = f.kind === "workout" ? "workout" : f.kind === "weight" ? "weight" : "general";
-    const key = `${f.friend_id}|${f.log_date}|${kind}`;
-    await supabase.from("cheers").insert({ from_user: userId, to_user: f.friend_id, log_date: f.log_date, kind });
-    setCheered((s) => new Set(s).add(key)); // 409 (already cheered) lands here too — same UI result
+    const key = `${f.user_id}|${f.log_date}|${kind}`;
+    await supabase.from("cheers").insert({ from_user: userId, to_user: f.user_id, log_date: f.log_date, kind, emoji: emojiText });
+    setCheered((s) => new Set(s).add(key));
+    setAllCheers((prev) => {
+      const existing = prev[key] || [];
+      return { ...prev, [key]: [...existing, { from: "You", emoji: emojiText }] };
+    });
+    setActiveHypeItem(null);
   }
 
   return (
@@ -125,17 +148,48 @@ function Friends({ userId }: { userId: string }) {
           <ul className="flex flex-col gap-2">
             {feed.map((f, i) => {
               const kind = f.kind === "workout" ? "workout" : f.kind === "weight" ? "weight" : "general";
-              const key = `${f.friend_id}|${f.log_date}|${kind}`;
+              const key = `${f.user_id}|${f.log_date}|${kind}`;
+              const itemCheers = allCheers[key] || [];
+              const isHypeOpen = activeHypeItem === key;
+
               return (
-                <li key={i} className="rounded-xl border border-neutral-200 dark:border-neutral-800 px-3 py-2.5 flex items-center gap-2">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold">{f.display_name} <span className="font-normal text-neutral-400">@{f.username} · {f.log_date.slice(5)}</span></p>
-                    <p className="text-sm text-neutral-600 dark:text-neutral-300 truncate">{feedLine(f)}</p>
+                <li key={i} className="rounded-xl border border-neutral-200 dark:border-neutral-800 px-3 py-2.5 flex flex-col gap-2 relative">
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold">{f.display_name} <span className="font-normal text-neutral-400">@{f.username} · {f.log_date.slice(5)}</span></p>
+                      <p className="text-sm text-neutral-600 dark:text-neutral-300 truncate">{feedLine(f)}</p>
+                    </div>
+                    
+                    <div className="relative shrink-0">
+                      <button onClick={() => setActiveHypeItem(isHypeOpen ? null : key)} aria-label="Hype"
+                        className={`w-11 h-11 rounded-full text-lg flex items-center justify-center active:scale-[0.98] ${cheered.has(key) ? "bg-indigo-600/15" : "bg-neutral-100 dark:bg-neutral-800"} transition-all`}>
+                        <HandHeart className="w-5 h-5 text-indigo-500" />
+                      </button>
+                      
+                      {isHypeOpen && (
+                        <div className="absolute right-12 top-0 z-10 flex gap-2 p-1.5 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-full shadow-lg shadow-indigo-500/10">
+                          <button onClick={() => sendHype(f, "🔥")} className="w-9 h-9 rounded-full flex items-center justify-center bg-orange-100 dark:bg-orange-900/30 text-orange-500 hover:scale-110 transition-transform"><Flame className="w-4 h-4" /></button>
+                          <button onClick={() => sendHype(f, "💪")} className="w-9 h-9 rounded-full flex items-center justify-center bg-indigo-100 dark:bg-indigo-900/30 text-indigo-500 hover:scale-110 transition-transform"><Dumbbell className="w-4 h-4" /></button>
+                          <button onClick={() => sendHype(f, "Beast mode!")} className="px-3 h-9 rounded-full flex items-center justify-center bg-violet-100 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400 text-xs font-bold hover:scale-105 transition-transform whitespace-nowrap">Beast mode!</button>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  <button onClick={() => cheer(f)} aria-label="Cheer"
-                    className={`w-11 h-11 rounded-full text-lg flex items-center justify-center active:scale-[0.98] shrink-0 ${cheered.has(key) ? "bg-indigo-600/15" : ""}`}>
-                    <HandHeart className="w-5 h-5 text-indigo-500" />
-                  </button>
+                  
+                  {itemCheers.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mt-1">
+                      {itemCheers.map((c, ci) => (
+                        <div key={ci} className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/30 text-indigo-700 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-900/50 flex items-center gap-1">
+                          <span className="font-medium">{c.from}:</span> 
+                          <span>
+                            {c.emoji === "🔥" ? <Flame className="w-3 h-3 inline text-orange-500" /> : 
+                             c.emoji === "💪" ? <Dumbbell className="w-3 h-3 inline text-indigo-500" /> : 
+                             c.emoji}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </li>
               );
             })}
