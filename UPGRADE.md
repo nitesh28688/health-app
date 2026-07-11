@@ -1731,3 +1731,27 @@ emerald for recommendations, no coherent identity). Recommended shifting Wellnes
 accent to a soft rose/blush gradient into violet, keeping indigo as the "action" color
 elsewhere in the app. Awaiting confirmation on the exact direction before touching the
 palette — this is a bigger visual-identity change than the two bugs above.
+
+## Phase 36 (Fable, 2026-07-11) — Wellness: rose/violet accent, distinct from the rest of the app
+
+**User feedback**: Wellness should feel "inviting, not testing in a lab" — asked for a
+calmer, distinct identity from the indigo used everywhere else in Core AI (workouts, AI
+assistant, food logging), which reads more energetic/tech than a skincare/beauty section
+should.
+
+**Done**: swapped every Wellness-specific indigo accent to rose, keeping the same numeric
+shade weights (indigo-600→rose-600, indigo-500→rose-500, etc.) so only the hue changed, not
+the lightness scale — across `web/app/wellness/page.tsx` and
+`web/components/WellnessCaptureSheet.tsx`. Gradients now run rose→violet (e.g.
+`from-rose-600 to-violet-600`) instead of indigo→violet, so Wellness still visually belongs
+to the same app family (violet is the shared bridge color) while reading distinctly warmer.
+Canvas-drawn share-card hex codes updated to match (`#f43f5e`/`#fb7185`).
+
+**Explicitly left untouched**: semantic colors — emerald (high score tier, recommendation
+checkmarks), amber (low score tier, unusable-photo warnings), red (negative trend), and the
+camera capture guide's green/red alignment zones. These are functional signals, not brand
+accent, and swapping them would have broken their meaning.
+
+**Verified**: `npx tsc --noEmit` clean. Confirmed via grep zero remaining `indigo-` tokens in
+either file, and confirmed the semantic tier logic (`clamped >= 80` emerald, `>= 50` rose,
+else amber) still reads correctly post-swap.

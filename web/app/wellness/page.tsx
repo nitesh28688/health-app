@@ -35,7 +35,7 @@ function WellnessScoreRing({ score }: { score: number }) {
           className="text-neutral-200 dark:text-neutral-800" />
         <circle cx="32" cy="32" r={radius} stroke="currentColor" strokeWidth="6" fill="transparent"
           strokeDasharray={circumference} strokeDashoffset={offset} strokeLinecap="round"
-          className={clamped >= 80 ? "text-emerald-500" : clamped >= 50 ? "text-indigo-500" : "text-amber-500"} />
+          className={clamped >= 80 ? "text-emerald-500" : clamped >= 50 ? "text-rose-500" : "text-amber-500"} />
       </svg>
       <span className="absolute text-lg font-black text-neutral-900 dark:text-white">{Math.round(clamped)}</span>
     </div>
@@ -181,7 +181,7 @@ function WellnessMain({ userId }: { userId: string }) {
       
       let strokeColor = "#f59e0b"; // amber-500
       if (score >= 80) strokeColor = "#10b981"; // emerald-500
-      else if (score >= 50) strokeColor = "#6366f1"; // indigo-500
+      else if (score >= 50) strokeColor = "#f43f5e"; // rose-500
 
       ctx.strokeStyle = strokeColor;
       ctx.beginPath();
@@ -206,7 +206,7 @@ function WellnessMain({ userId }: { userId: string }) {
 
       // Web App domain URL footer
       ctx.font = "bold 26px system-ui, -apple-system, sans-serif";
-      ctx.fillStyle = "#818cf8"; // indigo-400 brand color
+      ctx.fillStyle = "#fb7185"; // rose-400 brand color
       ctx.fillText("health.linearventures.in", 540, 890);
 
       // Blob Export & Native Sharing vs Fallback check
@@ -429,14 +429,14 @@ function WellnessMain({ userId }: { userId: string }) {
         </button>
         <div className="flex-1">
           <h1 className="text-2xl font-black flex items-center gap-1.5 leading-none">
-            <Sparkles className="w-6 h-6 text-indigo-500 shrink-0" />
+            <Sparkles className="w-6 h-6 text-rose-500 shrink-0" />
             Wellness Scan
           </h1>
         </div>
         <button
           onClick={() => setCaptureOpen(true)}
           disabled={busy}
-          className="rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white shadow-lg shadow-indigo-600/10 hover:shadow-indigo-600/20 transition-all px-4 py-2.5 font-bold text-sm disabled:opacity-50 active:scale-[0.98] cursor-pointer flex items-center gap-1.5 shrink-0"
+          className="rounded-2xl bg-gradient-to-r from-rose-600 to-violet-600 hover:from-rose-700 hover:to-violet-700 text-white shadow-lg shadow-rose-600/10 hover:shadow-rose-600/20 transition-all px-4 py-2.5 font-bold text-sm disabled:opacity-50 active:scale-[0.98] cursor-pointer flex items-center gap-1.5 shrink-0"
         >
           {busy ? (
             <>
@@ -496,7 +496,7 @@ function WellnessMain({ userId }: { userId: string }) {
           </div>
           <div className="flex flex-col items-end justify-center gap-2 pl-4 border-l border-neutral-200/40 dark:border-neutral-800/40 shrink-0">
             <div className="text-right">
-              <span className="text-xl font-black text-indigo-600 dark:text-indigo-400 block leading-tight">
+              <span className="text-xl font-black text-rose-600 dark:text-rose-400 block leading-tight">
                 {currentMonthScansCount}
               </span>
               <span className="text-[9px] font-black uppercase text-neutral-400 tracking-wider block">
@@ -530,7 +530,7 @@ function WellnessMain({ userId }: { userId: string }) {
           }}
           className={`flex-1 rounded-xl py-3 text-sm font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
             tab === "skin"
-              ? "bg-white dark:bg-neutral-800 text-indigo-600 dark:text-indigo-400 shadow-sm border border-neutral-200/20 dark:border-neutral-700/10"
+              ? "bg-white dark:bg-neutral-800 text-rose-600 dark:text-rose-400 shadow-sm border border-neutral-200/20 dark:border-neutral-700/10"
               : "text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300"
           }`}
         >
@@ -545,7 +545,7 @@ function WellnessMain({ userId }: { userId: string }) {
           }}
           className={`flex-1 rounded-xl py-3 text-sm font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
             tab === "eye"
-              ? "bg-white dark:bg-neutral-800 text-indigo-600 dark:text-indigo-400 shadow-sm border border-neutral-200/20 dark:border-neutral-700/10"
+              ? "bg-white dark:bg-neutral-800 text-rose-600 dark:text-rose-400 shadow-sm border border-neutral-200/20 dark:border-neutral-700/10"
               : "text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300"
           }`}
         >
@@ -560,7 +560,7 @@ function WellnessMain({ userId }: { userId: string }) {
           }}
           className={`flex-1 rounded-xl py-3 text-sm font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
             tab === "hair"
-              ? "bg-white dark:bg-neutral-800 text-indigo-600 dark:text-indigo-400 shadow-sm border border-neutral-200/20 dark:border-neutral-700/10"
+              ? "bg-white dark:bg-neutral-800 text-rose-600 dark:text-rose-400 shadow-sm border border-neutral-200/20 dark:border-neutral-700/10"
               : "text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300"
           }`}
         >
@@ -584,7 +584,7 @@ function WellnessMain({ userId }: { userId: string }) {
               <img src={compareA.photo_url} alt="Comparison Scan A" className="w-full aspect-[3/4] object-cover" />
               <button
                 onClick={() => setSelectedScan(compareA)}
-                className="text-center font-bold text-xs py-3.5 bg-white dark:bg-neutral-900 text-indigo-600 dark:text-indigo-400 hover:bg-neutral-50 dark:hover:bg-neutral-800 cursor-pointer transition-colors"
+                className="text-center font-bold text-xs py-3.5 bg-white dark:bg-neutral-900 text-rose-600 dark:text-rose-400 hover:bg-neutral-50 dark:hover:bg-neutral-800 cursor-pointer transition-colors"
               >
                 Scan A ({new Date(compareA.taken_at).toLocaleDateString("en-IN", { day: "numeric", month: "short" })})
               </button>
@@ -593,7 +593,7 @@ function WellnessMain({ userId }: { userId: string }) {
               <img src={compareB.photo_url} alt="Comparison Scan B" className="w-full aspect-[3/4] object-cover" />
               <button
                 onClick={() => setSelectedScan(compareB)}
-                className="text-center font-bold text-xs py-3.5 bg-white dark:bg-neutral-900 text-indigo-600 dark:text-indigo-400 hover:bg-neutral-50 dark:hover:bg-neutral-800 cursor-pointer transition-colors"
+                className="text-center font-bold text-xs py-3.5 bg-white dark:bg-neutral-900 text-rose-600 dark:text-rose-400 hover:bg-neutral-50 dark:hover:bg-neutral-800 cursor-pointer transition-colors"
               >
                 Scan B ({new Date(compareB.taken_at).toLocaleDateString("en-IN", { day: "numeric", month: "short" })})
               </button>
@@ -628,7 +628,7 @@ function WellnessMain({ userId }: { userId: string }) {
                         onClick={() => toggleCompare(s)}
                         className={`block w-full aspect-square rounded-2xl overflow-hidden border-3 bg-neutral-100 dark:bg-neutral-900 transition-all cursor-pointer ${
                           selected
-                            ? "border-indigo-500 shadow-md shadow-indigo-500/10 scale-[0.98]"
+                            ? "border-rose-500 shadow-md shadow-rose-500/10 scale-[0.98]"
                             : "border-transparent hover:border-neutral-300 dark:hover:border-neutral-700"
                         }`}
                       >
@@ -636,7 +636,7 @@ function WellnessMain({ userId }: { userId: string }) {
                       </button>
                       <button
                         onClick={() => setSelectedScan(s)}
-                        className="text-[10px] text-center font-bold text-indigo-500 mt-1.5 hover:underline cursor-pointer"
+                        className="text-[10px] text-center font-bold text-rose-500 mt-1.5 hover:underline cursor-pointer"
                       >
                         {new Date(s.taken_at).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
                       </button>
@@ -695,7 +695,7 @@ function WellnessMain({ userId }: { userId: string }) {
               {/* Overall Score Dashboard Card */}
               {selectedScan.is_usable && selectedScan.overall_score != null && (
                 <div className="p-4 bg-neutral-50 dark:bg-neutral-800/40 rounded-2xl border border-neutral-200/30 dark:border-neutral-800/35 flex flex-col items-center text-center">
-                  <div className="bg-gradient-to-tr from-indigo-500 to-violet-600 text-white rounded-full w-16 h-16 flex items-center justify-center text-2xl font-black shadow-lg shadow-indigo-500/20 mb-2 select-none animate-pulse">
+                  <div className="bg-gradient-to-tr from-rose-500 to-violet-600 text-white rounded-full w-16 h-16 flex items-center justify-center text-2xl font-black shadow-lg shadow-rose-500/20 mb-2 select-none animate-pulse">
                     {selectedScan.overall_score}
                   </div>
                   <span className="text-xs font-bold text-neutral-400 uppercase tracking-wider block">
@@ -703,7 +703,7 @@ function WellnessMain({ userId }: { userId: string }) {
                   </span>
                   
                   {selectedScan.classification && (
-                    <span className="mt-2.5 px-3.5 py-1.5 bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400 text-[10px] font-black rounded-full uppercase tracking-wider">
+                    <span className="mt-2.5 px-3.5 py-1.5 bg-rose-50dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 text-[10px] font-black rounded-full uppercase tracking-wider">
                       {selectedScan.scan_type === "skin" ? `Skin Type: ${selectedScan.classification}` : `Hair Type: ${selectedScan.classification}`}
                     </span>
                   )}
@@ -747,17 +747,17 @@ function WellnessMain({ userId }: { userId: string }) {
                         className="p-3.5 bg-neutral-50 dark:bg-neutral-800/20 rounded-2xl border border-neutral-200/40 dark:border-neutral-800/40"
                       >
                         <div className="flex items-center justify-between mb-1.5">
-                          <span className="text-xs font-bold text-indigo-500 dark:text-indigo-400">
+                          <span className="text-xs font-bold text-rose-500 dark:text-rose-400">
                             {sub.category}
                           </span>
-                          <span className="text-xs font-black text-indigo-600 dark:text-indigo-400">
+                          <span className="text-xs font-black text-rose-600 dark:text-rose-400">
                             {sub.score}/100
                           </span>
                         </div>
                         {/* Progress bar wrapper */}
                         <div className="w-full bg-neutral-200 dark:bg-neutral-800 rounded-full h-1.5 mb-2 overflow-hidden">
                           <div
-                            className="bg-gradient-to-r from-indigo-500 to-violet-600 h-1.5 rounded-full transition-all duration-500"
+                            className="bg-gradient-to-r from-rose-500 to-violet-600 h-1.5 rounded-full transition-all duration-500"
                             style={{ width: `${sub.score}%` }}
                           />
                         </div>
@@ -780,7 +780,7 @@ function WellnessMain({ userId }: { userId: string }) {
                         key={idx}
                         className="p-3.5 bg-neutral-50 dark:bg-neutral-800/40 rounded-2xl border border-neutral-200/40 dark:border-neutral-800/40"
                       >
-                        <span className="text-xs font-bold text-indigo-500 dark:text-indigo-400 block mb-0.5">
+                        <span className="text-xs font-bold text-rose-500 dark:text-rose-400 block mb-0.5">
                           {obs.area}
                         </span>
                         <p className="text-sm text-neutral-700 dark:text-neutral-300 leading-relaxed font-medium">

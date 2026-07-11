@@ -422,7 +422,7 @@ export function WellnessCaptureSheet({ scanType, onClose, onCapture }: WellnessC
         <div className="flex-1 p-5 flex flex-col items-center justify-center min-h-[300px]">
           {modelStatus === "loading" && (
             <div className="flex flex-col items-center justify-center text-center py-12">
-              <Loader2 className="w-10 h-10 text-indigo-500 animate-spin mb-4" />
+              <Loader2 className="w-10 h-10 text-rose-500 animate-spin mb-4" />
               <h3 className="font-semibold text-white mb-2">Loading Smart Guides</h3>
               <p className="text-xs text-neutral-400 max-w-xs">
                 Downloading MediaPipe vision model (~5MB). This only happens once.
@@ -432,7 +432,7 @@ export function WellnessCaptureSheet({ scanType, onClose, onCapture }: WellnessC
 
           {modelStatus !== "loading" && cameraStatus === "init" && (
             <div className="flex flex-col items-center justify-center text-center py-12">
-              <Loader2 className="w-10 h-10 text-indigo-500 animate-spin mb-4" />
+              <Loader2 className="w-10 h-10 text-rose-500 animate-spin mb-4" />
               <h3 className="font-semibold text-white mb-2">Opening camera...</h3>
             </div>
           )}
@@ -502,7 +502,7 @@ export function WellnessCaptureSheet({ scanType, onClose, onCapture }: WellnessC
 
               {/* Scalp scan tips overlay */}
               {scanType === "hair" && (
-                <div className="w-full mt-2.5 px-3 py-2 bg-indigo-950/20 border border-indigo-900/30 rounded-xl text-indigo-400 text-[10px] font-bold text-center">
+                <div className="w-full mt-2.5 px-3 py-2 bg-rose-950/20 border border-rose-900/30 rounded-xl text-rose-400 text-[10px] font-bold text-center">
                   💡 Crown/Scalp scan: tilt head down with camera above, or have someone help.
                 </div>
               )}
