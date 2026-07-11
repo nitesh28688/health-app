@@ -291,9 +291,9 @@ function ProfileForm({ profile, setProfile, userId, email }: {
           </p>
         )}
         <div className="grid grid-cols-2 gap-3 mt-1">
-          <div>
+          <div className="min-w-0">
             <label className={labelCls}>Birth date</label>
-            <input type="date" className={inputCls} value={f.birth_date}
+            <input type="date" className={inputCls + " min-w-0"} value={f.birth_date}
               onChange={(e) => setF({ ...f, birth_date: e.target.value })} />
           </div>
           <div>

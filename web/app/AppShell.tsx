@@ -160,9 +160,9 @@ export function AppShell({ children }: {
       <AnimatePresence>
         <motion.div
           key={"wash-" + mode}
-          initial={{ opacity: 0.55, scale: 0.3 }}
-          animate={{ opacity: 0, scale: 2.2 }}
-          transition={{ duration: 0.65, ease: [0.16, 1, 0.3, 1] }}
+          initial={{ opacity: 0.6, scale: 0.3 }}
+          animate={{ opacity: 0, scale: 2.4 }}
+          transition={{ duration: 1.4, ease: [0.16, 1, 0.3, 1] }}
           className={`fixed inset-0 z-30 pointer-events-none rounded-full blur-3xl ${
             mode === "wellness" ? "bg-rose-400/40" : "bg-indigo-400/40"
           }`}
@@ -175,7 +175,7 @@ export function AppShell({ children }: {
           initial={{ opacity: 0, y: 8, scale: 0.98 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: -8, scale: 0.98 }}
-          transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+          transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
           className="flex-1 pb-36 max-w-md w-full mx-auto"
         >
           {children({ session, profile, setProfile })}

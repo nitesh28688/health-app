@@ -206,15 +206,15 @@ function Challenges({ userId }: { userId: string }) {
             </div>
             
             <div className="flex gap-3">
-              <div className="flex-1">
+              <div className="flex-1 min-w-0">
                 <label className="text-xs text-neutral-500 font-bold uppercase tracking-wider mb-1 block">Start Date</label>
                 <input type="date" value={newStart} onChange={e => setNewStart(e.target.value)}
-                  className="w-full rounded-xl border border-neutral-300 dark:border-neutral-700 bg-transparent px-4 py-2.5 text-base" />
+                  className="w-full min-w-0 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-transparent px-4 py-2.5 text-base" />
               </div>
-              <div className="flex-1">
+              <div className="flex-1 min-w-0">
                 <label className="text-xs text-neutral-500 font-bold uppercase tracking-wider mb-1 block">End Date</label>
                 <input type="date" value={newEnd} onChange={e => setNewEnd(e.target.value)} min={newStart}
-                  className="w-full rounded-xl border border-neutral-300 dark:border-neutral-700 bg-transparent px-4 py-2.5 text-base" />
+                  className="w-full min-w-0 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-transparent px-4 py-2.5 text-base" />
               </div>
             </div>
             
