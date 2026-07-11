@@ -7,7 +7,7 @@ import type { Session } from "@supabase/supabase-js";
 import { AnimatePresence, motion } from "framer-motion";
 import { AssistantSheet } from "@/components/AssistantSheet";
 import { FormCheckSheet } from "@/components/FormCheckSheet";
-import { MessageSquare, Book, Dumbbell, TrendingUp, Users, Smile, Salad, CloudUpload, Sparkles, FileText } from "lucide-react";
+import { Wand2, Book, Dumbbell, TrendingUp, Users, Smile, CloudUpload, Sparkles, FileText } from "lucide-react";
 import { subscribePendingCount } from "@/lib/offlineQueue";
 import { setAppMode, subscribeAppMode, type AppMode } from "@/lib/appMode";
 
@@ -129,7 +129,10 @@ export function AppShell({ children }: {
   if (loading || !session) {
     return (
       <main className="flex-1 flex items-center justify-center">
-        <Salad className="w-10 h-10 text-green-600 animate-pulse" />
+        <div className="relative w-16 h-16">
+          <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-rose-500 to-violet-600 opacity-30 animate-ping" />
+          <img src="/icon-192.png" alt="Core AI" className="relative w-16 h-16 rounded-2xl object-cover animate-pulse" />
+        </div>
       </main>
     );
   }
@@ -145,30 +148,49 @@ export function AppShell({ children }: {
         </div>
       )}
       
+      {/* Mode-switch color wash — a brief full-screen tint in the incoming mode's
+          color that expands from center and fades out, so switching Core <-> Wellness
+          reads as a deliberate transition rather than an instant color swap. */}
       <AnimatePresence>
-        <motion.div 
-          key={pathname} 
-          initial={{ opacity: 0, y: 5, scale: 0.98 }}
+        <motion.div
+          key={"wash-" + mode}
+          initial={{ opacity: 0.55, scale: 0.3 }}
+          animate={{ opacity: 0, scale: 2.2 }}
+          transition={{ duration: 0.65, ease: [0.16, 1, 0.3, 1] }}
+          className={`fixed inset-0 z-30 pointer-events-none rounded-full blur-3xl ${
+            mode === "wellness" ? "bg-rose-400/40" : "bg-indigo-400/40"
+          }`}
+        />
+      </AnimatePresence>
+
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={pathname}
+          initial={{ opacity: 0, y: 8, scale: 0.98 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
-          transition={{ duration: 0.15 }}
+          exit={{ opacity: 0, y: -8, scale: 0.98 }}
+          transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
           className="flex-1 pb-36 max-w-md w-full mx-auto"
         >
           {children({ session, profile, setProfile })}
         </motion.div>
       </AnimatePresence>
-      
+
       {/* Floating AI Assistant Entry Point */}
       <div className="fixed bottom-[calc(env(safe-area-inset-bottom)+4.5rem)] right-4 z-40">
+        <span className={`absolute inset-0 rounded-full animate-ping opacity-40 ${
+          mode === "wellness" ? "bg-rose-500" : "bg-indigo-500"
+        }`} />
         <button
           onClick={() => setAssistantOpen(true)}
-          className={`w-14 h-14 text-white rounded-full shadow-lg flex items-center justify-center transition-all duration-300 active:scale-95 border-2 border-white/10 ${
+          className={`relative w-14 h-14 text-white rounded-full shadow-lg flex items-center justify-center transition-all duration-300 active:scale-95 border-2 border-white/10 ${
             mode === "wellness"
               ? "bg-rose-600 hover:bg-rose-700 shadow-rose-600/30"
               : "bg-indigo-600 hover:bg-indigo-700 shadow-indigo-600/30"
           }`}
           aria-label="Open AI Assistant"
         >
-          <MessageSquare className="w-7 h-7" />
+          <Wand2 className="w-6 h-6" />
         </button>
       </div>
       

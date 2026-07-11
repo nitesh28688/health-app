@@ -3,6 +3,26 @@
 Short pointer document. For the deep "why is it built this way" reference, read
 `STRUCTURE.md` - that's the source of truth and is kept in sync every session.
 
+**Wellness UI hardening + Apple-style polish (2026-07-11, Phase 49)** - Fixed real defects
+found by live review of Antigravity's Phase 48 work: PDF export was blank-photo/clipped
+because `html2canvas` fired before the R2-hosted scan image finished loading and the whole
+report was squashed onto one fixed A4 page — now waits for all images to load/decode first
+and slices the captured canvas across as many pages as needed. Removed a hardcoded
+`"Core AI Member"` placeholder name (now falls back through real name -> email -> "Wellness
+Member"). Replaced all emoji scan-type icons (✨/👁️/🌿) with real lucide icon components
+(`Sparkles`/`Eye`/`Scissors`) everywhere except the `<canvas>`-drawn share card, which can't
+render React components so the icon glyph was dropped from the canvas text entirely instead.
+Removed a redundant `router.back()` button from the Wellness main tab (it's a bottom-nav
+destination, not a drill-down). Restyled the Wellness Score card into a clean two-row layout
+(title+share / ring+breakdown). Replaced the floating assistant's `MessageSquare` icon (read
+as a camera/chat icon, confusing next to actual scan features) with `Wand2` plus a subtle
+pulsing ring. Replaced the auth-loading screen's leftover `Salad` icon with an animated Core
+AI app icon. Added a real mode-switch transition in `AppShell.tsx`: a full-screen radial
+color-wash (rose for Wellness, indigo for Core) that expands from center and fades out,
+layered under a slower spring page transition (`AnimatePresence mode="wait"`) so switching
+Core <-> Wellness reads as one deliberate motion instead of an instant color swap. Verified
+with `tsc --noEmit` and a full `npx next build`, both clean.
+
 **PDF Reports & Polish (2026-07-11, Phase 48)** - Added a new `PDFReportTemplate` component along with `jspdf` and `html2canvas` for generating downloadable A4 clinical reports of wellness scans. Enhanced the existing JPG share card with glowing gradients, perfect centering, and better spacing. Added a global gradient mesh background and framer-motion micro-animations to the score rings and progress bars in the wellness report UI and `globals.css`.
 
 **Mode/route startup sync (2026-07-11, Phase 47)** - Fixed a cold PWA reopen bug where

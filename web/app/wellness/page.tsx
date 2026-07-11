@@ -1,6 +1,6 @@
 "use client";
 import { Suspense, useCallback, useEffect, useMemo, useState, useRef } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { AppShell } from "../AppShell";
 import { supabase } from "@/lib/supabase";
 import { WellnessCaptureSheet } from "@/components/WellnessCaptureSheet";
@@ -14,7 +14,8 @@ import { motion } from "framer-motion";
 import {
   Sparkles, Camera, X, AlertTriangle, CheckCircle,
   Loader2, Share2, Lock, TrendingUp, TrendingDown, Minus, ChevronRight,
-  Sun, Moon, Flame, Clock, Zap, Star, Trash2, ScanLine, Download
+  Sun, Moon, Flame, Clock, Zap, Star, Trash2, ScanLine, Download,
+  Eye, Scissors, type LucideIcon
 } from "lucide-react";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -38,10 +39,10 @@ type ScanType = "skin" | "eye" | "hair";
 const SCAN_TYPES: ScanType[] = ["skin", "eye", "hair"];
 const WELLNESS_BADGE_CODES = ["wellness_first_scan", "wellness_full_spectrum", "wellness_glow_up"];
 
-const SCAN_META: Record<ScanType, { label: string; icon: string; color: string; bg: string }> = {
-  skin: { label: "Skin", icon: "✨", color: "text-rose-500", bg: "from-rose-500 to-pink-600" },
-  eye:  { label: "Eye",  icon: "👁️",  color: "text-violet-500", bg: "from-violet-500 to-indigo-600" },
-  hair: { label: "Hair", icon: "🌿", color: "text-emerald-500", bg: "from-emerald-500 to-teal-600" },
+const SCAN_META: Record<ScanType, { label: string; Icon: LucideIcon; color: string; bg: string }> = {
+  skin: { label: "Skin", Icon: Sparkles, color: "text-rose-500", bg: "from-rose-500 to-pink-600" },
+  eye:  { label: "Eye",  Icon: Eye,      color: "text-violet-500", bg: "from-violet-500 to-indigo-600" },
+  hair: { label: "Hair", Icon: Scissors, color: "text-emerald-500", bg: "from-emerald-500 to-teal-600" },
 };
 
 // ─── Seasonal advice ──────────────────────────────────────────────────────────
@@ -133,7 +134,6 @@ function daysSince(scans: Scan[], type: ScanType): number | null {
 
 // ─── Main ──────────────────────────────────────────────────────────────────────
 function WellnessMain({ userId }: { userId: string }) {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const wellnessView = searchParams.get("view") === "reports" ? "reports" : "scan";
   const [scans, setScans] = useState<Scan[] | null>(null);
@@ -192,7 +192,7 @@ function WellnessMain({ userId }: { userId: string }) {
       .then(({ data: br }) => setEarnedBadges(new Set((br ?? []).map(b => b.badge_code))));
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!session) return;
-      setUserProfile({ name: session.user.user_metadata?.full_name || "Core AI Member", email: session.user.email || "" });
+      setUserProfile({ name: session.user.user_metadata?.full_name || "", email: session.user.email || "" });
       fetch("/api/ai/wellness-insight", { method: "POST", headers: { Authorization: "Bearer " + session.access_token } })
         .then(r => r.json()).then(b => { if (b.insight) setInsight(b.insight); }).catch(() => {});
     });
@@ -352,7 +352,7 @@ function WellnessMain({ userId }: { userId: string }) {
       ctx.fillStyle = "rgba(251,113,133,0.15)"; ctx.strokeStyle = "#fb7185"; ctx.lineWidth = 1.5;
       ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(W / 2 - 130, 180, 260, 52, 26); else ctx.rect(W / 2 - 130, 180, 260, 52);
       ctx.fill(); ctx.stroke();
-      ctx.fillStyle = "#fb7185"; ctx.font = "bold 24px system-ui,sans-serif"; ctx.fillText(meta.icon + "  " + meta.label + " Analysis", W / 2, 206);
+      ctx.fillStyle = "#fb7185"; ctx.font = "bold 24px system-ui,sans-serif"; ctx.fillText(meta.label + " Analysis", W / 2, 206);
       // User & date
       if (userProfile?.name) { ctx.fillStyle = "rgba(255,255,255,0.9)"; ctx.font = "bold 36px system-ui,sans-serif"; ctx.fillText(userProfile.name, W / 2, 280); }
       ctx.fillStyle = "rgba(255,255,255,0.4)"; ctx.font = "500 22px system-ui,sans-serif";
@@ -454,18 +454,59 @@ function WellnessMain({ userId }: { userId: string }) {
     if (!pdfRef.current || !scan.is_usable) return;
     setDownloadingPDF(true);
     try {
-      await new Promise(r => setTimeout(r, 100));
+      // Wait for every image inside the report (scan photo included) to actually
+      // finish loading — html2canvas snapshots whatever is painted at call time,
+      // so capturing before the R2-hosted photo decodes produces a blank box.
+      const imgs = Array.from(pdfRef.current.querySelectorAll("img"));
+      await Promise.all(imgs.map(img => {
+        if (img.complete && img.naturalWidth > 0) return Promise.resolve();
+        return new Promise<void>(resolve => {
+          img.addEventListener("load", () => resolve(), { once: true });
+          img.addEventListener("error", () => resolve(), { once: true });
+        });
+      }));
+      await new Promise(r => setTimeout(r, 50));
+
       const canvas = await html2canvas(pdfRef.current, {
         scale: 2,
         useCORS: true,
+        allowTaint: false,
         logging: false,
         backgroundColor: "#ffffff"
       });
-      const imgData = canvas.toDataURL("image/jpeg", 0.9);
+
       const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
       const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-      pdf.addImage(imgData, "JPEG", 0, 0, pdfWidth, pdfHeight);
+      const pdfPageHeight = pdf.internal.pageSize.getHeight();
+      const fullImgHeight = (canvas.height * pdfWidth) / canvas.width;
+
+      // The report can be taller than a single A4 page (long recommendation
+      // lists especially). Slice the captured canvas into page-sized chunks
+      // instead of squashing everything onto one page, which was clipping
+      // content past 1123px of source height.
+      const pxPerMm = canvas.width / pdfWidth;
+      const pageHeightPx = Math.floor(pdfPageHeight * pxPerMm);
+      let renderedHeightPx = 0;
+      let pageIndex = 0;
+
+      while (renderedHeightPx < canvas.height) {
+        const sliceHeightPx = Math.min(pageHeightPx, canvas.height - renderedHeightPx);
+        const pageCanvas = document.createElement("canvas");
+        pageCanvas.width = canvas.width;
+        pageCanvas.height = sliceHeightPx;
+        const ctx = pageCanvas.getContext("2d");
+        if (!ctx) break;
+        ctx.drawImage(canvas, 0, renderedHeightPx, canvas.width, sliceHeightPx, 0, 0, canvas.width, sliceHeightPx);
+        const sliceData = pageCanvas.toDataURL("image/jpeg", 0.92);
+        const sliceHeightMm = (sliceHeightPx * pdfWidth) / canvas.width;
+
+        if (pageIndex > 0) pdf.addPage();
+        pdf.addImage(sliceData, "JPEG", 0, 0, pdfWidth, sliceHeightMm);
+
+        renderedHeightPx += sliceHeightPx;
+        pageIndex++;
+      }
+
       pdf.save(`CoreAI_${scan.scan_type}_Report.pdf`);
     } catch (e: any) {
       setError("Failed to generate PDF: " + e.message);
@@ -501,8 +542,6 @@ function WellnessMain({ userId }: { userId: string }) {
     <main className="px-4 pt-5 pb-28">
       {/* Header */}
       <div className="flex items-center gap-3 mb-5">
-        <button onClick={() => router.back()} aria-label="Back"
-          className="w-10 h-10 rounded-full border border-neutral-200 dark:border-neutral-800 flex items-center justify-center hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors shrink-0 cursor-pointer">←</button>
         <div className="flex-1">
           <h1 className="text-2xl font-black flex items-center gap-2 leading-none"><Sparkles className="w-6 h-6 text-rose-500" />Wellness</h1>
           <p className="text-xs text-neutral-500 mt-0.5">AI-powered beauty & health tracking</p>
@@ -546,19 +585,28 @@ function WellnessMain({ userId }: { userId: string }) {
             <p className="text-xs text-neutral-500 max-w-xs">Complete a Skin, Eye, or Hair scan to compute your aggregate Wellness Score.</p>
           </div>
         ) : (
-          <div className="p-5 bg-white/50 dark:bg-neutral-900/50 backdrop-blur-md border border-neutral-200 dark:border-neutral-800 shadow-sm rounded-3xl">
-            <div className="flex items-center gap-4">
+          <div className="p-5 bg-white/50 dark:bg-neutral-900/50 backdrop-blur-md border border-neutral-200 dark:border-neutral-800 shadow-sm rounded-3xl flex flex-col gap-4">
+            {/* Title row */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <h3 className="font-black text-base text-neutral-900 dark:text-white">Wellness Score</h3>
+                {streak >= 2 && (
+                  <span className="flex items-center gap-1 bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 text-[10px] font-black px-2 py-0.5 rounded-full border border-rose-200/50 dark:border-rose-900/50">
+                    <Flame className="w-3 h-3" />{streak}W
+                  </span>
+                )}
+              </div>
+              <button onClick={handleShareScore} disabled={sharing}
+                className="shrink-0 rounded-xl bg-gradient-to-br from-rose-500 to-violet-600 text-white px-3 py-2 text-[11px] font-bold flex items-center gap-1.5 shadow-md shadow-rose-500/20 active:scale-95 transition-all cursor-pointer disabled:opacity-50">
+                {sharing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Share2 className="w-3 h-3" />} Share
+              </button>
+            </div>
+
+            {/* Score + breakdown row */}
+            <div className="flex items-center gap-5">
               <ScoreRing score={aggregateScore} size="lg" />
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <h3 className="font-black text-base text-neutral-900 dark:text-white">Wellness Score</h3>
-                  {streak >= 2 && (
-                    <span className="flex items-center gap-1 bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 text-[10px] font-black px-2 py-0.5 rounded-full border border-rose-200/50 dark:border-rose-900/50">
-                      <Flame className="w-3 h-3" />{streak}W
-                    </span>
-                  )}
-                </div>
-                <p className="text-[11px] text-neutral-500 dark:text-neutral-400 mb-2">{activeTypes.map(t => SCAN_META[t].label).join(" · ")}</p>
+              <div className="flex-1 min-w-0 flex flex-col gap-2">
+                <p className="text-[11px] font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">{activeTypes.map(t => SCAN_META[t].label).join(" · ")}</p>
                 <div className="flex flex-wrap gap-1.5">
                   {SCAN_TYPES.map(t => {
                     const sc = latestByType[t];
@@ -566,17 +614,13 @@ function WellnessMain({ userId }: { userId: string }) {
                     return (
                       <button key={t} onClick={() => sc ? (setSelectedScan(sc), setReportTab("overview")) : (setCaptureType(t), setCaptureOpen(true))}
                         className={"flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[10px] font-bold transition-all cursor-pointer " + (sc ? "bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 hover:scale-105 active:scale-95" : "bg-neutral-50 dark:bg-neutral-900/50 text-neutral-400 border border-dashed border-neutral-300 dark:border-neutral-700")}>
-                        <span>{SCAN_META[t].icon}</span>
+                        {(() => { const Icon = SCAN_META[t].Icon; return <Icon className="w-3 h-3" />; })()}
                         {sc ? <><span>{sc.overall_score}</span>{ds != null && ds >= 7 && <Clock className="w-2.5 h-2.5 text-amber-500" />}</> : <span className={SCAN_META[t].color}>+ {SCAN_META[t].label}</span>}
                       </button>
                     );
                   })}
                 </div>
               </div>
-              <button onClick={handleShareScore} disabled={sharing}
-                className="shrink-0 rounded-xl bg-gradient-to-br from-rose-500 to-violet-600 text-white px-3 py-2 text-[11px] font-bold flex items-center gap-1.5 shadow-md shadow-rose-500/20 active:scale-95 transition-all cursor-pointer disabled:opacity-50">
-                {sharing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Share2 className="w-3 h-3" />} Share
-              </button>
             </div>
           </div>
         )}
@@ -593,7 +637,7 @@ function WellnessMain({ userId }: { userId: string }) {
               <button key={t} onClick={() => { setCaptureType(t); setCaptureOpen(true); }} disabled={busy}
                 className={"relative flex flex-col items-center gap-2 p-4 rounded-2xl border transition-all cursor-pointer active:scale-[0.97] disabled:opacity-50 " + (due ? "border-rose-200/50 dark:border-rose-900/40 bg-gradient-to-b from-rose-50 to-violet-50/30 dark:from-rose-950/20 dark:to-violet-950/10 shadow-sm" : "border-neutral-200/40 dark:border-neutral-800/40 bg-neutral-50/50 dark:bg-neutral-900/20")}>
                 {due && <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-rose-500 animate-pulse" />}
-                <span className="text-2xl">{SCAN_META[t].icon}</span>
+                {(() => { const Icon = SCAN_META[t].Icon; return <Icon className={"w-6 h-6 " + SCAN_META[t].color} strokeWidth={2} />; })()}
                 <span className="text-xs font-bold text-neutral-700 dark:text-neutral-300">{SCAN_META[t].label}</span>
                 <span className={"text-[9px] font-bold " + (ds != null && ds >= 7 ? "text-rose-500" : "text-neutral-400")}>{ds !== null ? ds + "d ago" : "Not done"}</span>
               </button>
@@ -619,7 +663,7 @@ function WellnessMain({ userId }: { userId: string }) {
                 <button key={t} onClick={() => { setSelectedScan(scan); setReportTab("overview"); }}
                   className="shrink-0 w-44 rounded-2xl bg-white dark:bg-neutral-900 border border-neutral-200/50 dark:border-neutral-800/50 p-4 text-left shadow-sm hover:shadow-md transition-all active:scale-[0.97] cursor-pointer">
                   <div className="flex items-center justify-between mb-3">
-                    <span className="text-lg">{SCAN_META[t].icon}</span>
+                    {(() => { const Icon = SCAN_META[t].Icon; return <Icon className={"w-4 h-4 " + SCAN_META[t].color} strokeWidth={2} />; })()}
                     <span className="text-xs font-bold text-neutral-400">{SCAN_META[t].label}</span>
                   </div>
                   <div className="text-3xl font-black text-neutral-900 dark:text-white mb-1">{scan.overall_score}</div>
@@ -694,7 +738,7 @@ function WellnessMain({ userId }: { userId: string }) {
                   </div>
                   <div className="flex-1 min-w-0 cursor-pointer" onClick={() => compareMode ? toggleCompare(s) : (setSelectedScan(s), setReportTab("overview"))}>
                     <div className="flex items-center gap-1.5 mb-0.5">
-                      <span className="text-sm">{meta.icon}</span>
+                      <meta.Icon className={"w-3.5 h-3.5 " + meta.color} strokeWidth={2} />
                       <span className="text-sm font-bold text-neutral-800 dark:text-neutral-200">{meta.label} Scan</span>
                       {!s.is_usable && <AlertTriangle className="w-3 h-3 text-amber-500" />}
                     </div>
@@ -782,7 +826,7 @@ function WellnessMain({ userId }: { userId: string }) {
               <div className="flex items-start justify-between mb-4">
                 <div>
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="text-2xl">{SCAN_META[selectedScan.scan_type].icon}</span>
+                    {(() => { const Icon = SCAN_META[selectedScan.scan_type].Icon; return <Icon className="w-6 h-6 text-white" strokeWidth={2} />; })()}
                     <h3 className="font-black text-xl text-white">{SCAN_META[selectedScan.scan_type].label} Report</h3>
                   </div>
                   <p className="text-white/60 text-xs">{new Date(selectedScan.taken_at + "T12:00:00").toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}</p>

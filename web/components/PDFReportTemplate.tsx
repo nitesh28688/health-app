@@ -39,7 +39,7 @@ export const PDFReportTemplate = React.forwardRef<HTMLDivElement, PDFReportTempl
             </p>
           </div>
           <div className="text-right">
-            <h2 className="text-xl font-bold" style={{ color: "#1e293b" }}>{userProfile?.name || "Member"}</h2>
+            <h2 className="text-xl font-bold" style={{ color: "#1e293b" }}>{userProfile?.name || userProfile?.email || "Wellness Member"}</h2>
             <p className="font-medium" style={{ color: "#64748b" }}>{dateStr}</p>
           </div>
         </div>
