@@ -133,7 +133,7 @@ function daysSince(scans: Scan[], type: ScanType): number | null {
 }
 
 // ─── Main ──────────────────────────────────────────────────────────────────────
-function WellnessMain({ userId }: { userId: string }) {
+function WellnessMain({ userId, displayName }: { userId: string; displayName: string | null }) {
   const searchParams = useSearchParams();
   const wellnessView = searchParams.get("view") === "reports" ? "reports" : "scan";
   const [scans, setScans] = useState<Scan[] | null>(null);
@@ -192,11 +192,11 @@ function WellnessMain({ userId }: { userId: string }) {
       .then(({ data: br }) => setEarnedBadges(new Set((br ?? []).map(b => b.badge_code))));
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!session) return;
-      setUserProfile({ name: session.user.user_metadata?.full_name || "", email: session.user.email || "" });
+      setUserProfile({ name: displayName || session.user.user_metadata?.full_name || "", email: session.user.email || "" });
       fetch("/api/ai/wellness-insight", { method: "POST", headers: { Authorization: "Bearer " + session.access_token } })
         .then(r => r.json()).then(b => { if (b.insight) setInsight(b.insight); }).catch(() => {});
     });
-  }, [userId]);
+  }, [userId, displayName]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -1000,7 +1000,7 @@ export default function WellnessPage() {
   return (
     <Suspense fallback={<PageSkeleton />}>
       <AppShell>
-        {({ session }) => <WellnessMain userId={session.user.id} />}
+        {({ session, profile }) => <WellnessMain userId={session.user.id} displayName={profile?.display_name || null} />}
       </AppShell>
     </Suspense>
   );

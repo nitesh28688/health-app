@@ -3,6 +3,24 @@
 Short pointer document. For the deep "why is it built this way" reference, read
 `STRUCTURE.md` - that's the source of truth and is kept in sync every session.
 
+**PDF layout + name fix (2026-07-11, Phase 52)** - Reviewed a real generated PDF (user shared
+the actual file) and found two more defects beyond the CORS fix in Phase 51. Layout:
+`PDFReportTemplate` was a fixed two-column flex layout (300px photo/score column next to a
+flex-1 details column), but the export slices the whole capture into page-height chunks by
+pixel position alone — once the short left column ran out of content, every later page had a
+huge blank gap on the left while the right column kept scrolling, wasting most of the page.
+Rewrote as a single flowing column (photo+score as one short equal-height hero row up top,
+then Clinical Metrics/Key Observations/Recommended Protocol full-width below in a 2-up grid)
+so page-slicing always cuts cleanly. Name: the header was showing the user's raw email
+address — traced to `wellness/page.tsx` reading `session.user.user_metadata?.full_name`,
+which is never actually set anywhere in this app; the real display name lives in
+`profiles.display_name` (confirmed populated for real users via direct DB query) but wasn't
+being passed into `WellnessMain` at all. Wired `profile.display_name` through from `AppShell`;
+also dropped the email fallback entirely (falls to "Wellness Member" instead) since a raw
+email address doesn't belong on a report that might get shared. `tsc --noEmit` and
+`npx next build` both clean; `profiles.display_name` population verified directly against
+production.
+
 **Camera mirror + PDF CORS fix (2026-07-11, Phase 51)** - Fixed a real bug where the back
 camera in `WellnessCaptureSheet.tsx` was mirrored (`scale-x-[-1]` on the preview, a matching
 `translate`/`scale(-1,1)` on the captured canvas frame) — correct for the front/selfie camera
