@@ -1663,7 +1663,7 @@ explicitly said so rather than overclaiming "verified" — logic was code-review
 executed end-to-end. `npx tsc --noEmit` clean (own independent run). No throwaway test
 script was left in the repo.
 
-## Phase 34 � Weekly Wellness Insights Card
+## Phase 34 � Weekly Wellness Insights Card
 **Goal:** Add a reactive AI commentary card at the top of the Wellness tab. Cache by latest scores and scan count, capped at 5 regenerations per day, stored within the JSON structure of `wellness_insight` in `ai_suggestions`.
 - **Status:** [x] Done
 - **Notes:** 
@@ -1917,3 +1917,42 @@ logic, because the element needed to break the deadlock didn't exist yet.
 **Verified**: `npx tsc --noEmit` clean. Confirmed every `cameraStatus === "active"` gate
 elsewhere (flip button, canvas overlay, capture indicator, instructions banner, footer
 Capture button) is unaffected — only the video element's mount condition changed.
+
+## Phase 42 (Fable, 2026-07-11) — Wellness capture: stuck on red/generic guide message
+
+**User report**: camera now opens (Phase 41 fix confirmed working), but alignment guide
+never updates past the initial red dot / generic "Positioning scan area..." text — no
+live feedback on how to reach green.
+
+**Most likely root cause**: `FaceLandmarker`/`ImageSegmenter` were created with
+`delegate: "GPU"`. GPU delegate support for MediaPipe Tasks Vision is inconsistent across
+mobile browsers — notably Samsung Internet, which the user is testing on (established
+earlier this session during the push-notification debugging). Model *creation* can succeed
+fine (so it never visibly falls back to "Manual mode"), while every actual
+`detectForVideo`/`segmentForVideo` call throws afterward — caught by the existing
+try/catch and only logged to console, never surfaced anywhere in the UI. Net effect: the
+guide UI is stuck showing whatever it showed before the very first frame ever succeeded,
+which for a freshly-opened camera is the initial default state — exactly matching the
+report.
+
+**Fixed:**
+1. Switched both models from `delegate: "GPU"` to `delegate: "CPU"` — universally
+   supported (slower per-frame, but detection is already throttled to 10fps, so the cost
+   difference doesn't matter for this use case).
+2. Tracking failures are no longer silently swallowed — `consecutiveFailures` tracked per
+   session; after 20 consecutive exceptions (real device incompatibility, not a fluke
+   single-frame miss), the UI gracefully drops to `modelStatus: "fallback"` (manual capture
+   mode, same UI already used when the model fails to *load* at all) instead of staying
+   stuck pretending live guidance is still coming.
+3. A genuinely failed single frame (not yet at the 20-failure threshold) now updates
+   `guideMsg` to "Positioning..." rather than leaving stale text — the guide UI moves
+   even while still trying, instead of looking frozen.
+
+**Verified**: `npx tsc --noEmit` clean. Confirmed the capture button's existing enable
+condition (`alignment === "green" || modelStatus === "fallback"`) already correctly
+handles the new fallback path without further changes needed there. Could not verify the
+GPU-delegate hypothesis live (no Samsung Internet device access in this environment) — this
+is the most likely explanation given the known compatibility gap and the exact symptom
+match, but worth confirming it actually resolves the issue on a real retest, since the
+20-failure fallback is deliberately a safety net either way (it degrades gracefully even
+if CPU delegate isn't the full fix).

@@ -76,11 +76,19 @@ export function WellnessCaptureSheet({ scanType, onClose, onCapture }: WellnessC
           "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.8/wasm"
         );
         
+        // "CPU" delegate, not "GPU" — GPU delegate support for MediaPipe
+        // Tasks Vision is inconsistent across mobile browsers, notably
+        // Samsung Internet: model creation can succeed (so this never falls
+        // back to "fallback" mode) while every actual detectForVideo/
+        // segmentForVideo call throws afterward, silently caught below —
+        // leaving the UI stuck on its default guide text forever with no
+        // visible failure. CPU is slower but universally supported, and
+        // detection is already throttled to 10fps so the cost is fine.
         if (isHair) {
           cachedSegmenter = await ImageSegmenter.createFromOptions(cachedVision, {
             baseOptions: {
               modelAssetPath: "https://storage.googleapis.com/mediapipe-models/image_segmenter/hair_segmenter/float32/1/hair_segmenter.task",
-              delegate: "GPU"
+              delegate: "CPU"
             },
             runningMode: "VIDEO",
             outputCategoryMask: true,
@@ -90,7 +98,7 @@ export function WellnessCaptureSheet({ scanType, onClose, onCapture }: WellnessC
           cachedLandmarker = await FaceLandmarker.createFromOptions(cachedVision, {
             baseOptions: {
               modelAssetPath: "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
-              delegate: "GPU"
+              delegate: "CPU"
             },
             runningMode: "VIDEO",
             numFaces: 1
@@ -234,6 +242,7 @@ export function WellnessCaptureSheet({ scanType, onClose, onCapture }: WellnessC
     const ctx = canvas.getContext("2d")!;
     let lastVideoTime = -1;
     let lastProcessedTime = 0;
+    let consecutiveFailures = 0;
 
     function renderLoop() {
       const v = videoRef.current;
@@ -250,7 +259,7 @@ export function WellnessCaptureSheet({ scanType, onClose, onCapture }: WellnessC
 
       const now = performance.now();
       // Throttle analysis to 10 FPS (every 100ms) for smooth mobile performance
-      if (v.currentTime !== lastVideoTime && now - lastProcessedTime > 100) {
+      if (v.currentTime !== lastVideoTime && now - lastProcessedTime > 100 && consecutiveFailures < 20) {
         lastVideoTime = v.currentTime;
         lastProcessedTime = now;
         try {
@@ -280,8 +289,21 @@ export function WellnessCaptureSheet({ scanType, onClose, onCapture }: WellnessC
               }
             }
           }
+          consecutiveFailures = 0;
         } catch (e) {
-          console.error("Tracking frame processing error", e);
+          consecutiveFailures++;
+          console.error(`Tracking frame processing error (${consecutiveFailures}/20)`, e);
+          if (consecutiveFailures >= 20) {
+            // Detection is genuinely broken on this device (e.g. a GPU/WASM
+            // delegate issue) rather than just a bad single frame — stop
+            // pretending live guidance is coming and drop to manual capture
+            // instead of leaving the UI stuck on stale guide text forever.
+            console.warn("Live tracking failed repeatedly — falling back to manual capture.");
+            setModelStatus("fallback");
+            updateAlignment("green", "Live guide unavailable — center yourself and capture manually.");
+          } else {
+            updateAlignment("red", "Positioning...");
+          }
         }
       }
 
