@@ -171,7 +171,7 @@ Observations & recommendations schema:
   }
 
   // 4. Save scan to Database
-  const { data: insertedScan, error: insertErr } = await db.from("wellness_scans").insert({
+  const scanRecord = {
     user_id: userId,
     scan_type: scanType,
     taken_at: today,
@@ -183,11 +183,27 @@ Observations & recommendations schema:
     sub_scores: estimate.sub_scores ?? null,
     classification: estimate.classification ?? null,
     skin_age_estimate: estimate.skin_age_estimate ?? null
-  }).select("id").single();
+  };
+
+  let { data: insertedScan, error: insertErr } = await db
+    .from("wellness_scans")
+    .insert(scanRecord)
+    .select("id")
+    .single();
+
+  // Older deployments can be one migration behind and lack this optional
+  // presentation field. Preserve the actual scan/report rather than losing it
+  // outright while the schema catches up.
+  if (insertErr?.code === "PGRST204" && insertErr.message.includes("skin_age_estimate")) {
+    const { skin_age_estimate: _skinAgeEstimate, ...recordWithoutSkinAge } = scanRecord;
+    const retry = await db.from("wellness_scans").insert(recordWithoutSkinAge).select("id").single();
+    insertedScan = retry.data;
+    insertErr = retry.error;
+  }
 
   if (insertErr) {
     console.error("Failed to insert wellness scan:", insertErr);
-    return NextResponse.json({ error: "Failed to persist scan results in database" }, { status: 500 });
+    return NextResponse.json({ error: "We couldn't save this scan. Please try again in a moment." }, { status: 500 });
   }
 
   const newScanId = insertedScan?.id;

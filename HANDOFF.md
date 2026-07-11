@@ -3,6 +3,13 @@
 Short pointer document. For the deep "why is it built this way" reference, read
 `STRUCTURE.md` - that's the source of truth and is kept in sync every session.
 
+**Wellness save resilience + report progress (2026-07-11, Phase 43)** - The wellness
+scan API now retries its database insert without the optional `skin_age_estimate` field when
+the deployed Supabase schema is missing that newest column, preserving the scan and report
+instead of failing the whole capture. The client replaces the post-capture blank interval
+with a full-screen circular report-progress view: upload, visible-detail analysis, then save.
+TypeScript verified clean with `npx.cmd tsc --noEmit`.
+
 **Samsung tracking fallback hardening (2026-07-11, Phase 42)** - Removed the duplicate
 in-page Scan/Reports control from `/wellness`; the Wellness bottom navigation is the single
 place to switch views. The Skin/Eye fallback now runs on an independent 2.2-second camera

@@ -10,7 +10,7 @@ import { awardBadge, BADGES } from "@/lib/badges";
 import {
   Sparkles, Camera, X, AlertTriangle, CheckCircle,
   Loader2, Share2, Lock, TrendingUp, TrendingDown, Minus, ChevronRight,
-  Sun, Moon, Flame, Clock, Zap, Star, Trash2
+  Sun, Moon, Flame, Clock, Zap, Star, Trash2, ScanLine
 } from "lucide-react";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -136,6 +136,7 @@ function WellnessMain({ userId }: { userId: string }) {
   const [compareA, setCompareA] = useState<Scan | null>(null);
   const [compareB, setCompareB] = useState<Scan | null>(null);
   const [busy, setBusy] = useState(false);
+  const [processingStep, setProcessingStep] = useState<"uploading" | "analyzing" | "saving">("uploading");
   const [error, setError] = useState<string | null>(null);
   const [sharing, setSharing] = useState(false);
   const [sharingDetailed, setSharingDetailed] = useState(false);
@@ -190,7 +191,7 @@ function WellnessMain({ userId }: { userId: string }) {
   useEffect(() => { load(); }, [load]);
 
   async function handleCapture(base64Data: string) {
-    setCaptureOpen(false); setBusy(true); setError(null);
+    setCaptureOpen(false); setBusy(true); setProcessingStep("uploading"); setError(null);
     try {
       const resBlob = await fetch(base64Data).then(r => r.blob());
       const fileObj = new File([resBlob], "wellness-" + Date.now() + ".jpg", { type: "image/jpeg" });
@@ -203,12 +204,14 @@ function WellnessMain({ userId }: { userId: string }) {
       });
       const upBody = await upRes.json();
       if (!upRes.ok) throw new Error(upBody.error || "Upload failed");
+      setProcessingStep("analyzing");
       const aiRes = await fetch("/api/ai/wellness-scan", {
         method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + session.access_token },
         body: JSON.stringify({ imageDataUrl: compressed, scanType: captureType, photoUrl: upBody.url })
       });
       const aiBody = await aiRes.json();
       if (!aiRes.ok) throw new Error(aiBody.error || "AI Scan failed");
+      setProcessingStep("saving");
       await load();
       const { data: updatedScans } = await supabase.from("wellness_scans").select("*").eq("user_id", userId);
       const list = (updatedScans as Scan[]) || [];
@@ -701,6 +704,32 @@ function WellnessMain({ userId }: { userId: string }) {
 
       {/* Capture Modal */}
       {captureOpen && <WellnessCaptureSheet scanType={captureType} onClose={() => setCaptureOpen(false)} onCapture={handleCapture} />}
+
+      {busy && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-neutral-950/80 px-6 backdrop-blur-md">
+          <div className="w-full max-w-sm text-center text-white">
+            <div className="relative mx-auto mb-7 grid h-36 w-36 place-items-center">
+              <div className="absolute inset-0 rounded-full border border-rose-400/30 animate-ping" />
+              <div className="absolute inset-3 rounded-full border-2 border-transparent border-t-rose-400 border-r-violet-400 animate-spin" />
+              <div className="absolute inset-7 rounded-full bg-gradient-to-br from-rose-500 to-violet-600 shadow-xl shadow-rose-500/30 grid place-items-center">
+                <ScanLine className="w-9 h-9" />
+              </div>
+            </div>
+            <h2 className="text-xl font-black tracking-normal">Creating your report</h2>
+            <p className="mt-2 text-sm text-neutral-300">
+              {processingStep === "uploading" && "Securing your scan"}
+              {processingStep === "analyzing" && "Reading visible details"}
+              {processingStep === "saving" && "Saving your personalized results"}
+            </p>
+            <div className="mt-7 flex items-center justify-center gap-2" aria-label="Report progress">
+              {(["uploading", "analyzing", "saving"] as const).map((step, index) => {
+                const current = ["uploading", "analyzing", "saving"].indexOf(processingStep);
+                return <span key={step} className={"h-1.5 rounded-full transition-all duration-500 " + (index <= current ? "w-8 bg-rose-400" : "w-3 bg-white/20")} />;
+              })}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Report Bottom Sheet */}
       {selectedScan && (
