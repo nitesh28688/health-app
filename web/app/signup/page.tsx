@@ -78,7 +78,7 @@ export default function SignupPage() {
         <input required placeholder="Your name" value={displayName}
           onChange={(e) => setDisplayName(e.target.value)} autoComplete="name"
           className="rounded-xl border border-neutral-300 dark:border-neutral-700 bg-white/50 dark:bg-neutral-900/50 shadow-sm focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition-all px-4 py-3 text-base" />
-        <input required placeholder="Username (e.g. nitesh)" value={username}
+        <input required placeholder="Username (e.g. johnsmith)" value={username}
           onChange={(e) => setUsername(e.target.value)} autoCapitalize="none" autoComplete="off"
           className="rounded-xl border border-neutral-300 dark:border-neutral-700 bg-white/50 dark:bg-neutral-900/50 shadow-sm focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition-all px-4 py-3 text-base" />
         <input type="email" required placeholder="Email" value={email}
