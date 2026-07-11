@@ -248,7 +248,12 @@ export function WellnessCaptureSheet({ scanType, onClose, onCapture }: WellnessC
     function renderLoop() {
       const v = videoRef.current;
       const c = canvasRef.current;
-      if (!v || !c || !activeRef.current || v.paused || v.ended || !streamRef.current) return;
+      if (!activeRef.current || !streamRef.current) return; // Stop permanently if unmounted or camera stopped
+
+      if (!v || !c || v.paused || v.ended || v.videoWidth === 0 || v.videoHeight === 0) {
+        requestAnimationFrame(renderLoop);
+        return;
+      }
 
       // Make sure canvas dimensions match video display dimensions
       if (c.width !== v.videoWidth || c.height !== v.videoHeight) {
