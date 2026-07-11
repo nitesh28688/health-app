@@ -3,7 +3,34 @@
 Short pointer document. For the deep "why is it built this way" reference, read
 `STRUCTURE.md` — that's the source of truth and is kept in sync every session.
 
-**Wellness Mode nav expanded to 5 tabs (2026-07-11, Phase 39)** — Scan/Skin/Eye/Hair/Profile,
+**Wellness Mode Full Design Overhaul (2026-07-11, Phase 40)** — Complete rewrite of
+`web/app/wellness/page.tsx`. Removed the 3 redundant Skin/Eye/Hair sub-tabs (they all did
+the same thing). Replaced with a single unified scrollable dashboard: AI Insight card,
+Seasonal tip card (derived client-side from month + skin type), Aggregate Score hero card
+with per-type score pills + streak badge, 3 "New Scan" button cards (each showing days-since
++ overdue pulsing dot), Latest Results horizontal scroll with SVG sparkline trend charts,
+unified scan history list (tap row to open full report, no longer accidentally entering
+compare mode). Report bottom sheet fully redesigned: gradient header per scan type, Overview
++ Routine (AM/PM split) tabs, skin type/hair type classification pill, Skin Age estimate
+badge. New "Share Detailed Report" canvas-drawn infographic (1080×1920px, premium dark
+indigo) with user name, scan type, score ring, sub-score bars, observations, recommended
+actives. Camera fallback text now changes to green "Live guide unavailable — center yourself
+and capture manually" on MediaPipe timeout/failure. Skin age estimation added to wellness-
+scan AI route (new `skin_age_estimate` integer field in AI schema + DB migration 0030).
+TypeScript compiles clean (0 errors). See UPGRADE.md Phase 40.
+
+**Samsung Internet camera tracking bug (UNRESOLVED)** — Hair scan correctly shows manual
+fallback mode (because ImageSegmenter uses callback pattern, so failures show up as 20
+consecutive "no results" and trigger the fallback after ~2s). Skin and Eye scans are stuck
+on red "Positioning scan area..." forever on Samsung Internet. Root cause confirmed: the
+MediaPipe FaceLandmarker model loads successfully (no exception thrown, no timeout), the
+camera stream is active and live frames are visible, but `detectForVideo()` returns
+`faceLandmarks: []` every single frame — silently returning empty instead of throwing, so
+the 20-consecutive-failure fallback never triggers and the UI never advances to green or
+fallback. Manual capture (greyed-out button) still works correctly. A detailed Codex prompt
+has been written for the user to try an alternative approach.
+
+**Wellness nav expanded to 5 tabs (2026-07-11, Phase 39)** — Scan/Skin/Eye/Hair/Profile,
 matching Core mode's nav weight (was 2 tabs, looked sparse). Skin/Eye/Hair deep-link into
 `/wellness?type=...`. Required careful Suspense-boundary handling for `useSearchParams()`
 since `AppShell` wraps every page — verified with real `next build` runs, not just `tsc`.
