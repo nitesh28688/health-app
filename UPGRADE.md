@@ -1404,3 +1404,18 @@ exercise — are `z-[60]`/`z-[70]` and assume the parent sits below them).
 
 **Verified**: `npx tsc --noEmit` clean. Grepped every `fixed inset-0` overlay in the app to
 confirm no other instance of this exact z-50-tie-with-nav bug remains.
+
+## Phase 28 (Fable, 2026-07-11) — Photo food estimate: use printed net weight when visible
+
+**User feedback**: tested photo-estimate on a chips packet — correctly identified the
+product, but estimated 30g serving instead of the actual 15g. The packet's front didn't
+print the weight, but many packaged foods do — the prompt never told the model to look for
+one.
+
+**Fixed**: `web/app/api/ai/photo-estimate/route.ts` prompt now explicitly instructs the
+model to look for a printed net weight on packaging and use that exact figure for the
+serving size instead of guessing a generic default, when present.
+
+**Verified**: `npx tsc --noEmit` clean (prompt-only text change, no type surface). No live
+test image was available to re-verify the specific improvement end-to-end this session —
+worth spot-checking next time a packaged-food photo is logged.

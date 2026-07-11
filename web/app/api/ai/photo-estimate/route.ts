@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
 
   const res = await generateWithFallback(
     [
-      { text: "Identify the food in this photo and estimate its nutrition per 100 grams. If this isn't food, set is_food to false. Set is_liquid to true if it's a drink/beverage/soup measured in ml rather than grams. Also give 1-2 natural household serving measures in servings with the typical weight in grams of ONE such serving: piece for countable items, glass/cup for drinks, katori (~150g) for curries/dal/rice, plate for full plates, slice/bowl/tbsp/tsp/scoop where natural." },
+      { text: "Identify the food in this photo and estimate its nutrition per 100 grams. If this isn't food, set is_food to false. Set is_liquid to true if it's a drink/beverage/soup measured in ml rather than grams. Also give 1-2 natural household serving measures in servings with the typical weight in grams of ONE such serving: piece for countable items, glass/cup for drinks, katori (~150g) for curries/dal/rice, plate for full plates, slice/bowl/tbsp/tsp/scoop where natural. If this is packaged food, look closely for a printed net weight (e.g. \"15g\", \"Net Wt. 30g\") on the packaging and use that exact figure for the serving size instead of guessing a generic default — packaged snack sizes vary widely and a printed weight is always more accurate than an estimate." },
       { inline_data: { mime_type: mimeType, data: base64 } },
     ],
     {
