@@ -936,3 +936,8 @@ pre-skip exercise list instead of nothing. Fixed by routing that case through `o
   bigger project than anything else in this app, not a quick add. If step tracking
   becomes a priority, treat it as a distinct v3 initiative, not an incremental
   feature.
+
+## Wellness Tab (/wellness)
+- Contains Skin, Eye, and Hair analysis logic via WellnessCaptureSheet.tsx.
+- Displays an aggregate Wellness Score Card.
+- Fetches and displays a Weekly Wellness Insights Card via /api/ai/wellness-insight, heavily caching unchanged scan state to minimize AI cost.

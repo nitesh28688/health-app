@@ -1662,3 +1662,42 @@ in this Node-based environment. Unlike some earlier phases, this one's completio
 explicitly said so rather than overclaiming "verified" — logic was code-reviewed, not
 executed end-to-end. `npx tsc --noEmit` clean (own independent run). No throwaway test
 script was left in the repo.
+
+## Phase 34 � Weekly Wellness Insights Card
+**Goal:** Add a reactive AI commentary card at the top of the Wellness tab. Cache by latest scores and scan count, capped at 5 regenerations per day, stored within the JSON structure of `wellness_insight` in `ai_suggestions`.
+- **Status:** [x] Done
+- **Notes:** 
+  - Added migration `0029_wellness_insight.sql` updating `ai_suggestions_kind_check` to 12 total values.
+  - Implemented `/api/ai/wellness-insight/route.ts` with exact caching discipline and daily cap logic inside the `content` JSON.
+  - Rendered a "Core Insights" style card on `web/app/wellness/page.tsx` right above the Aggregate Score Ring.
+  - Tested regeneration trigger with an isolated E2E pg testing script on DB (inserting all 12 kinds successfully passed).
+
+## Phase 34 (Antigravity, 2026-07-11) — Weekly Wellness Insights Card
+
+**Goal:** A reactive "Core Insights"-style commentary card at the top of `/wellness`,
+reacting to the user's actual scan scores/types/frequency — same caching discipline as
+the Phase 26 daily-tip rewrite (invalidate on real state change, not calendar time).
+
+**Built:** New `/api/ai/wellness-insight` route + `ai_suggestions` kind `wellness_insight`
+(12th value in the constraint). Deliberately consolidated cap-tracking into the same
+`content` JSON as the cached text (a `calls_today` field) rather than a separate
+`_calls` kind like daily-tip uses — a legitimate simplification, confirmed correct on
+review (see below), not a shortcut that broke anything.
+
+**Review (Fable, 2026-07-11)**: independently verified the three conditions the
+consolidated-cache design depended on, all correct — (1) a cache hit makes zero writes
+and zero AI calls (returns immediately on `stateUnchanged`), (2) the cap check happens
+strictly after the state-unchanged check, matching daily-tip's cheap-check-first
+ordering, (3) the regeneration upsert writes the full state (text + score snapshot +
+incremented `calls_today`) atomically, no partial-write risk. Migration has exactly the
+12 confirmed-correct kind values. `npx tsc --noEmit` clean independently. Verified live
+against the real database that all 12 kinds pass the constraint. **Also independently
+verified actual generated content quality with two real live Vertex calls** (zero-scans
+scenario, and a high-score-single-type scenario) — confirmed genuinely varied,
+on-personality, non-diagnostic output that correctly reacts to the specific scenario
+data (nudges toward untried scan types, hypes up a real high score) rather than generic
+filler. This step matters because the completion report described the caching
+*behavior* being tested but never showed actual generated text, unlike the Phase 26
+precedent this design explicitly modeled itself on — "the cache logic works" and "the
+output is actually good" are different claims, and only the first one had been shown.
+No throwaway test scripts left in the repo.

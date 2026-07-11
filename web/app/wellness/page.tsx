@@ -57,6 +57,8 @@ function WellnessMain({ userId }: { userId: string }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sharing, setSharing] = useState(false);
+  const [insight, setInsight] = useState<string | null>(null);
+  const [showInsight, setShowInsight] = useState(true);
 
   const latestScansByType: Record<"skin" | "eye" | "hair", Scan | null> = {
     skin: null,
@@ -269,6 +271,18 @@ function WellnessMain({ userId }: { userId: string }) {
       return;
     }
     setScans((data as Scan[]) ?? []);
+    
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        fetch("/api/ai/wellness-insight", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${session.access_token}` }
+        })
+          .then(r => r.json())
+          .then(b => { if (b.insight) setInsight(b.insight); })
+          .catch(e => console.error("Failed to load wellness insight", e));
+      }
+    });
   }, [userId]);
 
   useEffect(() => {
@@ -441,6 +455,24 @@ function WellnessMain({ userId }: { userId: string }) {
       <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-6 leading-relaxed">
         Guided scans analyze facial skin, eye appearance, or hair segmenter coverage, listing unbranded active recommendations. Tap two scans in the history grid to compare them side-by-side.
       </p>
+
+      {/* Wellness Insights Card */}
+      {insight && showInsight && (
+        <div className="mb-6 rounded-2xl border border-violet-200/60 dark:border-violet-900/40 bg-violet-50/50 dark:bg-violet-900/20 p-3.5 flex flex-col gap-1.5 relative shadow-sm shadow-violet-500/5 animate-in fade-in duration-200">
+          <div className="flex items-center gap-1.5 mb-0.5">
+            <Sparkles className="w-4 h-4 text-violet-500" />
+            <span className="text-xs font-bold text-violet-900 dark:text-violet-200 uppercase tracking-wider">Core Insights</span>
+          </div>
+          <p className="text-sm text-violet-800 dark:text-violet-200 pr-5 leading-relaxed">{insight}</p>
+          <button 
+            onClick={() => setShowInsight(false)} 
+            className="absolute top-2 right-2 w-7 h-7 flex items-center justify-center rounded-full text-violet-400 hover:text-violet-600 hover:bg-violet-100 dark:hover:bg-violet-900/50 transition-colors"
+            aria-label="Dismiss insight"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
 
       {/* Aggregate Score Card */}
       {aggregateScore === null ? (

@@ -252,3 +252,9 @@ visible ring card instead of a buried text link.
 - One round trip per screen where possible; RLS enforces security, not app code.
 - Zero-budget: every service used has a genuine free tier (Supabase, Vercel, Google
   AI Studio, Cloudflare R2, Brevo, Meta Cloud API). No paid tier has been added.
+
+## Phase 34 - Weekly Wellness Insights Card
+- Integrated a new reactive AI commentary card ("Core Insights" style) to the top of the Wellness tab.
+- Re-used the caching architecture from daily_tip, tracking regeneration caps (5/day) via calls_today encoded directly into the JSON content blob to avoid needlessly expanding Postgres ENUM/check constraint kinds.
+- Pushed constraint migration 0029, formally incorporating wellness_insight and verifying the total length of 12 against local database constraints.
+- Employs exact comparison logic between cache state and current UI derivation limits (number of scans and scores).
