@@ -527,14 +527,14 @@ export function WellnessCaptureSheet({ scanType, onClose, onCapture }: WellnessC
         </div>
 
         {/* Footer actions */}
-        <div className="p-5 bg-neutral-950/80 border-t border-neutral-850 pb-[calc(1.25rem+env(safe-area-inset-bottom))] shrink-0 flex flex-col gap-2">
+        <div className="p-5 bg-neutral-950/80 border-t border-neutral-800 pb-[calc(1.25rem+env(safe-area-inset-bottom))] shrink-0 flex flex-col gap-2">
           {cameraStatus === "active" && (
             <button
               onClick={captureSnapshot}
               className={`w-full py-4 rounded-2xl font-bold active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg ${
                 alignment === "green" || modelStatus === "fallback"
                   ? "bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-emerald-500/10"
-                  : "bg-neutral-800 text-neutral-400 hover:bg-neutral-750"
+                  : "bg-neutral-800 text-neutral-400 hover:bg-neutral-700"
               }`}
             >
               <Camera className="w-5 h-5" />

@@ -32,7 +32,7 @@ function WellnessScoreRing({ score }: { score: number }) {
     <div className="relative flex items-center justify-center w-20 h-20 shrink-0">
       <svg className="w-full h-full transform -rotate-90" viewBox="0 0 64 64">
         <circle cx="32" cy="32" r={radius} stroke="currentColor" strokeWidth="6" fill="transparent"
-          className="text-neutral-200 dark:text-neutral-850" />
+          className="text-neutral-200 dark:text-neutral-800" />
         <circle cx="32" cy="32" r={radius} stroke="currentColor" strokeWidth="6" fill="transparent"
           strokeDasharray={circumference} strokeDashoffset={offset} strokeLinecap="round"
           className={clamped >= 80 ? "text-emerald-500" : clamped >= 50 ? "text-indigo-500" : "text-amber-500"} />
@@ -423,7 +423,7 @@ function WellnessMain({ userId }: { userId: string }) {
         <button
           onClick={() => router.back()}
           aria-label="Back"
-          className="w-11 h-11 rounded-full border border-neutral-250 dark:border-neutral-800 text-lg flex items-center justify-center cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors"
+          className="w-11 h-11 rounded-full border border-neutral-200 dark:border-neutral-800 text-lg flex items-center justify-center cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors"
         >
           ←
         </button>
@@ -458,7 +458,7 @@ function WellnessMain({ userId }: { userId: string }) {
 
       {/* Wellness Insights Card */}
       {insight && showInsight && (
-        <div className="mb-6 rounded-2xl border border-violet-200/60 dark:border-violet-900/40 bg-violet-50/50 dark:bg-violet-900/20 p-3.5 flex flex-col gap-1.5 relative shadow-sm shadow-violet-500/5 animate-in fade-in duration-200">
+        <div className="mb-6 rounded-2xl border border-violet-200/60 dark:border-violet-900/40 bg-violet-50/50 backdrop-blur-md dark:bg-violet-900/20 p-3.5 flex flex-col gap-1.5 relative shadow-sm shadow-violet-500/5 animate-in fade-in duration-200">
           <div className="flex items-center gap-1.5 mb-0.5">
             <Sparkles className="w-4 h-4 text-violet-500" />
             <span className="text-xs font-bold text-violet-900 dark:text-violet-200 uppercase tracking-wider">Core Insights</span>
@@ -476,25 +476,25 @@ function WellnessMain({ userId }: { userId: string }) {
 
       {/* Aggregate Score Card */}
       {aggregateScore === null ? (
-        <div className="mb-6 p-5 rounded-3xl border border-dashed border-neutral-250 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-900/10 text-center flex flex-col items-center justify-center animate-in fade-in duration-200">
-          <Sparkles className="w-8 h-8 text-neutral-350 dark:text-neutral-700 mb-2" />
+        <div className="mb-6 p-5 rounded-3xl border border-dashed border-neutral-200 dark:border-neutral-800 bg-neutral-50/50 backdrop-blur-md dark:bg-neutral-900/10 text-center flex flex-col items-center justify-center animate-in fade-in duration-200">
+          <Sparkles className="w-8 h-8 text-neutral-300 dark:text-neutral-700 mb-2" />
           <h3 className="font-bold text-neutral-800 dark:text-neutral-200 text-sm">Run your first scan to see your Wellness Score</h3>
-          <p className="text-[11px] text-neutral-550 max-w-xs mt-1">
+          <p className="text-[11px] text-neutral-500 max-w-xs mt-1">
             Complete a Skin, Eye, or Hair scan above to compute your initial aggregate wellness rating.
           </p>
         </div>
       ) : (
-        <div className="mb-6 p-4 rounded-3xl border border-neutral-250/30 dark:border-neutral-800/40 bg-neutral-50/50 dark:bg-neutral-900/40 flex items-center gap-4 animate-in fade-in duration-200">
+        <div className="mb-6 p-4 rounded-3xl border border-neutral-200/30 dark:border-neutral-800/40 bg-neutral-50/50 backdrop-blur-md dark:bg-neutral-900/40 flex items-center gap-4 animate-in fade-in duration-200">
           <WellnessScoreRing score={aggregateScore} />
           <div className="flex-1">
             <h3 className="font-extrabold text-sm text-neutral-800 dark:text-neutral-200 leading-tight">
               Wellness Score
             </h3>
-            <p className="text-[11px] text-neutral-550 dark:text-neutral-450 mt-0.5 leading-normal">
+            <p className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-0.5 leading-normal">
               Based on {activeTypes.map((t) => t.charAt(0).toUpperCase() + t.slice(1)).join(", ")}
             </p>
           </div>
-          <div className="flex flex-col items-end justify-center gap-2 pl-4 border-l border-neutral-250/40 dark:border-neutral-800/40 shrink-0">
+          <div className="flex flex-col items-end justify-center gap-2 pl-4 border-l border-neutral-200/40 dark:border-neutral-800/40 shrink-0">
             <div className="text-right">
               <span className="text-xl font-black text-indigo-600 dark:text-indigo-400 block leading-tight">
                 {currentMonthScansCount}
@@ -506,7 +506,7 @@ function WellnessMain({ userId }: { userId: string }) {
             <button
               onClick={handleShare}
               disabled={sharing}
-              className="mt-0.5 rounded-xl bg-neutral-100 hover:bg-neutral-250 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-300 px-2 py-1.5 transition-all active:scale-95 disabled:opacity-50 cursor-pointer flex items-center gap-1 text-[10px] font-bold shadow-sm"
+              className="mt-0.5 rounded-xl bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-300 px-2 py-1.5 transition-all active:scale-95 disabled:opacity-50 cursor-pointer flex items-center gap-1 text-[10px] font-bold shadow-sm"
               title="Share wellness score"
             >
               {sharing ? (
@@ -531,7 +531,7 @@ function WellnessMain({ userId }: { userId: string }) {
           className={`flex-1 rounded-xl py-3 text-sm font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
             tab === "skin"
               ? "bg-white dark:bg-neutral-800 text-indigo-600 dark:text-indigo-400 shadow-sm border border-neutral-200/20 dark:border-neutral-700/10"
-              : "text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-350"
+              : "text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300"
           }`}
         >
           <Sparkles className="w-4 h-4" />
@@ -546,7 +546,7 @@ function WellnessMain({ userId }: { userId: string }) {
           className={`flex-1 rounded-xl py-3 text-sm font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
             tab === "eye"
               ? "bg-white dark:bg-neutral-800 text-indigo-600 dark:text-indigo-400 shadow-sm border border-neutral-200/20 dark:border-neutral-700/10"
-              : "text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-350"
+              : "text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300"
           }`}
         >
           <Eye className="w-4 h-4" />
@@ -561,7 +561,7 @@ function WellnessMain({ userId }: { userId: string }) {
           className={`flex-1 rounded-xl py-3 text-sm font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
             tab === "hair"
               ? "bg-white dark:bg-neutral-800 text-indigo-600 dark:text-indigo-400 shadow-sm border border-neutral-200/20 dark:border-neutral-700/10"
-              : "text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-350"
+              : "text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300"
           }`}
         >
           <Sparkles className="w-4 h-4 text-violet-500" />
@@ -584,7 +584,7 @@ function WellnessMain({ userId }: { userId: string }) {
               <img src={compareA.photo_url} alt="Comparison Scan A" className="w-full aspect-[3/4] object-cover" />
               <button
                 onClick={() => setSelectedScan(compareA)}
-                className="text-center font-bold text-xs py-3.5 bg-white dark:bg-neutral-900 text-indigo-600 dark:text-indigo-400 hover:bg-neutral-50 dark:hover:bg-neutral-850 cursor-pointer transition-colors"
+                className="text-center font-bold text-xs py-3.5 bg-white dark:bg-neutral-900 text-indigo-600 dark:text-indigo-400 hover:bg-neutral-50 dark:hover:bg-neutral-800 cursor-pointer transition-colors"
               >
                 Scan A ({new Date(compareA.taken_at).toLocaleDateString("en-IN", { day: "numeric", month: "short" })})
               </button>
@@ -593,7 +593,7 @@ function WellnessMain({ userId }: { userId: string }) {
               <img src={compareB.photo_url} alt="Comparison Scan B" className="w-full aspect-[3/4] object-cover" />
               <button
                 onClick={() => setSelectedScan(compareB)}
-                className="text-center font-bold text-xs py-3.5 bg-white dark:bg-neutral-900 text-indigo-600 dark:text-indigo-400 hover:bg-neutral-50 dark:hover:bg-neutral-850 cursor-pointer transition-colors"
+                className="text-center font-bold text-xs py-3.5 bg-white dark:bg-neutral-900 text-indigo-600 dark:text-indigo-400 hover:bg-neutral-50 dark:hover:bg-neutral-800 cursor-pointer transition-colors"
               >
                 Scan B ({new Date(compareB.taken_at).toLocaleDateString("en-IN", { day: "numeric", month: "short" })})
               </button>
@@ -605,7 +605,7 @@ function WellnessMain({ userId }: { userId: string }) {
       {/* Monthly Grouped History */}
       {groups.length === 0 ? (
         <div className="flex flex-col items-center justify-center text-center py-12 border border-dashed border-neutral-200 dark:border-neutral-800 rounded-3xl bg-neutral-50/50 dark:bg-neutral-900/10">
-          <Camera className="w-8 h-8 text-neutral-350 dark:text-neutral-700 mb-2 animate-bounce" />
+          <Camera className="w-8 h-8 text-neutral-300 dark:text-neutral-700 mb-2 animate-bounce" />
           <h3 className="font-semibold text-neutral-800 dark:text-neutral-200 text-sm">No Scans Recorded</h3>
           <p className="text-xs text-neutral-500 max-w-xs mt-1">
             Tap "New Scan" above to run your first guided AI posture & cosmetic tracking scan.
@@ -694,7 +694,7 @@ function WellnessMain({ userId }: { userId: string }) {
 
               {/* Overall Score Dashboard Card */}
               {selectedScan.is_usable && selectedScan.overall_score != null && (
-                <div className="p-4 bg-neutral-50 dark:bg-neutral-800/40 rounded-2xl border border-neutral-250/30 dark:border-neutral-800/35 flex flex-col items-center text-center">
+                <div className="p-4 bg-neutral-50 dark:bg-neutral-800/40 rounded-2xl border border-neutral-200/30 dark:border-neutral-800/35 flex flex-col items-center text-center">
                   <div className="bg-gradient-to-tr from-indigo-500 to-violet-600 text-white rounded-full w-16 h-16 flex items-center justify-center text-2xl font-black shadow-lg shadow-indigo-500/20 mb-2 select-none animate-pulse">
                     {selectedScan.overall_score}
                   </div>
@@ -761,7 +761,7 @@ function WellnessMain({ userId }: { userId: string }) {
                             style={{ width: `${sub.score}%` }}
                           />
                         </div>
-                        <p className="text-[11px] text-neutral-600 dark:text-neutral-350 leading-relaxed font-medium">
+                        <p className="text-[11px] text-neutral-600 dark:text-neutral-300 leading-relaxed font-medium">
                           {sub.note}
                         </p>
                       </div>
@@ -783,7 +783,7 @@ function WellnessMain({ userId }: { userId: string }) {
                         <span className="text-xs font-bold text-indigo-500 dark:text-indigo-400 block mb-0.5">
                           {obs.area}
                         </span>
-                        <p className="text-sm text-neutral-700 dark:text-neutral-350 leading-relaxed font-medium">
+                        <p className="text-sm text-neutral-700 dark:text-neutral-300 leading-relaxed font-medium">
                           {obs.note}
                         </p>
                       </div>
@@ -813,7 +813,7 @@ function WellnessMain({ userId }: { userId: string }) {
                         <p className="text-xs text-neutral-600 dark:text-neutral-400 leading-normal mb-2">
                           <b>Why:</b> {rec.why}
                         </p>
-                        <p className="text-xs text-neutral-600 dark:text-neutral-400 leading-normal p-2.5 bg-white dark:bg-neutral-900 rounded-xl border border-neutral-100 dark:border-neutral-850">
+                        <p className="text-xs text-neutral-600 dark:text-neutral-400 leading-normal p-2.5 bg-white dark:bg-neutral-900 rounded-xl border border-neutral-100 dark:border-neutral-800">
                           <b>How to use:</b> {rec.how_to_use}
                         </p>
                       </div>
@@ -834,7 +834,7 @@ function WellnessMain({ userId }: { userId: string }) {
             <div className="p-5 bg-white dark:bg-neutral-900 border-t border-neutral-100 dark:border-neutral-800 pb-[calc(1.25rem+env(safe-area-inset-bottom))] shrink-0">
               <button
                 onClick={() => setSelectedScan(null)}
-                className="w-full bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-850 dark:hover:bg-neutral-800 text-neutral-800 dark:text-neutral-200 font-bold py-4 rounded-2xl active:scale-[0.98] transition-all cursor-pointer text-center"
+                className="w-full bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-800 text-neutral-800 dark:text-neutral-200 font-bold py-4 rounded-2xl active:scale-[0.98] transition-all cursor-pointer text-center"
               >
                 Close Results
               </button>

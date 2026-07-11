@@ -1701,3 +1701,33 @@ filler. This step matters because the completion report described the caching
 precedent this design explicitly modeled itself on — "the cache logic works" and "the
 output is actually good" are different claims, and only the first one had been shown.
 No throwaway test scripts left in the repo.
+
+## Phase 35 (Fable, 2026-07-11) — Wellness UI: fix invalid color classes + missing glassmorphism
+
+**User asked for a UI/premium-look audit of the Wellness section.** Found two real, code-
+confirmed gaps rather than a subjective vibe check:
+
+1. **23 invalid Tailwind color classes across `wellness/page.tsx` and
+   `WellnessCaptureSheet.tsx`** — `neutral-250`/`350`/`450`/`550`/`750`/`850` don't exist in
+   Tailwind's default scale (only 50/100/200/.../900/950 are real), and `app/globals.css`'s
+   `@theme` block confirmed no custom extension defines them. Since Tailwind generates no CSS
+   for an undefined class, every border/text using these shades was silently rendering with
+   no color applied at all. Remapped each to the nearest real shade (250→200, 350→300,
+   450→400, 550→500, 750→700, 850→800).
+2. **Missing `backdrop-blur-md`** on the Wellness section's top-level content cards (insight
+   card, aggregate score card, empty state) — the rest of the app's premium redesign
+   (Trends/Admin/Diary) uses `bg-white/50 backdrop-blur-md dark:bg-neutral-900/50` as its
+   established glassmorphism pattern; Wellness had the transparency but never the blur,
+   making its cards read flatter than the rest of the app. Added the blur to the three
+   top-level cards (left nested detail chips un-blurred, matching how Trends only blurs its
+   top-level section cards, not every inner row).
+
+**Verified**: `npx tsc --noEmit` clean, confirmed zero remaining invalid shade classes via
+grep across both files.
+
+**Queued, not yet done**: user asked whether Wellness should use a calmer, distinct accent
+from the rest of the app (currently scattered — violet for insights, indigo for scores,
+emerald for recommendations, no coherent identity). Recommended shifting Wellness's primary
+accent to a soft rose/blush gradient into violet, keeping indigo as the "action" color
+elsewhere in the app. Awaiting confirmation on the exact direction before touching the
+palette — this is a bigger visual-identity change than the two bugs above.
