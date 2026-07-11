@@ -3,6 +3,8 @@
 Short pointer document. For the deep "why is it built this way" reference, read
 `STRUCTURE.md` — that's the source of truth and is kept in sync every session.
 
+**AI Posture/Form Check (2026-07-11, Phase 29)** — Added video-based posture check functionality. Users can record a 5-8s clip during active sets or request checks via "check my squat form" in the AI Assistant chat. Payloads are capped at 1 Mbps to fit under Vercel's 4.5MB serverless limits, camera defaults to rear (environment) at 640x480 resolution, and calls are routed through the Vertex billing safeguard (`thinkingBudget: 0`) under a configurable 25s timeout. The backend implements a 5/day user quota capped via the `ai_suggestions` table (resolved constraint check in migration `0026`).
+
 **App renamed to Core AI (2026-07-10)**, rebranded with an indigo/violet palette and
 lucide-react icons throughout — see UPGRADE.md Phases 16-17 and the "Verification
 pass" entry below for what Antigravity built and what Fable built/fixed on review.

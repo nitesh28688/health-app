@@ -6,6 +6,7 @@ import { useUser, type Profile } from "@/lib/useUser";
 import type { Session } from "@supabase/supabase-js";
 import { AnimatePresence, motion } from "framer-motion";
 import { AssistantSheet } from "@/components/AssistantSheet";
+import { FormCheckSheet } from "@/components/FormCheckSheet";
 import { Bot, Book, Dumbbell, TrendingUp, Users, Smile, Salad, CloudUpload } from "lucide-react";
 import { subscribePendingCount } from "@/lib/offlineQueue";
 
@@ -28,6 +29,8 @@ export function AppShell({ children }: {
   const touchStart = useRef<{x: number, y: number} | null>(null);
   const [pendingWrites, setPendingWrites] = useState(0);
   const [assistantOpen, setAssistantOpen] = useState(false);
+  const [formCheckOpen, setFormCheckOpen] = useState(false);
+  const [formCheckExercise, setFormCheckExercise] = useState("");
 
   useEffect(() => {
     if (!loading && !session) router.replace("/login");
@@ -98,7 +101,21 @@ export function AppShell({ children }: {
         </button>
       </div>
       
-      <AssistantSheet isOpen={assistantOpen} onClose={() => setAssistantOpen(false)} />
+      <AssistantSheet 
+        isOpen={assistantOpen} 
+        onClose={() => setAssistantOpen(false)} 
+        onOpenFormCheck={(exerciseHint) => {
+          setFormCheckExercise(exerciseHint);
+          setFormCheckOpen(true);
+        }}
+      />
+
+      {formCheckOpen && (
+        <FormCheckSheet 
+          exerciseName={formCheckExercise} 
+          onClose={() => setFormCheckOpen(false)} 
+        />
+      )}
 
       <nav className="fixed bottom-0 inset-x-0 border-t border-neutral-200/50 dark:border-neutral-800/50 bg-white/70 dark:bg-neutral-950/70 backdrop-blur-xl pb-[env(safe-area-inset-bottom)] z-50">
         <div className="max-w-md mx-auto flex px-2 py-1">

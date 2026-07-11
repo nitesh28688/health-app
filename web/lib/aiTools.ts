@@ -79,6 +79,16 @@ export const toolDeclarations = [
       },
       required: ["focus"]
     }
+  },
+  {
+    name: "check_form",
+    description: "When the user asks to check, analyze, review, or get feedback on their exercise form or technique (e.g. 'check my squat form', 'is my deadlift form correct?'), propose opening the form-check video recorder. This does not call any AI itself — it proposes a UI action.",
+    parameters: {
+      type: "OBJECT",
+      properties: {
+        exercise_hint: { type: "STRING", description: "The exercise name the user mentioned, if any (e.g. 'squat', 'deadlift')" }
+      }
+    }
   }
 ];
 
@@ -198,6 +208,13 @@ Return a strict JSON object containing:
         } catch {
           throw new Error("AI returned invalid data");
         }
+      }
+      case "check_form": {
+        return {
+          success: true,
+          message: "Opening the form check camera for you.",
+          proposalData: { exercise_hint: args.exercise_hint || "" }
+        };
       }
       default:
         return { error: `Unknown tool: ${name}` };

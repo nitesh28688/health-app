@@ -90,6 +90,10 @@ edit an already-applied migration; add a new one.
 | 0021 | `0021_search_name_local.sql` | `search_foods()` adds `name_local ilike` (the prior version only had the trigram `%` operator, which has a similarity floor and can silently miss short/partial Hindi-name matches) |
 | 0022 | `0022_fasting.sql` | `fasting_sessions` table (start/stop fasting timer), simple owner-only RLS |
 | 0023 | `0023_exercise_images.sql` | `exercises.image_urls text[]` — demo photos, see Phase 13 in `UPGRADE.md` |
+| 0024 | `0024_offline_queue.sql` | Adds `client_id uuid unique` to food, water, workout, and medication logs for offline queue idempotency |
+| 0025 | `0025_match_exercise.sql` | Adds `match_exercise(p_name)` fuzzy matching postgres function to reuse seed library exercises |
+| 0026 | `0026_form_check_cap.sql` | Alters `ai_suggestions_kind_check` constraint to support 'assistant_turn' and 'form_check' kinds |
+
 
 ### Key design decisions worth understanding
 
@@ -225,6 +229,7 @@ profile so pages don't each need their own auth boilerplate.
   a user's last 21 days of `workout_logs` (including any free-text notes on custom
   logs) and asks Gemini for 2-3 short observations + one suggestion. Capped at once
   per user per day via `ai_suggestions` (`kind='workout_tip'`).
+- **`/api/ai/form-check`** — POST route accepting a base64 video payload. Enforces a 5/day daily cap (`kind='form_check'`) and queries Gemini 2.5 Flash under a 25s timeout with thinking budget disabled to return structured posture analysis observations.
 - **`/api/admin/users`** (GET/DELETE) + **`/api/admin/user-detail`** (GET) — the
   admin user-management backend. Both verify the caller is an admin (checks their JWT
   → `profiles.is_admin`) before using the **service-role key** to bypass RLS and read

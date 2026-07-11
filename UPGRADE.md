@@ -1419,3 +1419,43 @@ serving size instead of guessing a generic default, when present.
 **Verified**: `npx tsc --noEmit` clean (prompt-only text change, no type surface). No live
 test image was available to re-verify the specific improvement end-to-end this session —
 worth spot-checking next time a packaged-food photo is logged.
+
+## Phase 29 (Antigravity, 2026-07-11) — AI Posture/Form Check (video-based) — Live Workout Mode
+
+**Goal:** Allow users to record a short video clip (5-8 seconds) of their exercise form during a Live Workout session or from the Core Assistant chat, and get structured form feedback from Vertex AI (Gemini).
+
+**Status:** [x] Done
+
+**Do:**
+1. **Model settings & Cost Routing:** Bypassed reasoning tokens cost by calling through `generateWithFallback` (utilizing `thinkingBudget: 0`). Added a custom `timeoutMs` parameter (default 9000ms, set to 25000ms for form checks) to avoid premature timeouts during video uploads/analysis.
+2. **Bits-per-second Cap:** Enforced `videoBitsPerSecond: 1_000_000` (1 Mbps) in the MediaRecorder initialization to keep base64 video payloads around 1MB to 1.35MB, staying safe under Vercel's 4.5MB serverless request body limits.
+3. **Camera Resolution and Direction:** Set constraints for video capture to `{ video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: "environment" } }` to default to the rear camera with optimized resolution.
+4. **State Lifecycle Handling:** Lifted `formCheckOpen` and `formCheckExercise` state up to `AppShell.tsx` and exposed via an `onOpenFormCheck` prop callback on `AssistantSheet.tsx`, preventing sheet teardown upon Assistant closure.
+5. **Daily Quota:** Added a strict 5/day daily cap per user under the `kind: "form_check"` category in `ai_suggestions` to bound Vertex billing spend (since video tokenization uses ~258-260 tokens/sec).
+6. **Stateless Analysis & UI Sheet:** Created a clean `FormCheckSheet.tsx` bottom-sheet with `z-[60]` (avoiding bottom nav clash) and safe-area padding (`pb-[calc(1.25rem+env(safe-area-inset-bottom))]`). Surfaced the exercise guess, observations, and a persistent trainer disclaimer. The backend model is returned to the test client for verification, but hidden from the user interface.
+7. **Assistant Tool:** Wire `check_form` tool declaration in `aiTools.ts` and route it to `AssistantSheet.tsx` proposals.
+
+**Verify:**
+- Created `web/test-form-check.mjs` which registers a test user, uploads a real video file (3s MDN rabbit sample), confirms Vertex routing by checking the returned model identifier, loops 6 times to verify the 6th call hits a 429 quota block, and cleans up the test account. Verified and passed.
+- TypeScript compiler runs clean (`npx tsc --noEmit`).
+
+
+**Review (Fable, 2026-07-11)**: independently verified the state-lift fix (traced the full
+flow — `AssistantSheet` now takes `onOpenFormCheck` as a prop and calls it, `formCheckOpen`
+genuinely lives in `AppShell`, so `FormCheckSheet` survives `AssistantSheet` closing —
+confirmed correct, not just claimed), camera constraints, z-index, safe-area padding,
+disclaimer, and cap logic by reading the actual diff. `npx tsc --noEmit` clean
+independently. Removed `web/test-form-check.mjs` before committing (throwaway verification
+script, per this repo's standing convention of not shipping those).
+
+**Found on review — bigger bug than the migration alone fixed**: `0026_form_check_cap.sql`
+only added `assistant_turn` and `form_check` to `ai_suggestions_kind_check`, but two more
+`kind` values already in real use were *never* in the constraint, before or after this
+migration — `daily_tip_calls` (the daily-tip route's own 15/day regeneration cap) and
+`workout_suggest` (the pre-existing `suggest-exercises` route's 10/day cap). Since neither
+call site checks the upsert's error return, both caps have been silently unenforced since
+each was built — the cap-tracking row never wrote, so the read-back `used` count always
+resolved to 0. Extended the migration to cover all six `kind` values actually in use.
+Verified live against the real database (post-fix, all four previously-broken kinds now
+fail only on the expected foreign-key check with a dummy user id, not the `kind` check —
+confirming the constraint itself is no longer the blocker).

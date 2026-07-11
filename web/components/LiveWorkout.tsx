@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { ExerciseDemo } from "./ExerciseDemo";
 import { PartyPopper } from "lucide-react";
+import { FormCheckSheet } from "./FormCheckSheet";
 
 export type ActiveEx = {
   id: string;
@@ -31,6 +32,7 @@ export function LiveWorkout({ initialExercises, sessionTitle, onFinish, onCancel
   const [exercises, setExercises] = useState<ActiveEx[]>(JSON.parse(JSON.stringify(initialExercises)));
   const [exIdx, setExIdx] = useState(0);
   const [setIdx, setSetIdx] = useState(0);
+  const [formCheckOpen, setFormCheckOpen] = useState(false);
 
   const [globalSeconds, setGlobalSeconds] = useState(0);
   const [restSeconds, setRestSeconds] = useState<number | null>(null);
@@ -224,7 +226,7 @@ export function LiveWorkout({ initialExercises, sessionTitle, onFinish, onCancel
                   </span>
                 </div>
                 
-                <div className="flex gap-3">
+                <div className="flex gap-3 mb-4">
                   <div className="flex-1">
                     <label className="text-xs font-bold text-neutral-500 uppercase tracking-wider mb-1 block">Weight (kg)</label>
                     <input type="number" inputMode="decimal" placeholder="B.W." value={s.weight_kg} onChange={e => updateCurrentSet('weight_kg', e.target.value)} 
@@ -241,6 +243,14 @@ export function LiveWorkout({ initialExercises, sessionTitle, onFinish, onCancel
                       className="w-full text-center text-xl font-bold py-3 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all" />
                   </div>
                 </div>
+
+                <button
+                  type="button"
+                  onClick={() => setFormCheckOpen(true)}
+                  className="w-full py-2.5 px-4 rounded-xl border border-dashed border-indigo-500/40 bg-indigo-500/5 hover:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                >
+                  Check my form 📹
+                </button>
               </div>
             );
           })}
@@ -257,6 +267,13 @@ export function LiveWorkout({ initialExercises, sessionTitle, onFinish, onCancel
           Skip this exercise
         </button>
       </div>
+
+      {formCheckOpen && (
+        <FormCheckSheet
+          exerciseName={currentEx.exercise.name}
+          onClose={() => setFormCheckOpen(false)}
+        />
+      )}
     </div>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import { Bot, Send, Dumbbell, AlertTriangle } from "lucide-react";
+import { Bot, Send, Dumbbell, AlertTriangle, Video } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 interface Message {
@@ -14,9 +14,11 @@ interface Message {
 export function AssistantSheet({
   isOpen,
   onClose,
+  onOpenFormCheck,
 }: {
   isOpen: boolean;
   onClose: () => void;
+  onOpenFormCheck: (hint: string) => void;
 }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -224,6 +226,35 @@ export function AssistantSheet({
               {m.proposals && m.proposals.length > 0 && (
                 <div className="mt-2 w-full min-w-[240px]">
                   {m.proposals.map((p, i) => {
+                    if (p.type === "check_form") {
+                      return (
+                        <div key={i} className="bg-white dark:bg-neutral-900 border border-indigo-200 dark:border-indigo-800 rounded-xl overflow-hidden shadow-sm mt-2 first:mt-0">
+                          <div className="bg-indigo-50 dark:bg-indigo-900/20 px-3 py-2 border-b border-indigo-100 dark:border-indigo-800/50 flex items-center gap-2">
+                            <Video className="w-4 h-4 text-indigo-600" />
+                            <span className="text-sm font-semibold text-indigo-900 dark:text-indigo-200">
+                              Form Check
+                            </span>
+                          </div>
+                          <div className="p-3">
+                            <p className="text-sm font-medium mb-1">
+                              {p.exercise_hint ? `Check your ${p.exercise_hint} form` : "Check posture / form"}
+                            </p>
+                            <p className="text-xs text-neutral-500 mb-3">
+                              Record a 5-8 second clip to analyze technique.
+                            </p>
+                            <button 
+                              onClick={() => {
+                                onOpenFormCheck(p.exercise_hint || "");
+                                onClose();
+                              }}
+                              className="w-full bg-indigo-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 active:scale-95 transition-all cursor-pointer"
+                            >
+                              Open Form Check
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    }
                     if (p.type === "start_workout") {
                       const estMins = Math.round(p.exercises?.reduce((sum: number, ex: any) => sum + (ex.duration_min || ((ex.sets || 3) * 1.5)), 0) || 0);
                       return (

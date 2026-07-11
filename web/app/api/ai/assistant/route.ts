@@ -141,6 +141,9 @@ export async function POST(req: NextRequest) {
         if (name === "suggest_workout" && result.exercises) {
           proposals.push({ type: "start_workout", ...result });
         }
+        if (name === "check_form" && result.success && result.proposalData) {
+          proposals.push({ type: "check_form", ...result.proposalData });
+        }
         
         functionResponses.push({
           functionResponse: {

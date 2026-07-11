@@ -85,7 +85,7 @@ async function callAiStudio(model: string, parts: object[], responseSchema: obje
   );
 }
 
-export async function generateWithFallback(parts: object[], responseSchema?: object) {
+export async function generateWithFallback(parts: object[], responseSchema?: object, timeoutMs: number = PER_MODEL_TIMEOUT_MS) {
   const useVertex = !!process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
   const attempts: { model: string; call: (signal: AbortSignal) => Promise<Response> }[] = [];
   if (useVertex) {
@@ -98,12 +98,16 @@ export async function generateWithFallback(parts: object[], responseSchema?: obj
   }
 
   let lastStatus = 0;
-  for (const { call } of attempts) {
+  for (const { model, call } of attempts) {
     const controller = new AbortController();
-    const killer = setTimeout(() => controller.abort(), PER_MODEL_TIMEOUT_MS);
+    const killer = setTimeout(() => controller.abort(), timeoutMs);
     try {
       const res = await call(controller.signal);
-      if (res.ok) return res;
+      if (res.ok) {
+        console.log(`[Gemini] Model ${model} succeeded`);
+        (res as any).selectedModel = model;
+        return res;
+      }
       lastStatus = res.status;
       // 503 = overloaded, 429 = quota exceeded, 404 = model not available on this
       // backend — all worth trying the next entry in the chain rather than failing
