@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabase";
 import { WellnessCaptureSheet } from "@/components/WellnessCaptureSheet";
 import { compressImage } from "@/lib/imageCompress";
 import { PageSkeleton } from "@/lib/Skeleton";
+import { awardBadge } from "@/lib/badges";
 import { Sparkles, Camera, Eye, RefreshCw, X, AlertTriangle, CheckCircle, Info, Calendar, Loader2 } from "lucide-react";
 
 interface Scan {
@@ -20,6 +21,25 @@ interface Scan {
   overall_score?: number | null;
   sub_scores?: { category: string; score: number; note: string }[] | null;
   classification?: string | null;
+}
+
+function WellnessScoreRing({ score }: { score: number }) {
+  const radius = 26;
+  const circumference = 2 * Math.PI * radius;
+  const clamped = Math.max(0, Math.min(100, score));
+  const offset = circumference - (clamped / 100) * circumference;
+  return (
+    <div className="relative flex items-center justify-center w-20 h-20 shrink-0">
+      <svg className="w-full h-full transform -rotate-90" viewBox="0 0 64 64">
+        <circle cx="32" cy="32" r={radius} stroke="currentColor" strokeWidth="6" fill="transparent"
+          className="text-neutral-200 dark:text-neutral-850" />
+        <circle cx="32" cy="32" r={radius} stroke="currentColor" strokeWidth="6" fill="transparent"
+          strokeDasharray={circumference} strokeDashoffset={offset} strokeLinecap="round"
+          className={clamped >= 80 ? "text-emerald-500" : clamped >= 50 ? "text-indigo-500" : "text-amber-500"} />
+      </svg>
+      <span className="absolute text-lg font-black text-neutral-900 dark:text-white">{Math.round(clamped)}</span>
+    </div>
+  );
 }
 
 function monthLabel(dateStr: string) {
@@ -132,6 +152,30 @@ function WellnessMain({ userId }: { userId: string }) {
 
       // 4. Reload lists and show result details sheet
       await load();
+
+      // 5. Query latest scans to evaluate badges award status
+      const { data: updatedScans } = await supabase
+        .from("wellness_scans")
+        .select("*")
+        .eq("user_id", userId);
+      
+      const list = (updatedScans as Scan[]) || [];
+      const usableCount = list.filter((s) => s.is_usable).length;
+
+      if (usableCount === 1) {
+        await awardBadge(userId, "wellness_first_scan");
+      }
+
+      const hasSkin = list.some((s) => s.scan_type === "skin" && s.is_usable);
+      const hasEye = list.some((s) => s.scan_type === "eye" && s.is_usable);
+      const hasHair = list.some((s) => s.scan_type === "hair" && s.is_usable);
+      if (hasSkin && hasEye && hasHair) {
+        await awardBadge(userId, "wellness_full_spectrum");
+      }
+
+      if (aiBody.trend && typeof aiBody.trend.score_delta === "number" && aiBody.trend.score_delta >= 10) {
+        await awardBadge(userId, "wellness_glow_up");
+      }
       
       // Auto-open the new scan results
       const { data: latestScans } = await supabase
@@ -176,6 +220,42 @@ function WellnessMain({ userId }: { userId: string }) {
     else groups.push({ label, rows: [s] });
   }
 
+  const latestScansByType: Record<"skin" | "eye" | "hair", Scan | null> = {
+    skin: null,
+    eye: null,
+    hair: null
+  };
+
+  if (scans) {
+    for (const s of scans) {
+      if (s.is_usable && s.overall_score != null) {
+        if (!latestScansByType[s.scan_type]) {
+          latestScansByType[s.scan_type] = s;
+        }
+      }
+    }
+  }
+
+  const activeTypes = Object.entries(latestScansByType)
+    .filter(([_, scan]) => scan !== null)
+    .map(([type]) => type);
+
+  const scoresToAverage = Object.values(latestScansByType)
+    .filter((scan): scan is Scan => scan !== null)
+    .map((scan) => scan.overall_score || 0);
+
+  const aggregateScore = scoresToAverage.length > 0
+    ? Math.round(scoresToAverage.reduce((a, b) => a + b, 0) / scoresToAverage.length)
+    : null;
+
+  const currentMonthScansCount = scans
+    ? scans.filter((s) => {
+        const scanDate = new Date(s.taken_at + "T12:00:00");
+        const today = new Date();
+        return scanDate.getFullYear() === today.getFullYear() && scanDate.getMonth() === today.getMonth();
+      }).length
+    : 0;
+
   return (
     <main className="px-5 pt-6 pb-12">
       {/* Header */}
@@ -215,6 +295,37 @@ function WellnessMain({ userId }: { userId: string }) {
       <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-6 leading-relaxed">
         Guided scans analyze facial skin, eye appearance, or hair segmenter coverage, listing unbranded active recommendations. Tap two scans in the history grid to compare them side-by-side.
       </p>
+
+      {/* Aggregate Score Card */}
+      {aggregateScore === null ? (
+        <div className="mb-6 p-5 rounded-3xl border border-dashed border-neutral-250 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-900/10 text-center flex flex-col items-center justify-center animate-in fade-in duration-200">
+          <Sparkles className="w-8 h-8 text-neutral-350 dark:text-neutral-700 mb-2" />
+          <h3 className="font-bold text-neutral-800 dark:text-neutral-200 text-sm">Run your first scan to see your Wellness Score</h3>
+          <p className="text-[11px] text-neutral-550 max-w-xs mt-1">
+            Complete a Skin, Eye, or Hair scan above to compute your initial aggregate wellness rating.
+          </p>
+        </div>
+      ) : (
+        <div className="mb-6 p-4 rounded-3xl border border-neutral-250/30 dark:border-neutral-800/40 bg-neutral-50/50 dark:bg-neutral-900/40 flex items-center gap-4 animate-in fade-in duration-200">
+          <WellnessScoreRing score={aggregateScore} />
+          <div className="flex-1">
+            <h3 className="font-extrabold text-sm text-neutral-800 dark:text-neutral-200 leading-tight">
+              Wellness Score
+            </h3>
+            <p className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-0.5 leading-normal">
+              Based on {activeTypes.map((t) => t.charAt(0).toUpperCase() + t.slice(1)).join(", ")}
+            </p>
+          </div>
+          <div className="text-right border-l border-neutral-250/40 dark:border-neutral-800/40 pl-4 shrink-0">
+            <span className="text-xl font-black text-indigo-600 dark:text-indigo-400 block leading-tight">
+              {currentMonthScansCount}
+            </span>
+            <span className="text-[9px] font-black uppercase text-neutral-400 tracking-wider">
+              Scans this month
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* Tab Switcher */}
       <div className="flex gap-2 p-1 bg-neutral-100 dark:bg-neutral-900/60 rounded-2xl mb-6 border border-neutral-200/20 dark:border-neutral-800/10">

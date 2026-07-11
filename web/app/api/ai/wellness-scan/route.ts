@@ -189,13 +189,19 @@ Observations & recommendations schema:
 
   const newScanId = insertedScan?.id;
 
-  // 5. Query prior scan of same scan_type to compute trend/delta
+  // 5. Query prior scan of same scan_type to compute trend/delta. Must exclude
+  // unusable scans (bad photo, wrong subject) — otherwise a failed first
+  // attempt (score forced to 0) becomes the comparison baseline, producing a
+  // huge fake "improvement" the moment the user takes a real photo. Found via
+  // a live test showing previous_score: 0 on what should've been a genuine
+  // first scan — the prior scan was actually an earlier unusable dog photo.
   let trend = null;
   if (newScanId) {
     const { data: priorScan } = await db.from("wellness_scans")
       .select("overall_score, taken_at")
       .eq("user_id", userId)
       .eq("scan_type", scanType)
+      .eq("is_usable", true)
       .neq("id", newScanId)
       .order("created_at", { ascending: false })
       .limit(1)

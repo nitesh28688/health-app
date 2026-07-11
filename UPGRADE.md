@@ -1541,3 +1541,65 @@ exactly the class of bug that needs a real code-reading review pass, not just au
 tests. Fixed directly (one-line `.close()` call) rather than round-tripped back to
 Antigravity, since it was small and contained. Confirmed `web/test-wellness-scan.mjs` was
 actually deleted before this commit.
+
+## Phase 32 (Antigravity, 2026-07-11) — Aggregate Wellness Score + Badges
+
+**Goal:** Implement a client-side aggregate Wellness Score card showing average usable scores (Skin, Eye, Hair) and calendar month scan count, and introduce three new wellness badges under the existing badge framework.
+
+**Status:** [x] Done
+
+**Do:**
+1. **Added Wellness Badges:** Added 3 new badges to `BADGES` array in [badges.ts](file:///c:/Users/mulch/Downloads/Projects/health-app/web/lib/badges.ts):
+   - `wellness_first_scan` (completed first usable wellness scan)
+   - `wellness_full_spectrum` (scanned skin, eye, and hair at least once)
+   - `wellness_glow_up` (improved score by 10+ points)
+2. **Scoring Logic & Visual Ring:** Added client-side calculation in [page.tsx](file:///c:/Users/mulch/Downloads/Projects/health-app/web/app/wellness/page.tsx) averaging the latest usable scores. Added `WellnessScoreRing` replicating the exact SVG styles and dimensions of Trends page's `GoalRing`. Added scans-this-month count statistic.
+3. **Responsive Score Card Layout:** Rendered a card displaying the score progress ring, source scans list, and scans-this-month counter with empty/prompt states for users with zero usable scans.
+4. **Trigger Badge Awards:** Wired conditional badge award calls inside the `handleCapture` success callback. Added optional chaining (`aiBody.trend?.score_delta`) to ensure null-safety on a user's first-ever scan.
+
+**Verify:**
+- Executed `web/test-wellness-scan.mjs` verifying:
+  - Zero usable scans correctly yields a `null` aggregate score.
+  - Usable Skin scan yields aggregate = Skin score.
+  - Adding Eye scan averages Skin + Eye scores.
+  - Adding Hair scan averages Skin + Eye + Hair scores.
+  - Badges award correctly on first scan (`wellness_first_scan` + `wellness_glow_up` when score increases by 75 from 0) and when all three types have scans (`wellness_full_spectrum`).
+- Profile page verified to dynamically pull from the `BADGES` array.
+- TypeScript compiles cleanly (`npx tsc --noEmit`).
+- Removed `web/test-wellness-scan.mjs` before commit.
+
+
+## Phase 32 (Antigravity, 2026-07-11) — Aggregate Wellness Score + Badges
+
+**Goal:** A headline Wellness Score card averaging the user's latest usable Skin/Eye/Hair
+scan scores, plus three new badges (first scan, all three types scanned, a 10+ point
+score improvement) reusing the existing badge system. No migration — computed entirely
+from data already in place.
+
+**Built:** `WellnessScoreRing` (matches the Trends page `GoalRing` visual language),
+client-side aggregate averaging only `is_usable: true` latest-per-type scans (missing
+types excluded, not zeroed), an empty state instead of a misleading 0, a "scans this
+month" count, and three `BADGES` entries wired into the capture-success flow via the
+existing `awardBadge()` helper.
+
+**Review (Fable, 2026-07-11)**: independently verified the diff. Aggregate-score and
+badge-trigger logic are correct (confirmed `usableCount === 1` correctly identifies a
+genuine first scan, `hasSkin && hasEye && hasHair` correctly gates full-spectrum, the
+null-safety guard on `score_delta` was implemented exactly as requested). `npx tsc
+--noEmit` clean independently. Confirmed all three new `badge_code` values pass live
+against the real database (`user_badges.badge_code` has no CHECK constraint, unlike
+`ai_suggestions.kind` — no regression risk here). Confirmed `web/test-wellness-scan.mjs`
+was deleted before commit.
+
+**Found and fixed on review — a real bug, not just a style nit**: the live test output
+itself showed `previous_score: 0` on what was supposed to be a user's genuinely first
+Skin scan. Root cause: Phase 31's trend/prior-scan query (`web/app/api/ai/wellness-scan/
+route.ts`) never filtered on `is_usable`, so an earlier *unusable* scan (a test dog
+photo, forced to `overall_score: 0` per the unusable-photo rule) was picked up as the
+comparison baseline. This meant any real first scan following a fumbled attempt would
+show a large fake "improvement" — and in this exact test run, spuriously awarded
+`wellness_glow_up` for a delta that was really just "garbage score 0 → real score 75,"
+not genuine progress. Fixed by adding `.eq("is_usable", true)` to the prior-scan query.
+This is a good example of why raw test output needs to be read critically rather than
+trusted at "all tests passed" face value — the bug was sitting directly in the pasted
+log, not hidden in code no one looked at.

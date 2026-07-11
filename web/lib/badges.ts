@@ -36,6 +36,24 @@ export const BADGES: BadgeDef[] = [
     description: "Won a group challenge.",
     icon: "🏆",
   },
+  {
+    code: "wellness_first_scan",
+    name: "First Scan",
+    description: "Completed your first Wellness scan.",
+    icon: "✨",
+  },
+  {
+    code: "wellness_full_spectrum",
+    name: "Full Spectrum",
+    description: "Scanned Skin, Eye, and Hair at least once.",
+    icon: "🌈",
+  },
+  {
+    code: "wellness_glow_up",
+    name: "Glow Up",
+    description: "Improved a Wellness score by 10+ points since your last scan.",
+    icon: "📈",
+  },
 ];
 
 import { supabase } from "./supabase";
