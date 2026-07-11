@@ -3,6 +3,15 @@
 Short pointer document. For the deep "why is it built this way" reference, read
 `STRUCTURE.md` - that's the source of truth and is kept in sync every session.
 
+**Samsung tracking fallback hardening (2026-07-11, Phase 42)** - Removed the duplicate
+in-page Scan/Reports control from `/wellness`; the Wellness bottom navigation is the single
+place to switch views. The Skin/Eye fallback now runs on an independent 2.2-second camera
+session timer, rather than depending on MediaPipe's render loop. It shares a successful-face
+counter with that loop, so an active Samsung Internet preview that yields zero landmarks
+reliably switches to the green, enabled manual-capture state. Model-load and tracking-error
+fallbacks also use that same state transition. TypeScript verified clean with
+`npx.cmd tsc --noEmit`.
+
 **Wellness polish + Samsung Internet fallback fix (2026-07-11, Phase 41)** - Wellness
 Mode bottom nav is now intentionally limited to `Scan`, `Reports`, and `Profile`; the
 old Skin/Eye/Hair nav entries were removed because they all landed on the same experience.

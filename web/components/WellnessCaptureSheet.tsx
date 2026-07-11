@@ -29,6 +29,8 @@ export function WellnessCaptureSheet({ scanType, onClose, onCapture }: WellnessC
   const activeRef = useRef(true);
   const alignRef = useRef<"red" | "green">("red");
   const greenTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const successfulFaceDetectionsRef = useRef(0);
+  const manualFallbackRef = useRef(false);
 
   // 1. Load MediaPipe models lazily and cache them
   useEffect(() => {
@@ -66,8 +68,7 @@ export function WellnessCaptureSheet({ scanType, onClose, onCapture }: WellnessC
         if (!loaded && activeRef.current) {
           console.warn("MediaPipe load timed out. Falling back to manual capture.");
           isModelLoading = false;
-          setModelStatus("fallback");
-          setGuideMsg("Live guide unavailable — center yourself and capture manually.");
+          enterManualFallback();
         }
       }, 6000);
 
@@ -117,8 +118,7 @@ export function WellnessCaptureSheet({ scanType, onClose, onCapture }: WellnessC
         clearTimeout(modelTimeout);
         isModelLoading = false;
         if (activeRef.current) {
-          setModelStatus("fallback");
-          setGuideMsg("Live guide unavailable — center yourself and capture manually.");
+          enterManualFallback();
         }
       }
     }
@@ -143,6 +143,22 @@ export function WellnessCaptureSheet({ scanType, onClose, onCapture }: WellnessC
     };
   }, [facingMode, modelStatus]);
 
+  // Samsung Internet can render a live camera preview while its video frames
+  // remain invisible to the MediaPipe WASM runtime. Watch the session itself,
+  // not only the render loop, so that condition always reaches manual capture.
+  useEffect(() => {
+    if (scanType === "hair" || cameraStatus !== "active" || modelStatus !== "ready") return;
+
+    const fallbackTimer = setTimeout(() => {
+      if (activeRef.current && successfulFaceDetectionsRef.current === 0) {
+        console.warn("Face tracking returned no landmarks after camera activation. Falling back to manual capture.");
+        enterManualFallback();
+      }
+    }, 2200);
+
+    return () => clearTimeout(fallbackTimer);
+  }, [cameraStatus, modelStatus, scanType]);
+
   async function startCameraFlow() {
     if (!navigator.onLine) {
       setCameraStatus("error");
@@ -152,6 +168,10 @@ export function WellnessCaptureSheet({ scanType, onClose, onCapture }: WellnessC
 
     // Stop current stream before restarting
     stopCamera();
+    if (modelStatus !== "fallback") {
+      successfulFaceDetectionsRef.current = 0;
+      manualFallbackRef.current = false;
+    }
     setCameraStatus("init");
 
     // Fail-safe: getUserMedia() has no built-in timeout. If the permission
@@ -209,8 +229,7 @@ export function WellnessCaptureSheet({ scanType, onClose, onCapture }: WellnessC
             clearTimeout(openTimeout);
             videoRef.current.play().catch(() => {});
             setCameraStatus("active");
-            const loaded = scanType === "hair" ? cachedSegmenter : cachedLandmarker;
-            if (modelStatus === "ready" || loaded) {
+            if (modelStatus === "ready") {
               startTrackingLoop();
             }
           }
@@ -237,6 +256,8 @@ export function WellnessCaptureSheet({ scanType, onClose, onCapture }: WellnessC
   }
 
   function enterManualFallback() {
+    if (manualFallbackRef.current) return;
+    manualFallbackRef.current = true;
     if (greenTimerRef.current) {
       clearTimeout(greenTimerRef.current);
       greenTimerRef.current = null;
@@ -246,7 +267,7 @@ export function WellnessCaptureSheet({ scanType, onClose, onCapture }: WellnessC
     setAlignment("green");
     setAutoCaptureSecs(null);
     setModelStatus("fallback");
-    setGuideMsg("Live guide unavailable â€” center yourself and capture manually.");
+    setGuideMsg("Live guide unavailable \u2014 center yourself and capture manually.");
   }
 
   // 3. MediaPipe tracking loops
@@ -259,7 +280,6 @@ export function WellnessCaptureSheet({ scanType, onClose, onCapture }: WellnessC
     let lastVideoTime = -1;
     let lastProcessedTime = 0;
     let consecutiveFailures = 0;
-    let successfulFaceDetections = 0;
     const trackingStartedAt = performance.now();
 
     function renderLoop() {
@@ -311,11 +331,11 @@ export function WellnessCaptureSheet({ scanType, onClose, onCapture }: WellnessC
             if (cachedLandmarker) {
               const results = cachedLandmarker.detectForVideo(v, now);
               if (results.faceLandmarks && results.faceLandmarks.length > 0) {
-                successfulFaceDetections++;
+                successfulFaceDetectionsRef.current++;
                 const landmarks = results.faceLandmarks[0];
                 processLandmarks(landmarks, c.width, c.height, ctx);
               } else {
-                const hasNeverDetectedFace = successfulFaceDetections === 0;
+                const hasNeverDetectedFace = successfulFaceDetectionsRef.current === 0;
                 const hasTrackedForTwoSeconds = now - trackingStartedAt >= 2000;
 
                 if (hasNeverDetectedFace && hasTrackedForTwoSeconds) {

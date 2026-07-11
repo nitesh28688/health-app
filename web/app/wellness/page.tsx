@@ -490,17 +490,6 @@ function WellnessMain({ userId }: { userId: string }) {
         </div>
       )}
 
-      <div className="mb-5 grid grid-cols-2 gap-1 rounded-2xl bg-neutral-100 dark:bg-neutral-900 p-1 border border-neutral-200/60 dark:border-neutral-800/60">
-        <button onClick={() => router.replace("/wellness")}
-          className={"py-2.5 rounded-xl text-sm font-black transition-all cursor-pointer " + (wellnessView === "scan" ? "bg-white dark:bg-neutral-800 text-rose-600 dark:text-rose-400 shadow-sm" : "text-neutral-500")}>
-          Scan
-        </button>
-        <button onClick={() => router.replace("/wellness?view=reports")}
-          className={"py-2.5 rounded-xl text-sm font-black transition-all cursor-pointer " + (wellnessView === "reports" ? "bg-white dark:bg-neutral-800 text-rose-600 dark:text-rose-400 shadow-sm" : "text-neutral-500")}>
-          Reports
-        </button>
-      </div>
-
       {wellnessView === "scan" ? (
         <>
 
