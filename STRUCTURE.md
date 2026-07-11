@@ -951,7 +951,9 @@ pre-skip exercise list instead of nothing. Fixed by routing that case through `o
 - Contains Skin, Eye, and Hair capture/analysis logic via `WellnessCaptureSheet.tsx`.
 - Uses two sub-views: Scan (`/wellness`) for score + capture actions, and Reports (`/wellness?view=reports`) for latest results, badges, compare mode, history, and report sheets.
 - Wellness Mode bottom nav is `Scan`, `Reports`, `Profile`; old Skin/Eye/Hair nav entries were removed because they all opened the same page.
-- Displays an aggregate Wellness Score Card and generates a branded 1080x1080 share image that draws `/icon-192.png` into the canvas.
+- Displays an aggregate Wellness Score Card and generates a branded 1080x1080 share image (with glowing gradients, perfect centering, and improved spacing) that draws `/icon-192.png` into the canvas.
+- Features a highly clinical Downloadable PDF Report (via `jspdf` and `html2canvas` in `PDFReportTemplate`) allowing users to save and print their detailed metrics and SVG trend graphs.
+- Score rings and progress bars use `framer-motion` for smooth, micro-animated reveals.
 - Fetches and displays a Weekly Wellness Insights Card via `/api/ai/wellness-insight`, heavily caching unchanged scan state to minimize AI cost.
 - Supports confirm-gated scan/report deletion from history rows and the report sheet footer.
 - Capture is manual-only. `WellnessCaptureSheet` no longer imports MediaPipe or auto-detects face/hair alignment; it opens the camera, shows a scientific framing guide, lets the user capture deliberately, then plays a short scan-line confirmation before submitting the image.

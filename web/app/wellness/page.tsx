@@ -1,5 +1,5 @@
 "use client";
-import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AppShell } from "../AppShell";
 import { supabase } from "@/lib/supabase";
@@ -7,10 +7,14 @@ import { WellnessCaptureSheet } from "@/components/WellnessCaptureSheet";
 import { compressImage } from "@/lib/imageCompress";
 import { PageSkeleton } from "@/lib/Skeleton";
 import { awardBadge, BADGES } from "@/lib/badges";
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
+import { PDFReportTemplate } from "@/components/PDFReportTemplate";
+import { motion } from "framer-motion";
 import {
   Sparkles, Camera, X, AlertTriangle, CheckCircle,
   Loader2, Share2, Lock, TrendingUp, TrendingDown, Minus, ChevronRight,
-  Sun, Moon, Flame, Clock, Zap, Star, Trash2, ScanLine
+  Sun, Moon, Flame, Clock, Zap, Star, Trash2, ScanLine, Download
 } from "lucide-react";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -90,8 +94,12 @@ function ScoreRing({ score, size = "md" }: { score: number; size?: "sm" | "md" |
     <div className={`relative flex items-center justify-center ${cls} shrink-0`}>
       <svg className="w-full h-full transform -rotate-90" viewBox={vb}>
         <circle cx={cx} cy={cx} r={r} stroke="currentColor" strokeWidth={sw} fill="transparent" className="text-neutral-200 dark:text-neutral-800" />
-        <circle cx={cx} cy={cx} r={r} stroke="currentColor" strokeWidth={sw} fill="transparent"
-          strokeDasharray={circ} strokeDashoffset={offset} strokeLinecap="round" className={col} />
+        <motion.circle cx={cx} cy={cx} r={r} stroke="currentColor" strokeWidth={sw} fill="transparent"
+          strokeDasharray={circ} strokeLinecap="round" className={col} 
+          initial={{ strokeDashoffset: circ }}
+          animate={{ strokeDashoffset: offset }}
+          transition={{ duration: 1.5, ease: "easeOut" }}
+        />
       </svg>
       <span className={`absolute font-black ${txt} text-neutral-900 dark:text-white`}>{Math.round(c)}</span>
     </div>
@@ -146,6 +154,8 @@ function WellnessMain({ userId }: { userId: string }) {
   const [earnedBadges, setEarnedBadges] = useState<Set<string>>(new Set());
   const [userProfile, setUserProfile] = useState<{ name: string; email: string } | null>(null);
   const [reportTab, setReportTab] = useState<"overview" | "routine">("overview");
+  const [downloadingPDF, setDownloadingPDF] = useState(false);
+  const pdfRef = useRef<HTMLDivElement>(null);
 
   const latestByType = useMemo(() => {
     const r: Record<ScanType, Scan | null> = { skin: null, eye: null, hair: null };
@@ -318,108 +328,122 @@ function WellnessMain({ userId }: { userId: string }) {
     if (!scan.is_usable || scan.overall_score == null) return;
     setSharingDetailed(true);
     try {
-      const W = 1080, H = 1920;
+      const W = 1080, H = 2160;
       const canvas = document.createElement("canvas"); canvas.width = W; canvas.height = H;
       const ctx = canvas.getContext("2d")!;
-      const bg = ctx.createLinearGradient(0, 0, 0, H);
-      bg.addColorStop(0, "#0f0a1a"); bg.addColorStop(0.4, "#1e1b4b"); bg.addColorStop(1, "#0d0d1a");
-      ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+      // Rich background with glows
+      ctx.fillStyle = "#020617"; ctx.fillRect(0, 0, W, H);
+      const glow1 = ctx.createRadialGradient(W / 2, 450, 0, W / 2, 450, 700);
+      glow1.addColorStop(0, "rgba(244,63,94,0.18)"); glow1.addColorStop(1, "transparent");
+      ctx.fillStyle = glow1; ctx.fillRect(0, 0, W, H);
+      const glow2 = ctx.createRadialGradient(W / 2, H - 300, 0, W / 2, H - 300, 900);
+      glow2.addColorStop(0, "rgba(139,92,246,0.15)"); glow2.addColorStop(1, "transparent");
+      ctx.fillStyle = glow2; ctx.fillRect(0, 0, W, H);
+      
       ctx.strokeStyle = "rgba(255,255,255,0.03)"; ctx.lineWidth = 1;
-      for (let r = 80; r <= 600; r += 100) { ctx.beginPath(); ctx.arc(W / 2, 380, r, 0, Math.PI * 2); ctx.stroke(); }
+      for (let r = 120; r <= 900; r += 140) { ctx.beginPath(); ctx.arc(W / 2, 450, r, 0, Math.PI * 2); ctx.stroke(); }
+      
       const meta = SCAN_META[scan.scan_type];
       ctx.textAlign = "center"; ctx.textBaseline = "middle";
       // Header
-      ctx.fillStyle = "#fff"; ctx.font = "900 52px system-ui,sans-serif"; ctx.fillText("CORE AI", W / 2, 90);
-      ctx.font = "500 24px system-ui,sans-serif"; ctx.fillStyle = "rgba(255,255,255,0.35)"; ctx.fillText("Wellness Intelligence Report", W / 2, 132);
+      ctx.fillStyle = "#fff"; ctx.font = "900 56px system-ui,sans-serif"; ctx.fillText("CORE AI", W / 2, 100);
+      ctx.font = "500 24px system-ui,sans-serif"; ctx.fillStyle = "rgba(255,255,255,0.4)"; ctx.fillText("Wellness Intelligence Report", W / 2, 148);
       // Scan type pill
       ctx.fillStyle = "rgba(251,113,133,0.15)"; ctx.strokeStyle = "#fb7185"; ctx.lineWidth = 1.5;
-      ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(W / 2 - 120, 160, 240, 48, 24); else ctx.rect(W / 2 - 120, 160, 240, 48);
+      ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(W / 2 - 130, 180, 260, 52, 26); else ctx.rect(W / 2 - 130, 180, 260, 52);
       ctx.fill(); ctx.stroke();
-      ctx.fillStyle = "#fb7185"; ctx.font = "bold 24px system-ui,sans-serif"; ctx.fillText(meta.icon + "  " + meta.label + " Analysis", W / 2, 184);
+      ctx.fillStyle = "#fb7185"; ctx.font = "bold 24px system-ui,sans-serif"; ctx.fillText(meta.icon + "  " + meta.label + " Analysis", W / 2, 206);
       // User & date
-      if (userProfile?.name) { ctx.fillStyle = "rgba(255,255,255,0.85)"; ctx.font = "bold 34px system-ui,sans-serif"; ctx.fillText(userProfile.name, W / 2, 255); }
-      ctx.fillStyle = "rgba(255,255,255,0.3)"; ctx.font = "500 22px system-ui,sans-serif";
-      ctx.fillText(new Date(scan.taken_at + "T12:00:00").toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" }), W / 2, 292);
-      // Score ring
+      if (userProfile?.name) { ctx.fillStyle = "rgba(255,255,255,0.9)"; ctx.font = "bold 36px system-ui,sans-serif"; ctx.fillText(userProfile.name, W / 2, 280); }
+      ctx.fillStyle = "rgba(255,255,255,0.4)"; ctx.font = "500 22px system-ui,sans-serif";
+      ctx.fillText(new Date(scan.taken_at + "T12:00:00").toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" }), W / 2, 320);
+      
+      // Score ring perfectly centered
       const s = scan.overall_score;
-      ctx.strokeStyle = "rgba(255,255,255,0.1)"; ctx.lineWidth = 18; ctx.lineCap = "round";
-      ctx.beginPath(); ctx.arc(W / 2, 440, 120, 0, Math.PI * 2); ctx.stroke();
-      ctx.strokeStyle = s >= 80 ? "#10b981" : s >= 50 ? "#f43f5e" : "#f59e0b";
-      ctx.beginPath(); ctx.arc(W / 2, 440, 120, -Math.PI / 2, -Math.PI / 2 + (s / 100) * Math.PI * 2); ctx.stroke();
-      ctx.fillStyle = "#fff"; ctx.font = "900 96px system-ui,sans-serif"; ctx.fillText(String(Math.round(s)), W / 2, 440);
-      ctx.font = "600 24px system-ui,sans-serif"; ctx.fillStyle = "rgba(255,255,255,0.5)"; ctx.fillText("OVERALL SCORE", W / 2, 520);
+      ctx.strokeStyle = "rgba(255,255,255,0.06)"; ctx.lineWidth = 24; ctx.lineCap = "round";
+      ctx.beginPath(); ctx.arc(W / 2, 510, 140, 0, Math.PI * 2); ctx.stroke();
+      const scoreColor = s >= 80 ? "#10b981" : s >= 50 ? "#f43f5e" : "#f59e0b";
+      ctx.strokeStyle = scoreColor;
+      ctx.save();
+      ctx.shadowColor = scoreColor; ctx.shadowBlur = 20;
+      ctx.beginPath(); ctx.arc(W / 2, 510, 140, -Math.PI / 2, -Math.PI / 2 + (s / 100) * Math.PI * 2); ctx.stroke();
+      ctx.restore();
+      ctx.fillStyle = "#fff"; ctx.font = "900 110px system-ui,sans-serif"; ctx.fillText(String(Math.round(s)), W / 2, 495);
+      ctx.font = "700 20px system-ui,sans-serif"; ctx.fillStyle = "rgba(255,255,255,0.5)"; ctx.fillText("OVERALL SCORE", W / 2, 570);
+      
       // Classification
-      let chipY = 570;
+      let chipY = 690;
       if (scan.classification) {
         ctx.fillStyle = "rgba(139,92,246,0.2)"; ctx.strokeStyle = "#8b5cf6"; ctx.lineWidth = 1;
-        ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(W / 2 - 130, chipY, 260, 40, 20); else ctx.rect(W / 2 - 130, chipY, 260, 40);
+        ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(W / 2 - 140, chipY, 280, 48, 24); else ctx.rect(W / 2 - 140, chipY, 280, 48);
         ctx.fill(); ctx.stroke();
-        ctx.fillStyle = "#c4b5fd"; ctx.font = "bold 20px system-ui,sans-serif";
+        ctx.fillStyle = "#c4b5fd"; ctx.font = "bold 22px system-ui,sans-serif";
         const cl = scan.classification.charAt(0).toUpperCase() + scan.classification.slice(1);
-        ctx.fillText((scan.scan_type === "skin" ? "Skin Type: " : "Hair Type: ") + cl, W / 2, chipY + 20);
-        chipY += 56;
+        ctx.fillText((scan.scan_type === "skin" ? "Skin Type: " : "Hair Type: ") + cl, W / 2, chipY + 24);
+        chipY += 64;
       }
       if (scan.skin_age_estimate) {
         ctx.fillStyle = "rgba(16,185,129,0.15)"; ctx.strokeStyle = "#10b981"; ctx.lineWidth = 1;
-        ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(W / 2 - 120, chipY, 240, 40, 20); else ctx.rect(W / 2 - 120, chipY, 240, 40);
+        ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(W / 2 - 130, chipY, 260, 48, 24); else ctx.rect(W / 2 - 130, chipY, 260, 48);
         ctx.fill(); ctx.stroke();
-        ctx.fillStyle = "#6ee7b7"; ctx.font = "bold 20px system-ui,sans-serif"; ctx.fillText("Skin Age: ~" + scan.skin_age_estimate, W / 2, chipY + 20);
-        chipY += 56;
+        ctx.fillStyle = "#6ee7b7"; ctx.font = "bold 22px system-ui,sans-serif"; ctx.fillText("Skin Age: ~" + scan.skin_age_estimate, W / 2, chipY + 24);
+        chipY += 64;
       }
+      
       // Sub-scores
-      let y = chipY + 20;
+      let y = chipY + 30;
       if (scan.sub_scores?.length) {
-        ctx.textAlign = "left"; ctx.fillStyle = "rgba(255,255,255,0.3)"; ctx.font = "700 20px system-ui,sans-serif";
-        ctx.fillText("SUB-SCORES", 80, y); y += 32;
+        ctx.textAlign = "left"; ctx.fillStyle = "rgba(255,255,255,0.4)"; ctx.font = "800 22px system-ui,sans-serif";
+        ctx.fillText("SUB-SCORES", 80, y); y += 40;
         const bw = W - 160;
         for (const sub of scan.sub_scores.slice(0, 4)) {
           ctx.fillStyle = "rgba(255,255,255,0.05)"; ctx.beginPath();
-          if (ctx.roundRect) ctx.roundRect(80, y, bw, 50, 10); else ctx.rect(80, y, bw, 50);
+          if (ctx.roundRect) ctx.roundRect(80, y, bw, 56, 16); else ctx.rect(80, y, bw, 56);
           ctx.fill();
-          const fw = (sub.score / 100) * bw;
+          const fw = Math.max(28, (sub.score / 100) * bw);
           const sg = ctx.createLinearGradient(80, 0, 80 + fw, 0); sg.addColorStop(0, "#f43f5e"); sg.addColorStop(1, "#8b5cf6");
           ctx.fillStyle = sg; ctx.beginPath();
-          if (ctx.roundRect) ctx.roundRect(80, y, fw, 50, 10); else ctx.rect(80, y, fw, 50);
+          if (ctx.roundRect) ctx.roundRect(80, y, fw, 56, 16); else ctx.rect(80, y, fw, 56);
           ctx.fill();
-          ctx.fillStyle = "#fff"; ctx.font = "bold 18px system-ui,sans-serif"; ctx.textAlign = "left"; ctx.fillText(sub.category, 98, y + 26);
-          ctx.textAlign = "right"; ctx.fillText(sub.score + "/100", W - 92, y + 26); ctx.textAlign = "left";
-          y += 58;
+          ctx.fillStyle = "#fff"; ctx.font = "bold 20px system-ui,sans-serif"; ctx.textAlign = "left"; ctx.fillText(sub.category, 104, y + 28);
+          ctx.textAlign = "right"; ctx.fillText(sub.score + "/100", W - 104, y + 28); ctx.textAlign = "left";
+          y += 72;
         }
-        y += 8;
+        y += 20;
       }
       // Observations
       if (scan.observations?.length) {
-        ctx.fillStyle = "rgba(255,255,255,0.3)"; ctx.font = "700 20px system-ui,sans-serif"; ctx.fillText("KEY OBSERVATIONS", 80, y); y += 32;
+        ctx.fillStyle = "rgba(255,255,255,0.4)"; ctx.font = "800 22px system-ui,sans-serif"; ctx.fillText("KEY OBSERVATIONS", 80, y); y += 40;
         for (const obs of scan.observations.slice(0, 3)) {
           ctx.fillStyle = "rgba(255,255,255,0.05)"; ctx.beginPath();
-          if (ctx.roundRect) ctx.roundRect(80, y, W - 160, 76, 12); else ctx.rect(80, y, W - 160, 76);
-          ctx.fill(); ctx.strokeStyle = "rgba(251,113,133,0.2)"; ctx.lineWidth = 1; ctx.stroke();
-          ctx.fillStyle = "#fb7185"; ctx.font = "bold 18px system-ui,sans-serif"; ctx.fillText(obs.area, 104, y + 22);
-          ctx.fillStyle = "rgba(255,255,255,0.6)"; ctx.font = "500 16px system-ui,sans-serif";
-          ctx.fillText(obs.note.length > 70 ? obs.note.slice(0, 68) + "…" : obs.note, 104, y + 50);
-          y += 88;
+          if (ctx.roundRect) ctx.roundRect(80, y, W - 160, 84, 16); else ctx.rect(80, y, W - 160, 84);
+          ctx.fill(); ctx.strokeStyle = "rgba(255,255,255,0.08)"; ctx.lineWidth = 1; ctx.stroke();
+          ctx.fillStyle = "#fff"; ctx.font = "bold 20px system-ui,sans-serif"; ctx.fillText(obs.area, 108, y + 26);
+          ctx.fillStyle = "rgba(255,255,255,0.6)"; ctx.font = "400 18px system-ui,sans-serif";
+          ctx.fillText(obs.note.length > 70 ? obs.note.slice(0, 68) + "…" : obs.note, 108, y + 56);
+          y += 100;
         }
-        y += 8;
+        y += 20;
       }
       // Recommendations
       if (scan.recommendations?.length) {
-        ctx.fillStyle = "rgba(255,255,255,0.3)"; ctx.font = "700 20px system-ui,sans-serif"; ctx.fillText("RECOMMENDED ACTIVES", 80, y); y += 32;
+        ctx.fillStyle = "rgba(255,255,255,0.4)"; ctx.font = "800 22px system-ui,sans-serif"; ctx.fillText("RECOMMENDED ACTIVES", 80, y); y += 40;
         for (const rec of scan.recommendations.slice(0, 3)) {
           ctx.fillStyle = "rgba(16,185,129,0.06)"; ctx.beginPath();
-          if (ctx.roundRect) ctx.roundRect(80, y, W - 160, 70, 12); else ctx.rect(80, y, W - 160, 70);
+          if (ctx.roundRect) ctx.roundRect(80, y, W - 160, 84, 16); else ctx.rect(80, y, W - 160, 84);
           ctx.fill(); ctx.strokeStyle = "rgba(16,185,129,0.18)"; ctx.lineWidth = 1; ctx.stroke();
-          ctx.fillStyle = "#6ee7b7"; ctx.font = "bold 20px system-ui,sans-serif"; ctx.fillText("✓  " + rec.ingredient, 104, y + 24);
-          ctx.fillStyle = "rgba(255,255,255,0.45)"; ctx.font = "500 16px system-ui,sans-serif";
-          ctx.fillText(rec.why.length > 72 ? rec.why.slice(0, 70) + "…" : rec.why, 104, y + 50);
-          y += 82;
+          ctx.fillStyle = "#6ee7b7"; ctx.font = "bold 20px system-ui,sans-serif"; ctx.fillText("✓  " + rec.ingredient, 108, y + 26);
+          ctx.fillStyle = "rgba(255,255,255,0.5)"; ctx.font = "400 18px system-ui,sans-serif";
+          ctx.fillText(rec.why.length > 72 ? rec.why.slice(0, 70) + "…" : rec.why, 108, y + 56);
+          y += 100;
         }
       }
       // Footer
       ctx.textAlign = "center";
-      ctx.strokeStyle = "rgba(255,255,255,0.08)"; ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.moveTo(80, H - 96); ctx.lineTo(W - 80, H - 96); ctx.stroke();
-      ctx.fillStyle = "#fb7185"; ctx.font = "bold 24px system-ui,sans-serif"; ctx.fillText("health.linearventures.in", W / 2, H - 64);
-      ctx.fillStyle = "rgba(255,255,255,0.25)"; ctx.font = "500 18px system-ui,sans-serif"; ctx.fillText("AI-generated observations only. Not a medical diagnosis.", W / 2, H - 30);
+      ctx.strokeStyle = "rgba(255,255,255,0.1)"; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(80, H - 120); ctx.lineTo(W - 80, H - 120); ctx.stroke();
+      ctx.fillStyle = "#fb7185"; ctx.font = "bold 26px system-ui,sans-serif"; ctx.fillText("health.linearventures.in", W / 2, H - 76);
+      ctx.fillStyle = "rgba(255,255,255,0.25)"; ctx.font = "500 18px system-ui,sans-serif"; ctx.fillText("AI-generated observations only. Not a medical diagnosis.", W / 2, H - 40);
 
       canvas.toBlob(async blob => {
         if (!blob) { fallbackDownload(canvas, "wellness-report.png"); return; }
@@ -432,6 +456,30 @@ function WellnessMain({ userId }: { userId: string }) {
     } catch (err: any) { setError(err.message || "Failed to generate report"); }
     finally { setSharingDetailed(false); }
   }, [userProfile, fallbackDownload]);
+
+  const handleDownloadPDF = useCallback(async (scan: Scan) => {
+    if (!pdfRef.current || !scan.is_usable) return;
+    setDownloadingPDF(true);
+    try {
+      await new Promise(r => setTimeout(r, 100));
+      const canvas = await html2canvas(pdfRef.current, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: "#ffffff"
+      });
+      const imgData = canvas.toDataURL("image/jpeg", 0.9);
+      const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      pdf.addImage(imgData, "JPEG", 0, 0, pdfWidth, pdfHeight);
+      pdf.save(`CoreAI_${scan.scan_type}_Report.pdf`);
+    } catch (e: any) {
+      setError("Failed to generate PDF: " + e.message);
+    } finally {
+      setDownloadingPDF(false);
+    }
+  }, []);
 
   function toggleCompare(s: Scan) {
     if (compareA?.id === s.id) { setCompareA(compareB); setCompareB(null); return; }
@@ -815,7 +863,12 @@ function WellnessMain({ userId }: { userId: string }) {
                             <span className="text-xs font-black text-rose-600 dark:text-rose-400">{sub.score}/100</span>
                           </div>
                           <div className="w-full bg-neutral-200 dark:bg-neutral-800 rounded-full h-1.5 overflow-hidden mb-1.5">
-                            <div className="bg-gradient-to-r from-rose-500 to-violet-600 h-1.5 rounded-full transition-all duration-700" style={{ width: sub.score + "%" }} />
+                            <motion.div 
+                              initial={{ width: 0 }}
+                              animate={{ width: `${sub.score}%` }}
+                              transition={{ duration: 1, ease: "easeOut", delay: idx * 0.1 }}
+                              className="bg-gradient-to-r from-rose-500 to-violet-600 h-1.5 rounded-full" 
+                            />
                           </div>
                           <p className="text-[11px] text-neutral-500 dark:text-neutral-400 leading-relaxed">{sub.note}</p>
                         </div>
@@ -876,19 +929,25 @@ function WellnessMain({ userId }: { userId: string }) {
             </div>
 
             {/* Footer */}
+            <PDFReportTemplate 
+              ref={pdfRef} 
+              scan={selectedScan} 
+              userProfile={userProfile} 
+              recentScores={scoresByType[selectedScan.scan_type] || []} 
+            />
             <div className="shrink-0 px-5 py-4 border-t border-neutral-100 dark:border-neutral-800 bg-white dark:bg-neutral-950 pb-[calc(1rem+env(safe-area-inset-bottom))] flex gap-3">
+              <button onClick={() => handleDownloadPDF(selectedScan)} disabled={downloadingPDF || !selectedScan.is_usable}
+                className="flex-1 flex items-center justify-center gap-2 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/20 text-indigo-600 dark:text-indigo-400 font-bold py-3.5 rounded-2xl active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50">
+                {downloadingPDF ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />} Save PDF
+              </button>
               <button onClick={() => handleShareDetailed(selectedScan)} disabled={sharingDetailed || !selectedScan.is_usable}
                 className="flex-1 flex items-center justify-center gap-2 bg-gradient-to-r from-rose-600 to-violet-600 text-white font-bold py-3.5 rounded-2xl active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50 shadow-lg shadow-rose-500/20">
-                {sharingDetailed ? <Loader2 className="w-4 h-4 animate-spin" /> : <Share2 className="w-4 h-4" />} Share Report
+                {sharingDetailed ? <Loader2 className="w-4 h-4 animate-spin" /> : <Share2 className="w-4 h-4" />} Share
               </button>
               <button onClick={() => deleteScan(selectedScan)} disabled={deletingScanId === selectedScan.id}
-                className="w-14 bg-red-50 hover:bg-red-100 dark:bg-red-950/20 dark:hover:bg-red-950/40 text-red-500 font-bold rounded-2xl active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center"
+                className="w-14 bg-red-50 hover:bg-red-100 dark:bg-red-950/20 dark:hover:bg-red-950/40 text-red-500 font-bold rounded-2xl active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center shrink-0"
                 aria-label="Delete report">
                 {deletingScanId === selectedScan.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-              </button>
-              <button onClick={() => setSelectedScan(null)}
-                className="flex-1 bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 font-bold py-3.5 rounded-2xl active:scale-[0.98] transition-all cursor-pointer">
-                Close
               </button>
             </div>
           </div>

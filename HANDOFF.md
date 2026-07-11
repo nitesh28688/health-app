@@ -3,6 +3,8 @@
 Short pointer document. For the deep "why is it built this way" reference, read
 `STRUCTURE.md` - that's the source of truth and is kept in sync every session.
 
+**PDF Reports & Polish (2026-07-11, Phase 48)** - Added a new `PDFReportTemplate` component along with `jspdf` and `html2canvas` for generating downloadable A4 clinical reports of wellness scans. Enhanced the existing JPG share card with glowing gradients, perfect centering, and better spacing. Added a global gradient mesh background and framer-motion micro-animations to the score rings and progress bars in the wellness report UI and `globals.css`.
+
 **Mode/route startup sync (2026-07-11, Phase 47)** - Fixed a cold PWA reopen bug where
 localStorage restored Wellness Mode but the manifest launched `/`, causing Diary content to
 render under Wellness tabs until the user switched tabs. `AppShell` now reconciles restored
