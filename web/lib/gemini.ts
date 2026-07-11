@@ -40,6 +40,15 @@ function getVertexAuth() {
   return vertexAuth!;
 }
 
+// Every call this app makes is a structured, single-shot task (nutrition
+// estimates, tips, Smart Log parsing, tool selection) — none of them need
+// Gemini 2.5's extended "thinking" reasoning mode, which is ON by default
+// with a dynamic token budget unless explicitly disabled. Confirmed via a
+// live billing SKU breakdown (2026-07-11): "Thinking" output-token SKUs were
+// ~70% of this app's Vertex spend on their own, dwarfing plain text I/O.
+// thinkingBudget: 0 turns it off on both 2.5 Flash and Flash Lite.
+const NO_THINKING = { thinkingConfig: { thinkingBudget: 0 } };
+
 async function callVertex(model: string, parts: object[], responseSchema: object | undefined, signal: AbortSignal) {
   const client = await getVertexAuth().getClient();
   const { token } = await client.getAccessToken();
@@ -49,7 +58,10 @@ async function callVertex(model: string, parts: object[], responseSchema: object
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
     body: JSON.stringify({
       contents: [{ role: "user", parts }],
-      ...(responseSchema ? { generationConfig: { responseMimeType: "application/json", responseSchema } } : {}),
+      generationConfig: {
+        ...NO_THINKING,
+        ...(responseSchema ? { responseMimeType: "application/json", responseSchema } : {}),
+      },
     }),
     signal,
   });
@@ -63,7 +75,10 @@ async function callAiStudio(model: string, parts: object[], responseSchema: obje
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         contents: [{ parts }],
-        ...(responseSchema ? { generationConfig: { responseMimeType: "application/json", responseSchema } } : {}),
+        generationConfig: {
+          ...NO_THINKING,
+          ...(responseSchema ? { responseMimeType: "application/json", responseSchema } : {}),
+        },
       }),
       signal,
     }
@@ -116,6 +131,7 @@ async function callVertexChat(model: string, contents: object[], tools: object[]
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
     body: JSON.stringify({
       contents,
+      generationConfig: NO_THINKING,
       ...(tools ? { tools } : {}),
     }),
     signal,
@@ -130,6 +146,7 @@ async function callAiStudioChat(model: string, contents: object[], tools: object
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         contents,
+        generationConfig: NO_THINKING,
         ...(tools ? { tools } : {}),
       }),
       signal,

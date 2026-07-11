@@ -10,6 +10,12 @@ pass" entry below for what Antigravity built and what Fable built/fixed on revie
 **Fasting history moved off Diary (2026-07-10, Phase 23)** — Diary's Fasting card now
 only shows the live timer, not a growing list of past fasts.
 
+**Gemini "thinking" mode disabled — major cost cut (2026-07-11, Phase 26)** — a real
+billing SKU pull showed ~70% of Core AI's Vertex spend was "Thinking" reasoning-token
+SKUs, left on by default since `generationConfig.thinkingConfig` was never set. Now
+explicitly `thinkingBudget: 0` on every Gemini call (none of this app's structured-JSON
+tasks need reasoning mode). Verified live against real Vertex. See UPGRADE.md Phase 26.
+
 **Smart Log fixes (2026-07-11, Phase 25)** — fixed a stray "0" rendering in the confirm
 sheet (falsy-zero JSX bug on `water_ml`) and duplicate food entries on every re-log of the
 same food (no name-match lookup existed before inserting). See UPGRADE.md Phase 25.

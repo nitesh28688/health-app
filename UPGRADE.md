@@ -1349,3 +1349,34 @@ instead of drifting slightly each time Gemini re-estimates it.
 **Verified**: `npx tsc --noEmit` clean. Small, contained fix (2 files) — done directly rather
 than delegated, consistent with the "hand off only when there's real surface area" rule
 established earlier this session.
+
+## Phase 26 (Fable, 2026-07-11) — Disable Gemini "thinking" mode (major cost cut)
+
+**User asked to audit real Vertex AI cost** ahead of the $1000 promotional credit running out.
+Pulled a real GCP Billing SKU breakdown (last 7 days, Health App project only, after
+excluding a TTS line item that turned out to belong to the separate Linear Ventures ERP
+project on the same billing account): total ≈ ₹6.10/week for Core AI, of which **₹4.36
+(~70%) was "Thinking" output-token SKUs** (`Gemini 2.5 Flash GA Thinking Text Output` +
+`Text Output (Thinking On)`).
+
+**Root cause**: `web/lib/gemini.ts` never set `generationConfig.thinkingConfig` on any of
+the four call paths (Vertex/AI Studio × single-shot/chat), so Gemini 2.5 Flash and Flash
+Lite were defaulting to their dynamic extended-reasoning "thinking" mode on every call —
+including every purely structured-JSON task this app makes (nutrition estimates, daily
+tips, Smart Log parsing, AI-assistant tool selection). None of these need multi-step
+reasoning; thinking tokens were pure waste.
+
+**Fixed**: added `NO_THINKING = { thinkingConfig: { thinkingBudget: 0 } }`, merged into
+`generationConfig` on all four call functions (`callVertex`, `callAiStudio`,
+`callVertexChat`, `callAiStudioChat`). `thinkingBudget: 0` fully disables thinking on both
+2.5 Flash and Flash Lite.
+
+**Verified live against real Vertex** (not just tsc): a real `gemini-2.5-flash` call with
+`thinkingConfig.thinkingBudget: 0` returned 200 with `usageMetadata` showing only the plain
+output token count and **no `thoughtsTokenCount` field at all** (which appears whenever
+thinking is active) — confirms thinking is genuinely off, not just requested-and-ignored.
+`npx tsc --noEmit` clean.
+
+**Expected impact**: should cut Core AI's Vertex spend by roughly the ~70% that was going
+to thinking tokens, once next week's billing data reflects it. Worth a follow-up billing
+pull in ~7 days to confirm the SKU disappears/shrinks as expected.

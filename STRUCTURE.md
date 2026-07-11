@@ -593,6 +593,17 @@ OFF retest.** Three cleanup passes on the branded-foods data:
    reliable), with `gemini-flash-latest` demoted to a fallback attempt
    instead of the default first hop, `gemini-2.0-flash` still the
    last-resort.
+9a. **Gemini "thinking" mode was on by default on every call — ~70% of Vertex spend
+   (2026-07-11, Phase 26).** A real GCP Billing SKU pull (last 7 days, Health App
+   project isolated from the separate Linear Ventures ERP project sharing the same
+   billing account) showed "Thinking" reasoning-token SKUs as the dominant cost, ahead
+   of plain text I/O. None of this app's Gemini calls need multi-step reasoning — all
+   four call paths in `lib/gemini.ts` (`callVertex`/`callAiStudio` single-shot,
+   `callVertexChat`/`callAiStudioChat` for the AI Assistant's tool-calling loop) now
+   send `generationConfig: { thinkingConfig: { thinkingBudget: 0 } }`. Verified live:
+   a real Vertex call with this flag returns `usageMetadata` with no
+   `thoughtsTokenCount` field at all (present whenever thinking is active), confirming
+   it's genuinely disabled, not just requested-and-ignored.
 10. **Search ranking audit (2026-07-09): generic ingredients were losing to
     irrelevant or exotic matches on plain single-word searches.** Prompted by
     "is the database strong now" — spot-checked common searches and found
