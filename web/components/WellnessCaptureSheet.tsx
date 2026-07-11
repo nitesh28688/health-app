@@ -250,7 +250,10 @@ export function WellnessCaptureSheet({ scanType, onClose, onCapture }: WellnessC
       const c = canvasRef.current;
       if (!activeRef.current || !streamRef.current) return; // Stop permanently if unmounted or camera stopped
 
-      if (!v || !c || v.paused || v.ended || v.videoWidth === 0 || v.videoHeight === 0) {
+      // Note: Do NOT check v.paused. On Samsung Internet, a MediaStream can visually 
+      // play and provide live frames even if its internal paused state remains true 
+      // due to auto-play policies. We only care that it has valid dimensions and data.
+      if (!v || !c || v.ended || v.videoWidth === 0 || v.videoHeight === 0 || v.readyState < 2) {
         requestAnimationFrame(renderLoop);
         return;
       }
