@@ -3,6 +3,12 @@
 Short pointer document. For the deep "why is it built this way" reference, read
 `STRUCTURE.md` - that's the source of truth and is kept in sync every session.
 
+**Chrome tracking correction (2026-07-11, Phase 44)** - The two-second empty-frame
+fallback is now explicitly limited to Samsung Internet (`SamsungBrowser` user agent).
+Chrome keeps MediaPipe face tracking active while camera frames warm up, restoring the
+automatic green alignment and capture behavior. TypeScript verified clean with
+`npx.cmd tsc --noEmit`.
+
 **Wellness save resilience + report progress (2026-07-11, Phase 43)** - The wellness
 scan API now retries its database insert without the optional `skin_age_estimate` field when
 the deployed Supabase schema is missing that newest column, preserving the scan and report

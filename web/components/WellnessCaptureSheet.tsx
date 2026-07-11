@@ -14,6 +14,10 @@ let cachedSegmenter: any = null;
 let cachedVision: any = null;
 let isModelLoading = false;
 
+function isSamsungInternet() {
+  return typeof navigator !== "undefined" && /SamsungBrowser/i.test(navigator.userAgent);
+}
+
 export function WellnessCaptureSheet({ scanType, onClose, onCapture }: WellnessCaptureSheetProps) {
   const [modelStatus, setModelStatus] = useState<"loading" | "ready" | "fallback">("loading");
   const [cameraStatus, setCameraStatus] = useState<"init" | "active" | "error">("init");
@@ -144,10 +148,10 @@ export function WellnessCaptureSheet({ scanType, onClose, onCapture }: WellnessC
   }, [facingMode, modelStatus]);
 
   // Samsung Internet can render a live camera preview while its video frames
-  // remain invisible to the MediaPipe WASM runtime. Watch the session itself,
-  // not only the render loop, so that condition always reaches manual capture.
+  // remain invisible to the MediaPipe WASM runtime. Chrome must keep tracking:
+  // an empty first couple of frames is normal while its camera warms up.
   useEffect(() => {
-    if (scanType === "hair" || cameraStatus !== "active" || modelStatus !== "ready") return;
+    if (!isSamsungInternet() || scanType === "hair" || cameraStatus !== "active" || modelStatus !== "ready") return;
 
     const fallbackTimer = setTimeout(() => {
       if (activeRef.current && successfulFaceDetectionsRef.current === 0) {
@@ -338,7 +342,7 @@ export function WellnessCaptureSheet({ scanType, onClose, onCapture }: WellnessC
                 const hasNeverDetectedFace = successfulFaceDetectionsRef.current === 0;
                 const hasTrackedForTwoSeconds = now - trackingStartedAt >= 2000;
 
-                if (hasNeverDetectedFace && hasTrackedForTwoSeconds) {
+                if (isSamsungInternet() && hasNeverDetectedFace && hasTrackedForTwoSeconds) {
                   console.warn("Face tracking returned no landmarks for 2s. Falling back to manual capture.");
                   enterManualFallback();
                   return;
