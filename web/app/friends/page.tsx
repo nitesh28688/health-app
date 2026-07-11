@@ -69,8 +69,20 @@ function Friends({ userId }: { userId: string }) {
     // resolve usernames for friendship rows
     const ids = [...new Set(frs.flatMap((f) => [f.requester_id, f.addressee_id]))].filter((i) => i !== userId);
     if (ids.length) {
-      const { data } = await supabase.from("public_profiles").select("id,username,display_name").in("id", ids);
-      setProfiles(Object.fromEntries(((data as PubProfile[]) ?? []).map((p) => [p.id, p])));
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        try {
+          const res = await fetch("/api/profiles", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "Authorization": "Bearer " + session.access_token },
+            body: JSON.stringify({ ids })
+          });
+          const data = await res.json();
+          if (res.ok) {
+            setProfiles(Object.fromEntries(((data as PubProfile[]) ?? []).map((p) => [p.id, p])));
+          }
+        } catch (e) {}
+      }
     }
   }, [userId]);
   useEffect(() => { load(); }, [load]);

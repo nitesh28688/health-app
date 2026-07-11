@@ -3,6 +3,14 @@
 Short pointer document. For the deep "why is it built this way" reference, read
 `STRUCTURE.md` - that's the source of truth and is kept in sync every session.
 
+**Smart Fasting Integration & IF Toggles (2026-07-12, Phase 57)** - Upgraded the fasting module to support structured Intermittent Fasting (12/14/16 hour toggles) with progress bars. Integrated "Smart Fasting" to seamlessly connect the food diary with the fasting timer: if a user logs food while a fast is active, a custom `SmartFastingModal` intercepts the save to warn them and automatically ends the fast if confirmed. Conversely, if a user logs a "Dinner" meal and no fast is active, the app automatically suggests starting a 16-hour fast. This logic works for both manual `add/page.tsx` searches and the AI Quick Log (`SmartLogSheet.tsx`).
+
+**Friends Identity/RLS Fix (2026-07-12, Phase 56)** - Fixed a bug where pending friend requests displayed as "--" without avatars. Due to strict RLS on `public_profiles`, users couldn't see details of people they weren't yet friends with. Built a minimal `/api/profiles` endpoint using the service role key to securely fetch display names and avatars for a given list of user IDs, allowing the friends feed to render pending requests correctly without compromising global RLS.
+
+**AI Formatting, Filters & Wellness Assistant UX (2026-07-12, Phase 55)** - Fixed missing paragraph breaks in AI responses by adding `whitespace-pre-wrap` to the `ReactMarkdown` container in `AssistantSheet.tsx`. Relaxed the system instructions in `/api/ai/assistant/route.ts` to allow general health, diet, and fitness advice, replacing hard blocks with a soft non-diagnostic disclaimer. Redesigned the `AssistantSheet` to be a full-height sheet (`h-[95dvh]`) on mobile to prevent the virtual keyboard from hiding the input box. Added context-aware "Ask AI" buttons beneath every specific observation in the Wellness report sheet (`WellnessDetailSheet.tsx`), allowing users to click an observation to instantly open the assistant with a pre-filled contextual prompt.
+
+**Auth Pages Core AI Rebrand (2026-07-12, Phase 54)** - Replaced legacy "Wellness/Core" text and basic icons on the `/login` and `/signup` pages with proper "Core AI" branding, using the app's official logo and the indigo-violet gradient text aesthetic.
+
 **PDF real pagination + branded header/footer/watermark (2026-07-11, Phase 53)** - Reviewed
 another real generated PDF and found the single-column fix from Phase 52 wasn't enough on its
 own: pixel-height-only slicing still cut individual cards in half across a page boundary (a

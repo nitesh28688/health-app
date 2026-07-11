@@ -7,6 +7,7 @@ import { supabase } from "@/lib/supabase";
 import { logSnapshot, todayLocal, type FoodNutrients } from "@/lib/nutrition";
 import { compressImage } from "@/lib/imageCompress";
 import { QuantitySheet } from "@/components/QuantitySheet";
+import { SmartFastingModal, type FastingModalType } from "@/components/SmartFastingModal";
 import { offlineWrite } from "@/lib/offlineWrite";
 import { Loader2, ChefHat, Bot, Tag, Camera } from "lucide-react";
 
@@ -37,6 +38,16 @@ function AddFood({ userId }: { userId: string }) {
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const photoInput = useRef<HTMLInputElement>(null);
+
+  const [activeFastId, setActiveFastId] = useState<string | null>(null);
+  const [fastModalType, setFastModalType] = useState<FastingModalType>(null);
+  const pendingSave = useRef<(() => Promise<void>) | null>(null);
+
+  useEffect(() => {
+    supabase.from("fasting_sessions").select("id").eq("user_id", userId).is("ended_at", null)
+      .order("started_at", { ascending: false }).limit(1).maybeSingle()
+      .then(({ data }) => setActiveFastId(data?.id || null));
+  }, [userId]);
 
   // recent foods (last 15 distinct)
   useEffect(() => {
@@ -163,6 +174,34 @@ function AddFood({ userId }: { userId: string }) {
 
   const list = q.trim().length >= 2 ? results : recents;
 
+  async function handleFastConfirm() {
+    if (fastModalType === "break_fast" && activeFastId) {
+      await offlineWrite({ table: "fasting_sessions", op: "update", payload: { ended_at: new Date().toISOString() }, match: { id: activeFastId } });
+      setFastModalType(null);
+      if (pendingSave.current) await pendingSave.current();
+    } else if (fastModalType === "start_fast") {
+      const session = { id: crypto.randomUUID(), user_id: userId, started_at: new Date().toISOString(), target_hours: 16 };
+      await offlineWrite({ table: "fasting_sessions", op: "insert", payload: session });
+      
+      if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
+        new Notification("Fast Begun", { body: `Your 16-hour fast has started. You got this!` });
+      }
+      
+      setFastModalType(null);
+      router.push("/");
+    }
+  }
+
+  function handleFastCancel() {
+    if (fastModalType === "start_fast") {
+      setFastModalType(null);
+      router.push("/");
+    } else {
+      setFastModalType(null);
+      pendingSave.current = null;
+    }
+  }
+
   return (
     <main className="px-4 pt-4">
       <div className="flex items-center gap-3 mb-4">
@@ -241,13 +280,27 @@ function AddFood({ userId }: { userId: string }) {
           onSave={async (grams, label) => {
             setSaveMsg(null);
             const snap = logSnapshot(picked, grams, label);
-            const { error } = await offlineWrite({
-              table: "food_logs", op: "insert",
-              payload: { user_id: userId, log_date: date, meal, food_id: picked.id, ...snap },
-            });
-            // Never fail silently — a stuck sheet with no message reads as "app is broken"
-            if (error) { setSaveMsg(`Couldn't save: ${error}`); return; }
-            router.push("/");
+            
+            const execSave = async () => {
+              const { error } = await offlineWrite({
+                table: "food_logs", op: "insert",
+                payload: { user_id: userId, log_date: date, meal, food_id: picked.id, ...snap },
+              });
+              if (error) { setSaveMsg(`Couldn't save: ${error}`); return; }
+              
+              if (!activeFastId && meal === "dinner" && date === todayLocal()) {
+                setFastModalType("start_fast");
+              } else {
+                router.push("/");
+              }
+            };
+
+            if (activeFastId) {
+              pendingSave.current = execSave;
+              setFastModalType("break_fast");
+            } else {
+              await execSave();
+            }
           }}
         />
       )}
@@ -256,6 +309,12 @@ function AddFood({ userId }: { userId: string }) {
           {saveMsg}
         </p>
       )}
+
+      <SmartFastingModal 
+        type={fastModalType} 
+        onConfirm={handleFastConfirm} 
+        onCancel={handleFastCancel} 
+      />
     </main>
   );
 }

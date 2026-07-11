@@ -60,6 +60,17 @@ export function AssistantSheet({
   }, [mode]);
 
   useEffect(() => {
+    const handler = (e: Event) => {
+      const prompt = (e as CustomEvent).detail;
+      if (typeof prompt === "string" && prompt) {
+        setInput(prompt);
+      }
+    };
+    window.addEventListener("openAssistant", handler);
+    return () => window.removeEventListener("openAssistant", handler);
+  }, []);
+
+  useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
 
@@ -208,10 +219,10 @@ export function AssistantSheet({
   }
 
   return (
-    <div className="fixed inset-0 z-[60] flex flex-col justify-end bg-black/40" onClick={onClose}>
+    <div className="fixed inset-0 z-[60] flex flex-col sm:justify-center bg-white dark:bg-neutral-950 sm:bg-black/40 sm:dark:bg-black/60" onClick={onClose}>
       <div
         onClick={(e) => e.stopPropagation()}
-        className="rounded-t-3xl bg-white dark:bg-neutral-950 flex flex-col h-[85vh] max-w-md w-full mx-auto shadow-2xl"
+        className="bg-white dark:bg-neutral-950 flex flex-col h-[100dvh] sm:h-[85vh] sm:rounded-3xl max-w-md w-full mx-auto sm:shadow-2xl"
       >
         <div className="flex items-center justify-between p-4 border-b border-neutral-200 dark:border-neutral-800 shrink-0">
           <div className="flex items-center gap-2">
@@ -230,7 +241,7 @@ export function AssistantSheet({
         <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
           {messages.map((m) => (
             <div key={m.id} className={`flex flex-col ${m.role === "user" ? "self-end items-end" : "self-start items-start"} max-w-[85%]`}>
-              <div className={`p-3 rounded-2xl ${
+              <div className={`p-3 rounded-2xl whitespace-pre-wrap ${
                 m.role === "user" 
                   ? "bg-indigo-600 text-white rounded-br-sm" 
                   : "bg-neutral-100 dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 rounded-bl-sm"

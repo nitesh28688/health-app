@@ -92,6 +92,12 @@ export function AppShell({ children }: {
   // render-prop signature to avoid touching every page that calls <AppShell>.
   useEffect(() => subscribeAppMode(setMode), []);
 
+  useEffect(() => {
+    const handler = () => setAssistantOpen(true);
+    window.addEventListener("openAssistant", handler);
+    return () => window.removeEventListener("openAssistant", handler);
+  }, []);
+
   // Keep restored app mode and the visible route in sync on cold PWA launches.
   // The manifest opens "/", while localStorage may restore Wellness mode; without
   // this, Diary can render under Wellness tabs until the user changes tabs.

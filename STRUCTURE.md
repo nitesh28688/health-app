@@ -958,3 +958,15 @@ pre-skip exercise list instead of nothing. Fixed by routing that case through `o
 - Supports confirm-gated scan/report deletion from history rows and the report sheet footer.
 - Capture is manual-only. `WellnessCaptureSheet` no longer imports MediaPipe or auto-detects face/hair alignment; it opens the camera, shows a scientific framing guide, lets the user capture deliberately, then plays a short scan-line confirmation before submitting the image.
 - `AppShell` keeps Wellness mode and route content aligned on app reopen: a restored Wellness mode at `/` redirects to `/wellness`, avoiding Diary content under Wellness tabs.
+
+**Phase 54 (2026-07-12): Auth Pages Core AI Rebrand.**
+Rebranded the `/login` and `/signup` pages. Replaced older generic headers and wellness iconography with the primary "Core AI" brand name styled with an indigo-violet gradient and the app's `icon-192.png` logo to present a unified, premium entry experience.
+
+**Phase 55 (2026-07-12): AI Formatting, Filters & Wellness Assistant UX.**
+Upgraded the AI Assistant experience across the board. Fixed AI response text formatting by adding `whitespace-pre-wrap` to `<ReactMarkdown>` in `AssistantSheet.tsx`. Eased the AI prompt constraints in `/api/ai/assistant/route.ts` to allow general fitness, diet, and health advice instead of stonewalling users, guarded only by a soft non-diagnostic disclaimer. Transformed `AssistantSheet` into a full-height `95dvh` modal on mobile to prevent the virtual keyboard from obscuring the input box. Integrated "Ask AI" context buttons directly into `WellnessDetailSheet.tsx` under each observation, which invoke the global `openAssistant` event with a pre-filled prompt asking the AI how to address that specific observation.
+
+**Phase 56 (2026-07-12): Friends Identity/RLS Fix.**
+Resolved an issue where incoming/outgoing friend requests on `friends/page.tsx` showed up as "--" without avatars. Since `public_profiles` RLS restricts visibility to established friends only, the UI couldn't resolve the identity of pending requesters. Created a dedicated `/api/profiles` endpoint using the `SUPABASE_SERVICE_ROLE_KEY` to securely fetch display names and avatars for a given list of user IDs, bypassing the RLS restriction without opening up the `profiles` table to the public.
+
+**Phase 57 (2026-07-12): Smart Fasting Integration & IF Toggles.**
+Upgraded the Fasting feature from a simple timer to structured Intermittent Fasting with 12, 14, and 16-hour toggles and a visual progress bar. Integrated "Smart Fasting" logic directly into the food logging flow: if a user logs food while a fast is active, a custom `SmartFastingModal` intercepts the action and warns them that it will break their fast. Conversely, if a user logs "Dinner" and no fast is active, the app automatically suggests starting a 16-hour fast. This logic is wired into both manual searches (`add/page.tsx`) and the AI Quick Log (`SmartLogSheet.tsx`). Added browser `Notification` integration to alert users when their fast begins.

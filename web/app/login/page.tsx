@@ -67,8 +67,11 @@ export default function LoginPage() {
 
   return (
     <main className="flex-1 flex flex-col justify-center px-6 py-10 max-w-md w-full mx-auto">
-      <h1 className="text-3xl font-bold text-indigo-600 mb-1">Core AI</h1>
-      <p className="text-neutral-500 mb-6 flex items-center gap-1.5">Welcome back <Hand className="w-4 h-4" /></p>
+      <div className="flex flex-col items-center text-center mb-8">
+        <img src="/icon-192.png" alt="Core AI Logo" className="w-20 h-20 rounded-2xl object-cover mb-4 shadow-lg shadow-indigo-500/20" />
+        <h1 className="text-3xl font-black bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-violet-600 tracking-tight mb-2">Core AI</h1>
+        <p className="text-neutral-500 flex items-center justify-center gap-1.5">Welcome back <Hand className="w-4 h-4 text-indigo-500" /></p>
+      </div>
       <div className="flex gap-2 mb-5">
         {[
           { key: "email", label: "Email", icon: <Mail className="w-4 h-4" /> },

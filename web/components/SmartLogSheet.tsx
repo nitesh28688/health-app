@@ -1,10 +1,11 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 import { logSnapshot } from "@/lib/nutrition";
 import { offlineWrite } from "@/lib/offlineWrite";
 import { Utensils, Droplets, Weight, Dumbbell, X, CheckCircle, Loader2 } from "lucide-react";
 import { todayLocal } from "@/lib/nutrition";
+import { SmartFastingModal, type FastingModalType } from "./SmartFastingModal";
 
 export interface SmartLogProposal {
   weight_kg: number | null;
@@ -45,6 +46,21 @@ export function SmartLogSheet({ proposal, logDate, onClose, onConfirmed }: Props
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [activeFastId, setActiveFastId] = useState<string | null>(null);
+  const [fastModalType, setFastModalType] = useState<FastingModalType>(null);
+  const pendingConfirm = useRef<(() => Promise<void>) | null>(null);
+
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        supabase.from("fasting_sessions").select("id").eq("user_id", session.user.id).is("ended_at", null)
+          .order("started_at", { ascending: false }).limit(1).maybeSingle()
+          .then(({ data }) => setActiveFastId(data?.id || null));
+      }
+    });
+  }, []);
+
   const hasAnything =
     proposal.weight_kg ||
     proposal.water_ml ||
@@ -57,11 +73,12 @@ export function SmartLogSheet({ proposal, logDate, onClose, onConfirmed }: Props
       return;
     }
 
-    setConfirming(true);
-    setError(null);
+    const execConfirm = async () => {
+      setConfirming(true);
+      setError(null);
 
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("No session");
       const userId = session.user.id;
 
@@ -201,11 +218,18 @@ export function SmartLogSheet({ proposal, logDate, onClose, onConfirmed }: Props
         }
       }
 
-      setDone(true);
-      setTimeout(() => {
-        onConfirmed();
-        onClose();
-      }, 1200);
+      const hasDinner = proposal.foods.some(f => f.meal === "dinner");
+      
+      if (!activeFastId && hasDinner && logDate === todayLocal()) {
+        setDone(true);
+        setFastModalType("start_fast");
+      } else {
+        setDone(true);
+        setTimeout(() => {
+          onConfirmed();
+          onClose();
+        }, 1200);
+      }
     } catch (err: any) {
       setError(err?.message ?? "Something went wrong. Please try again.");
     } finally {
@@ -213,7 +237,44 @@ export function SmartLogSheet({ proposal, logDate, onClose, onConfirmed }: Props
     }
   }
 
-  return (
+  if (activeFastId && proposal.foods.length > 0) {
+    pendingConfirm.current = execConfirm;
+    setFastModalType("break_fast");
+  } else {
+    await execConfirm();
+  }
+}
+
+async function handleFastConfirm() {
+  if (fastModalType === "break_fast" && activeFastId) {
+    await offlineWrite({ table: "fasting_sessions", op: "update", payload: { ended_at: new Date().toISOString() }, match: { id: activeFastId } });
+    setFastModalType(null);
+    if (pendingConfirm.current) await pendingConfirm.current();
+  } else if (fastModalType === "start_fast") {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session) {
+      const payload = { id: crypto.randomUUID(), user_id: session.user.id, started_at: new Date().toISOString(), target_hours: 16 };
+      await offlineWrite({ table: "fasting_sessions", op: "insert", payload });
+      if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
+        new Notification("Fast Begun", { body: `Your 16-hour fast has started. You got this!` });
+      }
+    }
+    setFastModalType(null);
+    setTimeout(() => { onConfirmed(); onClose(); }, 300);
+  }
+}
+
+function handleFastCancel() {
+  if (fastModalType === "start_fast") {
+    setFastModalType(null);
+    setTimeout(() => { onConfirmed(); onClose(); }, 300);
+  } else {
+    setFastModalType(null);
+    pendingConfirm.current = null;
+  }
+}
+
+return (
     <div className="fixed inset-0 z-[60] flex flex-col justify-end">
       {/* Backdrop */}
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
@@ -332,6 +393,12 @@ export function SmartLogSheet({ proposal, logDate, onClose, onConfirmed }: Props
           </div>
         )}
       </div>
+      
+      <SmartFastingModal 
+        type={fastModalType} 
+        onConfirm={handleFastConfirm} 
+        onCancel={handleFastCancel} 
+      />
     </div>
   );
 }

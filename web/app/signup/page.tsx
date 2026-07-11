@@ -69,8 +69,11 @@ export default function SignupPage() {
 
   return (
     <main className="flex-1 flex flex-col justify-center px-6 py-10 max-w-md w-full mx-auto">
-      <h1 className="text-3xl font-bold text-indigo-600 mb-1">Join Core AI</h1>
-      <p className="text-neutral-500 mb-8">Track food, workouts & streaks with your people.</p>
+      <div className="flex flex-col items-center text-center mb-8">
+        <img src="/icon-192.png" alt="Core AI Logo" className="w-20 h-20 rounded-2xl object-cover mb-4 shadow-lg shadow-indigo-500/20" />
+        <h1 className="text-3xl font-black bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-violet-600 tracking-tight mb-2">Join Core AI</h1>
+        <p className="text-neutral-500">Track food, workouts & streaks with your people.</p>
+      </div>
       <form onSubmit={onSubmit} className="flex flex-col gap-4">
         <input required placeholder="Your name" value={displayName}
           onChange={(e) => setDisplayName(e.target.value)} autoComplete="name"

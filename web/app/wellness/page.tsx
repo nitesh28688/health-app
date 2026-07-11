@@ -1010,9 +1010,15 @@ function WellnessMain({ userId, displayName }: { userId: string; displayName: st
                   <div className="space-y-2">
                     <h4 className="text-xs font-black uppercase tracking-wider text-neutral-400">Observations</h4>
                     {selectedScan.observations?.length ? selectedScan.observations.map((obs, idx) => (
-                      <div key={idx} className="p-3.5 bg-neutral-50 dark:bg-neutral-900/50 rounded-2xl border border-neutral-100 dark:border-neutral-800/50">
+                      <div key={idx} className="p-3.5 bg-neutral-50 dark:bg-neutral-900/50 rounded-2xl border border-neutral-100 dark:border-neutral-800/50 relative">
                         <span className="text-xs font-black text-rose-500 dark:text-rose-400 block mb-1">{obs.area}</span>
-                        <p className="text-sm text-neutral-700 dark:text-neutral-300 leading-relaxed">{obs.note}</p>
+                        <p className="text-sm text-neutral-700 dark:text-neutral-300 leading-relaxed mb-3">{obs.note}</p>
+                        <button
+                          onClick={() => window.dispatchEvent(new CustomEvent("openAssistant", { detail: `How can I fix the issue with my ${obs.area}? Specifically: ${obs.note}` }))}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 text-[10px] font-bold border border-indigo-200/50 dark:border-indigo-800/50 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors cursor-pointer w-fit"
+                        >
+                          <Sparkles className="w-3 h-3" /> Ask AI about this
+                        </button>
                       </div>
                     )) : <p className="text-xs text-neutral-500 py-1">No observations available.</p>}
                   </div>
