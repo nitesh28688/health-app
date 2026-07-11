@@ -159,7 +159,7 @@ function Friends({ userId }: { userId: string }) {
               const isHypeOpen = activeHypeItem === key;
 
               return (
-                <li key={i} className="rounded-xl border border-neutral-200 dark:border-neutral-800 px-3 py-2.5 flex flex-col gap-2 relative">
+                <li key={i} className="rounded-2xl border border-neutral-200/60 dark:border-neutral-800/60 bg-white/50 dark:bg-neutral-900/50 backdrop-blur-md shadow-sm px-4 py-3 flex flex-col gap-2 relative">
                   <div className="flex items-center gap-2">
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold">{f.display_name} <span className="font-normal text-neutral-400">@{f.username} · {f.log_date.slice(5)}</span></p>
@@ -204,7 +204,7 @@ function Friends({ userId }: { userId: string }) {
       )}
 
       {tab === "board" && (
-        <div className="rounded-2xl border border-neutral-200 dark:border-neutral-800 overflow-hidden">
+        <div className="rounded-3xl border border-neutral-200/60 dark:border-neutral-800/60 bg-white/50 dark:bg-neutral-900/50 backdrop-blur-md shadow-sm overflow-hidden">
           <p className="text-xs text-neutral-500 px-4 pt-3">This week (since Monday)</p>
           {board.length === 0 && (
             <p className="text-sm text-neutral-400 text-center px-4 py-8">

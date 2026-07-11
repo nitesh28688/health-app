@@ -238,7 +238,7 @@ function Diary({ profile, userId }: { profile: Profile | null; userId: string })
       {date === todayLocal() && <div className="mb-4" />}
       
       {date === todayLocal() && dailyTip && showDailyTip && (
-        <div className="mb-4 rounded-xl border border-violet-200 dark:border-violet-900/50 bg-violet-50/50 dark:bg-violet-900/10 p-3 flex flex-col gap-1 relative">
+        <div className="mb-4 rounded-2xl border border-violet-200/60 dark:border-violet-900/40 bg-gradient-to-br from-violet-50/80 to-indigo-50/50 dark:from-violet-950/30 dark:to-indigo-950/20 backdrop-blur-md shadow-sm p-4 flex flex-col gap-1 relative animate-in fade-in duration-200">
           <div className="flex items-center gap-1.5 mb-1">
             <Sparkles className="w-4 h-4 text-violet-500" />
             <span className="text-xs font-bold text-violet-900 dark:text-violet-100 uppercase tracking-wider">Core Insights</span>
@@ -249,7 +249,7 @@ function Diary({ profile, userId }: { profile: Profile | null; userId: string })
       )}
 
       {date === todayLocal() && (
-        <div className="mb-4 rounded-xl border border-indigo-200 dark:border-indigo-900/50 bg-indigo-50/30 dark:bg-indigo-900/10 p-3 shadow-sm">
+        <div className="mb-4 rounded-2xl border border-indigo-200/60 dark:border-indigo-900/40 bg-white/50 dark:bg-neutral-900/50 backdrop-blur-md shadow-sm p-4">
           <textarea
             value={smartLogText}
             onChange={(e) => setSmartLogText(e.target.value)}
@@ -384,7 +384,7 @@ function Diary({ profile, userId }: { profile: Profile | null; userId: string })
             ) : (
               <ul className="flex flex-col gap-1.5">
                 {items.map((l) => (
-                  <li key={l.id} className="rounded-xl border border-neutral-200 dark:border-neutral-800 px-3 py-2.5 flex items-center gap-2">
+                  <li key={l.id} className="rounded-2xl border border-neutral-200/60 dark:border-neutral-800/60 bg-white/50 dark:bg-neutral-900/50 backdrop-blur-md shadow-sm px-4 py-3 flex items-center gap-3 relative">
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">{l.foods?.name ?? "Food"}</p>
                       <p className="text-xs text-neutral-500">{l.qty_unit_label ?? `${Math.round(l.qty_g)}g`} · {Math.round(Number(l.kcal))} kcal</p>

@@ -68,6 +68,7 @@ function ProfileForm({ profile, setProfile, userId, email }: {
   const [avatarError, setAvatarError] = useState<string | null>(null);
 
   const [earnedBadges, setEarnedBadges] = useState<Set<string>>(new Set());
+  const [showAllBadges, setShowAllBadges] = useState(false);
 
   useEffect(() => {
     supabase.from("body_metrics").select("weight_kg, waist_cm, body_fat_pct").eq("user_id", userId)
@@ -418,7 +419,7 @@ function ProfileForm({ profile, setProfile, userId, email }: {
       <section className="mt-8">
         <h2 className="text-lg font-bold mb-3">Badges</h2>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-          {BADGES.map((b) => {
+          {(showAllBadges ? BADGES : BADGES.slice(0, 4)).map((b) => {
             const earned = earnedBadges.has(b.code);
             return (
               <div key={b.code} className={`rounded-xl border p-3 flex flex-col items-center text-center shadow-sm transition-all ${earned ? "border-indigo-200 bg-indigo-50/50 dark:border-indigo-900/50 dark:bg-indigo-900/20" : "border-neutral-200 dark:border-neutral-800 opacity-50 grayscale bg-white/30 dark:bg-neutral-900/30"}`}>
@@ -429,6 +430,11 @@ function ProfileForm({ profile, setProfile, userId, email }: {
             );
           })}
         </div>
+        {!showAllBadges && BADGES.length > 4 && (
+          <button type="button" onClick={() => setShowAllBadges(true)} className="mt-3 w-full py-2.5 bg-neutral-50 hover:bg-neutral-100 dark:bg-neutral-900/50 dark:hover:bg-neutral-900 rounded-xl text-sm font-bold text-neutral-600 dark:text-neutral-400 transition-colors cursor-pointer">
+            View all {BADGES.length} badges
+          </button>
+        )}
       </section>
 
       <section className="mt-8">

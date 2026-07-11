@@ -336,7 +336,7 @@ function Workout({ profile, setProfile, userId }: {
             className="self-start flex items-center gap-2 text-sm font-bold text-indigo-600 bg-indigo-50 dark:bg-indigo-950/30 px-4 py-2.5 rounded-xl active:scale-[0.98] transition-transform">
             ← Back to All Routines
           </button>
-          <section className="rounded-2xl border-2 border-indigo-600 p-5">
+          <section className="rounded-3xl border border-indigo-600/40 bg-indigo-50/30 dark:bg-indigo-900/10 backdrop-blur-md shadow-sm p-5">
           <div className="flex items-center justify-between gap-2">
             <h2 className="font-bold text-lg">{activePlan.name}</h2>
           </div>
@@ -344,7 +344,7 @@ function Workout({ profile, setProfile, userId }: {
           <div className="flex flex-col gap-2">
             {days.map((d) => (
               <button key={d.id} onClick={() => openDayView(d)}
-                className="rounded-xl border border-neutral-200 dark:border-neutral-800 px-4 py-3 text-left flex justify-between items-center active:bg-neutral-50 dark:active:bg-neutral-900">
+                className="rounded-2xl border border-neutral-200/60 dark:border-neutral-800/60 bg-white/50 dark:bg-neutral-900/50 backdrop-blur-md shadow-sm px-4 py-3 text-left flex justify-between items-center active:bg-neutral-50 dark:active:bg-neutral-900">
                 <span className="font-medium">Day {d.day_number} · {d.title}</span>
                 <span className="text-neutral-400">→</span>
               </button>
@@ -400,7 +400,7 @@ function Workout({ profile, setProfile, userId }: {
         ) : (
           <ul className="flex flex-col gap-1.5">
             {recent.map((w) => (
-              <li key={w.id} className="rounded-xl border border-neutral-200 dark:border-neutral-800 px-3 py-2.5 flex justify-between text-sm">
+              <li key={w.id} className="rounded-2xl border border-neutral-200/60 dark:border-neutral-800/60 bg-white/50 dark:bg-neutral-900/50 backdrop-blur-md shadow-sm px-4 py-3 flex justify-between items-center text-sm">
                 <span className="font-medium">{w.title}</span>
                 <span className="text-neutral-500 flex items-center gap-1">{w.log_date.slice(5)} · {Math.round(Number(w.duration_min))}min · <Flame className="w-3.5 h-3.5 text-orange-500" />{Math.round(Number(w.kcal_burned ?? 0))}</span>
               </li>
@@ -417,7 +417,7 @@ function Workout({ profile, setProfile, userId }: {
             </button>
         {aiError && <p className="text-sm text-amber-600 mt-2">{aiError}</p>}
         {aiTip && (
-          <div className="mt-3 rounded-2xl bg-violet-50 dark:bg-violet-950/30 border border-violet-200 dark:border-violet-900 p-4 text-sm leading-relaxed">
+          <div className="mt-3 rounded-2xl bg-gradient-to-br from-violet-50/80 to-indigo-50/50 dark:from-violet-950/30 dark:to-indigo-950/20 border border-violet-200/60 dark:border-violet-900/40 backdrop-blur-md shadow-sm p-4 text-sm leading-relaxed animate-in fade-in duration-200">
             {aiTip}
           </div>
         )}

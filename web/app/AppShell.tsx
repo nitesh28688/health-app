@@ -7,7 +7,7 @@ import type { Session } from "@supabase/supabase-js";
 import { AnimatePresence, motion } from "framer-motion";
 import { AssistantSheet } from "@/components/AssistantSheet";
 import { FormCheckSheet } from "@/components/FormCheckSheet";
-import { Bot, Book, Dumbbell, TrendingUp, Users, Smile, Salad, CloudUpload, Sparkles, FileText } from "lucide-react";
+import { MessageSquare, Book, Dumbbell, TrendingUp, Users, Smile, Salad, CloudUpload, Sparkles, FileText } from "lucide-react";
 import { subscribePendingCount } from "@/lib/offlineQueue";
 import { setAppMode, subscribeAppMode, type AppMode } from "@/lib/appMode";
 
@@ -161,14 +161,14 @@ export function AppShell({ children }: {
       <div className="fixed bottom-[calc(env(safe-area-inset-bottom)+4.5rem)] right-4 z-40">
         <button
           onClick={() => setAssistantOpen(true)}
-          className={`w-14 h-14 text-white rounded-full shadow-lg flex items-center justify-center transition-all active:scale-95 border-2 border-white/10 ${
+          className={`w-14 h-14 text-white rounded-full shadow-lg flex items-center justify-center transition-all duration-300 active:scale-95 border-2 border-white/10 ${
             mode === "wellness"
               ? "bg-rose-600 hover:bg-rose-700 shadow-rose-600/30"
               : "bg-indigo-600 hover:bg-indigo-700 shadow-indigo-600/30"
           }`}
           aria-label="Open AI Assistant"
         >
-          <Bot className="w-7 h-7" />
+          <MessageSquare className="w-7 h-7" />
         </button>
       </div>
       
@@ -188,24 +188,14 @@ export function AppShell({ children }: {
         />
       )}
 
-      <nav className={`fixed bottom-0 inset-x-0 border-t backdrop-blur-xl pb-[env(safe-area-inset-bottom)] z-50 transition-colors duration-300 ${
+      <nav className={`fixed bottom-0 inset-x-0 border-t backdrop-blur-xl pb-[env(safe-area-inset-bottom)] z-50 transition-colors duration-300 ease-in-out ${
         mode === "wellness"
           ? "border-rose-200/50 dark:border-rose-900/40 bg-rose-50/70 dark:bg-rose-950/40"
           : "border-neutral-200/50 dark:border-neutral-800/50 bg-white/70 dark:bg-neutral-950/70"
       }`}>
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={mode}
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -6 }}
-            transition={{ duration: 0.18 }}
-          >
-            <Suspense fallback={<div className="max-w-md mx-auto flex px-2 py-1 h-[68px]" />}>
-              <NavTabs mode={mode} />
-            </Suspense>
-          </motion.div>
-        </AnimatePresence>
+        <Suspense fallback={<div className="max-w-md mx-auto flex px-2 py-1 h-[68px]" />}>
+          <NavTabs mode={mode} />
+        </Suspense>
       </nav>
     </div>
   );

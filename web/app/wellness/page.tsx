@@ -311,7 +311,7 @@ function WellnessMain({ userId }: { userId: string }) {
         ctx.fill(); ctx.stroke();
         ctx.fillStyle = "#e11d48"; ctx.font = "bold 25px system-ui,sans-serif"; ctx.fillText(streak + "-week scan streak", 540, 860);
       }
-      ctx.fillStyle = "#e11d48"; ctx.font = "bold 24px system-ui,sans-serif"; ctx.fillText("health.linearventures.in", 540, 940);
+      ctx.fillStyle = "#e11d48"; ctx.font = "bold 24px system-ui,sans-serif"; ctx.fillText("Core AI — a product of Linear Ventures", 540, 940);
       canvas.toBlob(async blob => {
         if (!blob) { fallbackDownload(canvas, "wellness-score.png"); return; }
         const file = new File([blob], "wellness-score.png", { type: "image/png" });
@@ -382,13 +382,6 @@ function WellnessMain({ userId }: { userId: string }) {
         ctx.fillText((scan.scan_type === "skin" ? "Skin Type: " : "Hair Type: ") + cl, W / 2, chipY + 24);
         chipY += 64;
       }
-      if (scan.skin_age_estimate) {
-        ctx.fillStyle = "rgba(16,185,129,0.15)"; ctx.strokeStyle = "#10b981"; ctx.lineWidth = 1;
-        ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(W / 2 - 130, chipY, 260, 48, 24); else ctx.rect(W / 2 - 130, chipY, 260, 48);
-        ctx.fill(); ctx.stroke();
-        ctx.fillStyle = "#6ee7b7"; ctx.font = "bold 22px system-ui,sans-serif"; ctx.fillText("Skin Age: ~" + scan.skin_age_estimate, W / 2, chipY + 24);
-        chipY += 64;
-      }
       
       // Sub-scores
       let y = chipY + 30;
@@ -442,8 +435,8 @@ function WellnessMain({ userId }: { userId: string }) {
       ctx.textAlign = "center";
       ctx.strokeStyle = "rgba(255,255,255,0.1)"; ctx.lineWidth = 1;
       ctx.beginPath(); ctx.moveTo(80, H - 120); ctx.lineTo(W - 80, H - 120); ctx.stroke();
-      ctx.fillStyle = "#fb7185"; ctx.font = "bold 26px system-ui,sans-serif"; ctx.fillText("health.linearventures.in", W / 2, H - 76);
-      ctx.fillStyle = "rgba(255,255,255,0.25)"; ctx.font = "500 18px system-ui,sans-serif"; ctx.fillText("AI-generated observations only. Not a medical diagnosis.", W / 2, H - 40);
+      ctx.fillStyle = "#fb7185"; ctx.font = "bold 26px system-ui,sans-serif"; ctx.fillText("Core AI — a product of Linear Ventures", W / 2, H - 76);
+      ctx.fillStyle = "rgba(255,255,255,0.25)"; ctx.font = "500 18px system-ui,sans-serif"; ctx.fillText("health.linearventures.in • AI-generated observations only. Not a medical diagnosis.", W / 2, H - 40);
 
       canvas.toBlob(async blob => {
         if (!blob) { fallbackDownload(canvas, "wellness-report.png"); return; }
@@ -553,7 +546,7 @@ function WellnessMain({ userId }: { userId: string }) {
             <p className="text-xs text-neutral-500 max-w-xs">Complete a Skin, Eye, or Hair scan to compute your aggregate Wellness Score.</p>
           </div>
         ) : (
-          <div className="p-4 bg-gradient-to-br from-neutral-50 to-white dark:from-neutral-900/80 dark:to-neutral-950/60 border border-neutral-200/40 dark:border-neutral-800/40 rounded-3xl">
+          <div className="p-5 bg-white/50 dark:bg-neutral-900/50 backdrop-blur-md border border-neutral-200 dark:border-neutral-800 shadow-sm rounded-3xl">
             <div className="flex items-center gap-4">
               <ScoreRing score={aggregateScore} size="lg" />
               <div className="flex-1 min-w-0">
@@ -807,11 +800,6 @@ function WellnessMain({ userId }: { userId: string }) {
                           {selectedScan.scan_type === "skin" ? "Skin" : "Hair"}: {selectedScan.classification.charAt(0).toUpperCase() + selectedScan.classification.slice(1)}
                         </span>
                       )}
-                      {selectedScan.skin_age_estimate && (
-                        <span className="inline-block bg-white/20 text-white text-[11px] font-bold px-3 py-1 rounded-full">
-                          Skin Age ~{selectedScan.skin_age_estimate}
-                        </span>
-                      )}
                     </div>
                     {(() => {
                       const t = getScanTrend(selectedScan);
@@ -848,8 +836,7 @@ function WellnessMain({ userId }: { userId: string }) {
 
             {/* Body */}
             <div className="flex-1 overflow-y-auto">
-              {reportTab === "overview" ? (
-                <div className="p-5 space-y-5">
+              <div className={`p-5 space-y-5 ${reportTab === "overview" ? "block" : "hidden"}`}>
                   <div className="w-full aspect-video rounded-2xl overflow-hidden border border-neutral-100 dark:border-neutral-800">
                     <img src={selectedScan.photo_url} alt="Scan" className="w-full h-full object-cover" />
                   </div>
@@ -884,9 +871,9 @@ function WellnessMain({ userId }: { userId: string }) {
                       </div>
                     )) : <p className="text-xs text-neutral-500 py-1">No observations available.</p>}
                   </div>
-                </div>
-              ) : (
-                <div className="p-5 space-y-5">
+              </div>
+              
+              <div className={`p-5 space-y-5 ${reportTab === "routine" ? "block" : "hidden"}`}>
                   {selectedScan.recommendations?.length ? (
                     <>
                       <div>
@@ -924,8 +911,12 @@ function WellnessMain({ userId }: { userId: string }) {
                       </div>
                     </>
                   ) : <p className="text-sm text-neutral-500 text-center py-8">No routine recommendations for this scan.</p>}
-                </div>
-              )}
+              </div>
+
+              {/* Branding Footer */}
+              <div className="px-5 pb-6 text-center">
+                <p className="text-[10px] font-bold text-neutral-300 dark:text-neutral-600 uppercase tracking-widest">Core AI — a product of Linear Ventures</p>
+              </div>
             </div>
 
             {/* Footer */}
