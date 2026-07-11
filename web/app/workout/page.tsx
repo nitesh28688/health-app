@@ -425,7 +425,7 @@ function Workout({ profile, setProfile, userId }: {
 
       {/* Structured Workout Session Sheet */}
       {sessionOpen && (
-        <div className="fixed inset-0 z-[50] flex flex-col bg-white dark:bg-neutral-950 overflow-y-auto pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
+        <div className="fixed inset-0 z-[55] flex flex-col bg-white dark:bg-neutral-950 overflow-y-auto pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
           <div className="p-4 flex flex-col min-h-full">
             <div className="flex items-center justify-between mb-4">
               <button onClick={() => setSessionOpen(false)} className="text-neutral-500 text-sm font-semibold px-2 py-2 -ml-2">Cancel</button>

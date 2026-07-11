@@ -10,6 +10,11 @@ pass" entry below for what Antigravity built and what Fable built/fixed on revie
 **Fasting history moved off Diary (2026-07-10, Phase 23)** — Diary's Fasting card now
 only shows the live timer, not a growing list of past fasts.
 
+**Smart Log confirm button was hidden behind the bottom nav (2026-07-11, Phase 27)** —
+z-index tie (`z-50` sheet vs. `z-50` nav) meant the nav painted over the "Confirm & Log"
+button. Fixed to `z-[60]` (matching every other sheet in the app) + safe-area padding.
+Same bug found and fixed in the workout session builder too. See UPGRADE.md Phase 27.
+
 **Gemini "thinking" mode disabled — major cost cut (2026-07-11, Phase 26)** — a real
 billing SKU pull showed ~70% of Core AI's Vertex spend was "Thinking" reasoning-token
 SKUs, left on by default since `generationConfig.thinkingConfig` was never set. Now

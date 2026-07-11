@@ -1380,3 +1380,27 @@ thinking is active) — confirms thinking is genuinely off, not just requested-a
 **Expected impact**: should cut Core AI's Vertex spend by roughly the ~70% that was going
 to thinking tokens, once next week's billing data reflects it. Worth a follow-up billing
 pull in ~7 days to confirm the SKU disappears/shrinks as expected.
+
+## Phase 27 (Fable, 2026-07-11) — Smart Log confirm button hidden behind bottom nav
+
+**Bug reported by user, with screenshot**: the Review Smart Log sheet's "Confirm & Log"
+button wasn't visible/clickable — "text to log takes me to the right place, but how do i
+click ok?"
+
+**Root cause**: `SmartLogSheet.tsx`'s outer container was `z-50`, the exact same z-index as
+`AppShell.tsx`'s fixed bottom nav bar (also `z-50`). With a stacking tie, the element later
+in the DOM wins — the nav bar renders after page content in `AppShell`, so it painted over
+the sheet's bottom-pinned Confirm button, making it invisible and untappable even though the
+button existed and worked fine underneath.
+
+**Fixed**: bumped `SmartLogSheet.tsx` to `z-[60]` (matching every other bottom sheet in the
+app — `AssistantSheet.tsx`, `QuantitySheet.tsx`, `AiRoutineGenerator.tsx`, the admin user
+detail sheet, and the workout page's muscle-picker/custom-exercise sheets all already use
+`z-[60]` or higher), and added safe-area-bottom padding to its footer to match
+`AssistantSheet.tsx`'s existing pattern. Also found and fixed the same bug class in
+`app/workout/page.tsx`'s full-screen structured-session builder, which was `z-[50]` — bumped
+to `z-[55]` specifically (not `z-[60]`, since its own nested sheets — muscle picker, custom
+exercise — are `z-[60]`/`z-[70]` and assume the parent sits below them).
+
+**Verified**: `npx tsc --noEmit` clean. Grepped every `fixed inset-0` overlay in the app to
+confirm no other instance of this exact z-50-tie-with-nav bug remains.

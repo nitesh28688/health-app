@@ -214,7 +214,7 @@ export function SmartLogSheet({ proposal, logDate, onClose, onConfirmed }: Props
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col justify-end">
+    <div className="fixed inset-0 z-[60] flex flex-col justify-end">
       {/* Backdrop */}
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
 
@@ -309,7 +309,7 @@ export function SmartLogSheet({ proposal, logDate, onClose, onConfirmed }: Props
 
         {/* Footer */}
         {hasAnything && (
-          <div className="px-4 py-4 border-t border-neutral-200 dark:border-neutral-800">
+          <div className="px-4 py-4 pb-[calc(1rem+env(safe-area-inset-bottom))] border-t border-neutral-200 dark:border-neutral-800">
             <button
               onClick={confirm}
               disabled={confirming || done}
