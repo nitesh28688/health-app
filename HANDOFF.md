@@ -3,6 +3,13 @@
 Short pointer document. For the deep "why is it built this way" reference, read
 `STRUCTURE.md` - that's the source of truth and is kept in sync every session.
 
+**Manual wellness capture (2026-07-11, Phase 46)** - Removed automatic MediaPipe
+tracking entirely from `WellnessCaptureSheet`: no model/WASM load, landmark loop,
+browser-specific fallback, or auto-capture remains. All scan types now use a reliable
+manual camera workflow with a scientific cyan framing grid/guide and a short scan-line
+capture confirmation. Removed the unused `@mediapipe/tasks-vision` dependency. TypeScript
+verified clean with `npx.cmd tsc --noEmit`.
+
 **MediaPipe runtime alignment (2026-07-11, Phase 45)** - Fixed the actual cause of
 Chrome's empty landmark stream: `@mediapipe/tasks-vision` was installed at `0.10.35`,
 but the component fetched a `0.10.8` WASM engine. The WASM URL and pinned npm dependency
