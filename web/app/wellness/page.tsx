@@ -7,7 +7,7 @@ import { WellnessCaptureSheet } from "@/components/WellnessCaptureSheet";
 import { compressImage } from "@/lib/imageCompress";
 import { PageSkeleton } from "@/lib/Skeleton";
 import { awardBadge } from "@/lib/badges";
-import { Sparkles, Camera, Eye, RefreshCw, X, AlertTriangle, CheckCircle, Info, Calendar, Loader2 } from "lucide-react";
+import { Sparkles, Camera, Eye, RefreshCw, X, AlertTriangle, CheckCircle, Info, Calendar, Loader2, Share2 } from "lucide-react";
 
 interface Scan {
   id: string;
@@ -56,6 +56,188 @@ function WellnessMain({ userId }: { userId: string }) {
   const [captureOpen, setCaptureOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [sharing, setSharing] = useState(false);
+
+  const latestScansByType: Record<"skin" | "eye" | "hair", Scan | null> = {
+    skin: null,
+    eye: null,
+    hair: null
+  };
+
+  if (scans) {
+    for (const s of scans) {
+      if (s.is_usable && s.overall_score != null) {
+        if (!latestScansByType[s.scan_type]) {
+          latestScansByType[s.scan_type] = s;
+        }
+      }
+    }
+  }
+
+  const activeTypes = Object.entries(latestScansByType)
+    .filter(([_, scan]) => scan !== null)
+    .map(([type]) => type);
+
+  const scoresToAverage = Object.values(latestScansByType)
+    .filter((scan): scan is Scan => scan !== null)
+    .map((scan) => scan.overall_score || 0);
+
+  const aggregateScore = scoresToAverage.length > 0
+    ? Math.round(scoresToAverage.reduce((a, b) => a + b, 0) / scoresToAverage.length)
+    : null;
+
+  const currentMonthScansCount = scans
+    ? scans.filter((s) => {
+        const scanDate = new Date(s.taken_at + "T12:00:00");
+        const today = new Date();
+        return scanDate.getFullYear() === today.getFullYear() && scanDate.getMonth() === today.getMonth();
+      }).length
+    : 0;
+
+  const fallbackDownload = useCallback((canvas: HTMLCanvasElement, score: number) => {
+    try {
+      const dataUrl = canvas.toDataURL("image/png");
+      const link = document.createElement("a");
+      link.href = dataUrl;
+      link.download = `wellness-score-${Math.round(score)}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (err) {
+      console.error("Fallback download failed:", err);
+    }
+  }, []);
+
+  const handleShare = useCallback(async () => {
+    if (aggregateScore === null) return;
+    setSharing(true);
+    try {
+      const canvas = document.createElement("canvas");
+      canvas.width = 1080;
+      canvas.height = 1080;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("Could not create canvas context");
+
+      // Draw premium dark indigo/violet background
+      const grad = ctx.createLinearGradient(0, 0, 0, 1080);
+      grad.addColorStop(0, "#1e1b4b"); // Indigo-955
+      grad.addColorStop(0.5, "#312e81"); // Indigo-900
+      grad.addColorStop(1, "#4c1d95"); // Violet-955
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, 1080, 1080);
+
+      // Draw premium visual concentric styling circles
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.03)";
+      ctx.lineWidth = 3;
+      for (let r = 150; r <= 900; r += 180) {
+        ctx.beginPath();
+        ctx.arc(540, 540, r, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
+      // Draw modern translucent glass card
+      const panelMargin = 120;
+      const panelSize = 1080 - 2 * panelMargin;
+      ctx.fillStyle = "rgba(255, 255, 255, 0.05)";
+      ctx.beginPath();
+      const cardRadius = 48;
+      if (ctx.roundRect) {
+        ctx.roundRect(panelMargin, panelMargin, panelSize, panelSize, cardRadius);
+      } else {
+        ctx.rect(panelMargin, panelMargin, panelSize, panelSize);
+      }
+      ctx.fill();
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.12)";
+      ctx.lineWidth = 3;
+      ctx.stroke();
+
+      // Brand Wordmark
+      ctx.fillStyle = "#ffffff";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.font = "900 48px system-ui, -apple-system, sans-serif";
+      ctx.fillText("CORE AI", 540, 230);
+
+      // Score Ring Visual
+      const ringX = 540;
+      const ringY = 490;
+      const ringRadius = 150;
+      const ringLineWidth = 24;
+
+      // Base ring
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.15)";
+      ctx.lineWidth = ringLineWidth;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.arc(ringX, ringY, ringRadius, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Active score arc
+      const score = aggregateScore;
+      const startAngle = -Math.PI / 2;
+      const endAngle = startAngle + (score / 100) * Math.PI * 2;
+      
+      let strokeColor = "#f59e0b"; // amber-500
+      if (score >= 80) strokeColor = "#10b981"; // emerald-500
+      else if (score >= 50) strokeColor = "#6366f1"; // indigo-500
+
+      ctx.strokeStyle = strokeColor;
+      ctx.beginPath();
+      ctx.arc(ringX, ringY, ringRadius, startAngle, endAngle);
+      ctx.stroke();
+
+      // Large Score Number
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "900 115px system-ui, -apple-system, sans-serif";
+      ctx.fillText(String(Math.round(score)), ringX, ringY);
+
+      // Label Below Ring
+      ctx.font = "bold 32px system-ui, -apple-system, sans-serif";
+      ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
+      ctx.fillText("WELLNESS SCORE", 540, 700);
+
+      // Contributing inputs info text
+      ctx.font = "500 26px system-ui, -apple-system, sans-serif";
+      ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
+      const formattedTypes = activeTypes.map((t) => t.charAt(0).toUpperCase() + t.slice(1)).join(", ");
+      ctx.fillText(`Based on ${formattedTypes}`, 540, 755);
+
+      // Web App domain URL footer
+      ctx.font = "bold 26px system-ui, -apple-system, sans-serif";
+      ctx.fillStyle = "#818cf8"; // indigo-400 brand color
+      ctx.fillText("health.linearventures.in", 540, 890);
+
+      // Blob Export & Native Sharing vs Fallback check
+      canvas.toBlob(async (blob) => {
+        if (!blob) throw new Error("Failed to export image blob");
+        const file = new File([blob], "wellness-score.png", { type: "image/png" });
+
+        const canShare = navigator.canShare && navigator.canShare({ files: [file] });
+
+        if (canShare) {
+          try {
+            await navigator.share({
+              files: [file],
+              title: "My Core AI Wellness Score",
+              text: `My Core AI Wellness Score is ${Math.round(score)}/100!`,
+            });
+          } catch (shareErr: any) {
+            if (shareErr.name !== "AbortError") {
+              fallbackDownload(canvas, score);
+            }
+          }
+        } else {
+          fallbackDownload(canvas, score);
+        }
+      }, "image/png");
+
+    } catch (err: any) {
+      console.error("Error generating share card:", err);
+      setError(err.message || "Failed to generate share card");
+    } finally {
+      setSharing(false);
+    }
+  }, [aggregateScore, activeTypes, fallbackDownload]);
 
   function getScanTrend(scan: Scan) {
     if (!scans) return null;
@@ -220,42 +402,6 @@ function WellnessMain({ userId }: { userId: string }) {
     else groups.push({ label, rows: [s] });
   }
 
-  const latestScansByType: Record<"skin" | "eye" | "hair", Scan | null> = {
-    skin: null,
-    eye: null,
-    hair: null
-  };
-
-  if (scans) {
-    for (const s of scans) {
-      if (s.is_usable && s.overall_score != null) {
-        if (!latestScansByType[s.scan_type]) {
-          latestScansByType[s.scan_type] = s;
-        }
-      }
-    }
-  }
-
-  const activeTypes = Object.entries(latestScansByType)
-    .filter(([_, scan]) => scan !== null)
-    .map(([type]) => type);
-
-  const scoresToAverage = Object.values(latestScansByType)
-    .filter((scan): scan is Scan => scan !== null)
-    .map((scan) => scan.overall_score || 0);
-
-  const aggregateScore = scoresToAverage.length > 0
-    ? Math.round(scoresToAverage.reduce((a, b) => a + b, 0) / scoresToAverage.length)
-    : null;
-
-  const currentMonthScansCount = scans
-    ? scans.filter((s) => {
-        const scanDate = new Date(s.taken_at + "T12:00:00");
-        const today = new Date();
-        return scanDate.getFullYear() === today.getFullYear() && scanDate.getMonth() === today.getMonth();
-      }).length
-    : 0;
-
   return (
     <main className="px-5 pt-6 pb-12">
       {/* Header */}
@@ -312,17 +458,32 @@ function WellnessMain({ userId }: { userId: string }) {
             <h3 className="font-extrabold text-sm text-neutral-800 dark:text-neutral-200 leading-tight">
               Wellness Score
             </h3>
-            <p className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-0.5 leading-normal">
+            <p className="text-[11px] text-neutral-550 dark:text-neutral-450 mt-0.5 leading-normal">
               Based on {activeTypes.map((t) => t.charAt(0).toUpperCase() + t.slice(1)).join(", ")}
             </p>
           </div>
-          <div className="text-right border-l border-neutral-250/40 dark:border-neutral-800/40 pl-4 shrink-0">
-            <span className="text-xl font-black text-indigo-600 dark:text-indigo-400 block leading-tight">
-              {currentMonthScansCount}
-            </span>
-            <span className="text-[9px] font-black uppercase text-neutral-400 tracking-wider">
-              Scans this month
-            </span>
+          <div className="flex flex-col items-end justify-center gap-2 pl-4 border-l border-neutral-250/40 dark:border-neutral-800/40 shrink-0">
+            <div className="text-right">
+              <span className="text-xl font-black text-indigo-600 dark:text-indigo-400 block leading-tight">
+                {currentMonthScansCount}
+              </span>
+              <span className="text-[9px] font-black uppercase text-neutral-400 tracking-wider block">
+                Scans this month
+              </span>
+            </div>
+            <button
+              onClick={handleShare}
+              disabled={sharing}
+              className="mt-0.5 rounded-xl bg-neutral-100 hover:bg-neutral-250 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-300 px-2 py-1.5 transition-all active:scale-95 disabled:opacity-50 cursor-pointer flex items-center gap-1 text-[10px] font-bold shadow-sm"
+              title="Share wellness score"
+            >
+              {sharing ? (
+                <Loader2 className="w-3 h-3 animate-spin" />
+              ) : (
+                <Share2 className="w-3 h-3" />
+              )}
+              Share
+            </button>
           </div>
         </div>
       )}

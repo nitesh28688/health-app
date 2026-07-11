@@ -1603,3 +1603,62 @@ not genuine progress. Fixed by adding `.eq("is_usable", true)` to the prior-scan
 This is a good example of why raw test output needs to be read critically rather than
 trusted at "all tests passed" face value — the bug was sitting directly in the pasted
 log, not hidden in code no one looked at.
+
+## Phase 33 (Antigravity, 2026-07-11) — Wellness Score Share Card
+
+**Goal:** Implement a client-side HTML `<canvas>` rendering and sharing capability to the Aggregate Wellness Score card in `web/app/wellness/page.tsx`.
+
+**Status:** [x] Done
+
+**Do:**
+1. **Added Share Button:** Inserted a "Share" button next to the "Scans this month" count in the right cluster of the Wellness Score card (only rendered when `aggregateScore !== null`).
+2. **Programmatic Canvas Drawing:** Built programmatic 1080x1080 canvas rendering inside the client component:
+   - Applies linear gradient (`#1e1b4b` -> `#312e81` -> `#4c1d95`) and decorative concentric visual bounds.
+   - Restricts visuals to non-personal information: exports branding header ("CORE AI"), score rings, score number, contributing input types, and the brand URL (`health.linearventures.in`). Camera photos are strictly out-of-scope for privacy protection.
+   - Supports safe `roundRect` check logic fallbacks to maintain compatibility.
+3. **Sharing Actions & Fallback:** Evaluates `navigator.canShare` capability:
+   - Triggers native `navigator.share` on supported environments (mobile).
+   - Catches and silences `AbortError` triggers.
+   - Redirects to a programmatic click download fallback if sharing is unsupported or fails (desktop).
+
+**Verify:**
+- Statically reviewed canvas offsets, gradients, texts, and abort logic block boundaries.
+- Confirmed empty state correctly hides the share action button.
+- Verification limits noted: because Canvas drawing and navigator sharing depend on browser-only DOM globals not available in CLI Node contexts, they are statically audited and code-reviewed rather than E2E Node-executed.
+- TypeScript compiles cleanly with zero type errors (`npx tsc --noEmit`).
+
+
+## Phase 33 (Antigravity, 2026-07-11) — Wellness Score Share Card
+
+**Goal:** A "Share" action on the Wellness Score card that exports a branded 1080x1080
+image (score, ring, contributing scan types, app branding) via native share sheet or
+download fallback. No server round-trip, no migration.
+
+**Built:** Pure client-side canvas rendering — dark indigo/violet gradient background,
+`roundRect`-with-fallback glass panel, a hand-drawn score ring (recreating
+`WellnessScoreRing`'s visual logic in canvas), `navigator.canShare({ files })` capability
+detection before `navigator.share()`, silent `AbortError` handling on user-cancelled
+shares, and a `canvas.toDataURL` download fallback for unsupported browsers.
+
+**Privacy guard, confirmed correct on review**: the canvas draws only the score, ring,
+contributing types, and branding — never the user's actual scan photos.
+
+**Review (Fable, 2026-07-11)**: read the full diff. Logic is correct — share button
+correctly inherits Phase 32's `aggregateScore === null` empty-state gating (no separate
+guard needed, confirmed it's nested in that same conditional branch), `canShare` capability
+check correctly precedes `share`, `AbortError` is silenced without spuriously triggering a
+fallback download, `roundRect` is feature-detected before use. The variable-hoisting move
+(relocating `aggregateScore`/`activeTypes`/etc. earlier in the component) didn't introduce
+a duplicate declaration — confirmed by a clean `tsc` pass, not just assumed safe.
+
+**Found and fixed on review**: the generic error handler used a raw browser `alert()`
+instead of the app's established `setError()` inline-banner pattern (used everywhere else
+in this exact file, and an explicitly audited/fixed inconsistency class from an earlier
+phase). Small, fixed directly.
+
+**Verification note — this phase was honest about its real limits from the start**:
+canvas rendering, `navigator.share`, and file/blob APIs are browser-only and cannot execute
+in this Node-based environment. Unlike some earlier phases, this one's completion report
+explicitly said so rather than overclaiming "verified" — logic was code-reviewed, not
+executed end-to-end. `npx tsc --noEmit` clean (own independent run). No throwaway test
+script was left in the repo.
