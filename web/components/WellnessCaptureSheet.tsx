@@ -21,6 +21,7 @@ export function WellnessCaptureSheet({ scanType, onClose, onCapture }: WellnessC
   const [guideMsg, setGuideMsg] = useState("Positioning scan area...");
   const [autoCaptureSecs, setAutoCaptureSecs] = useState<number | null>(null);
   const [facingMode, setFacingMode] = useState<"user" | "environment">("user");
+  const [isCapturing, setIsCapturing] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -259,7 +260,10 @@ export function WellnessCaptureSheet({ scanType, onClose, onCapture }: WellnessC
 
       const now = performance.now();
       // Throttle analysis to 10 FPS (every 100ms) for smooth mobile performance
-      if (v.currentTime !== lastVideoTime && now - lastProcessedTime > 100 && consecutiveFailures < 20) {
+      // Note: Removed v.currentTime !== lastVideoTime check because Samsung Internet 
+      // sometimes fails to update v.currentTime for live MediaStreams, causing the 
+      // loop to freeze on the very first frame and get stuck in "positioning" mode.
+      if (now - lastProcessedTime > 100 && consecutiveFailures < 20) {
         lastVideoTime = v.currentTime;
         lastProcessedTime = now;
         try {
@@ -443,6 +447,8 @@ export function WellnessCaptureSheet({ scanType, onClose, onCapture }: WellnessC
     const video = videoRef.current;
     if (!video) return;
 
+    setIsCapturing(true);
+
     const captureCanvas = document.createElement("canvas");
     captureCanvas.width = video.videoWidth || 640;
     captureCanvas.height = video.videoHeight || 480;
@@ -454,8 +460,16 @@ export function WellnessCaptureSheet({ scanType, onClose, onCapture }: WellnessC
     ctx.drawImage(video, 0, 0, captureCanvas.width, captureCanvas.height);
 
     const base64Data = captureCanvas.toDataURL("image/jpeg", 0.85);
-    stopCamera();
-    onCapture(base64Data);
+    
+    if (videoRef.current) {
+      videoRef.current.pause(); // Freeze frame for animation
+    }
+
+    // Allow 1.5s for the scanning animation to play
+    setTimeout(() => {
+      stopCamera();
+      onCapture(base64Data);
+    }, 1500);
   }
 
   return (
@@ -553,6 +567,30 @@ export function WellnessCaptureSheet({ scanType, onClose, onCapture }: WellnessC
 
                 {cameraStatus === "active" && (
                   <>
+                    {/* Scanning Animation Overlay */}
+                    {isCapturing && (
+                      <div className="absolute inset-0 z-20 overflow-hidden pointer-events-none">
+                        <style>{`
+                          @keyframes scannerLine {
+                            0% { top: 0%; }
+                            50% { top: 100%; }
+                            100% { top: 0%; }
+                          }
+                        `}</style>
+                        <div className="absolute inset-0 bg-emerald-500/20 backdrop-brightness-110 transition-all duration-300" />
+                        <div 
+                          className="absolute left-0 right-0 h-1.5 bg-emerald-400 shadow-[0_0_20px_5px_rgba(52,211,153,0.9)] z-30" 
+                          style={{ animation: "scannerLine 1.5s ease-in-out infinite" }} 
+                        />
+                        <div className="absolute inset-0 flex items-center justify-center z-40">
+                          <div className="bg-black/90 px-6 py-4 rounded-3xl border border-emerald-500/40 flex flex-col items-center shadow-2xl shadow-emerald-900/50">
+                            <RefreshCw className="w-8 h-8 text-emerald-400 animate-spin mb-3" />
+                            <span className="text-sm font-black text-emerald-400 tracking-widest">ANALYZING</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
                     {/* Flip camera overlay button */}
                     <button
                       onClick={() => setFacingMode((prev) => (prev === "user" ? "environment" : "user"))}
