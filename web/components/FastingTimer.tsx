@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { offlineWrite } from "@/lib/offlineWrite";
-import { Clock, Play, Square } from "lucide-react";
+import { Clock, Square } from "lucide-react";
 
 type FastingSession = {
   id: string;
@@ -42,23 +42,25 @@ export function FastingTimer({ userId }: { userId: string }) {
     return () => clearInterval(t);
   }, [active]);
 
-  async function startFast() {
+  async function startFast(hours: number) {
+    setTargetHours(hours);
+
     if (typeof window !== "undefined" && "Notification" in window) {
       if (Notification.permission === "granted") {
-        new Notification("Fast Begun", { body: `Your ${targetHours}-hour fast has started. You got this!` });
+        new Notification("Fast Begun", { body: `Your ${hours}-hour fast has started. You got this!` });
       } else if (Notification.permission !== "denied") {
         const perm = await Notification.requestPermission();
         if (perm === "granted") {
-          new Notification("Fast Begun", { body: `Your ${targetHours}-hour fast has started. You got this!` });
+          new Notification("Fast Begun", { body: `Your ${hours}-hour fast has started. You got this!` });
         }
       }
     }
 
-    const session: FastingSession = { id: crypto.randomUUID(), started_at: new Date().toISOString(), ended_at: null, target_hours: targetHours };
+    const session: FastingSession = { id: crypto.randomUUID(), started_at: new Date().toISOString(), ended_at: null, target_hours: hours };
     setActive(session);
     await offlineWrite({
       table: "fasting_sessions", op: "insert",
-      payload: { id: session.id, user_id: userId, started_at: session.started_at, target_hours: targetHours },
+      payload: { id: session.id, user_id: userId, started_at: session.started_at, target_hours: hours },
     });
   }
 
@@ -86,27 +88,30 @@ export function FastingTimer({ userId }: { userId: string }) {
           <Clock className="w-5 h-5 text-indigo-500" />
           Intermittent Fasting
         </h2>
-        {active ? (
+        {active && (
           <button onClick={stopFast} className="flex items-center gap-1 bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 px-3 py-1.5 rounded-xl font-bold text-sm">
             <Square className="w-4 h-4" /> Stop Fast
-          </button>
-        ) : (
-          <button onClick={startFast} className="flex items-center gap-1 bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400 px-3 py-1.5 rounded-xl font-bold text-sm">
-            <Play className="w-4 h-4" /> Start Fast
           </button>
         )}
       </div>
 
-      {!active && (
-        <div className="flex gap-2 mb-4">
-          {[12, 14, 16].map(h => (
-            <button key={h} onClick={() => setTargetHours(h)}
-              className={`flex-1 py-2 text-sm font-bold border rounded-xl transition-all ${targetHours === h ? "bg-indigo-600 text-white border-indigo-600 shadow-md" : "bg-neutral-50 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 border-neutral-200 dark:border-neutral-700"}`}>
-              {h} Hours
-            </button>
-          ))}
-        </div>
-      )}
+      {/* Tapping an hour pill both picks the target and starts the fast
+          immediately — a separate "Start Fast" button was a confusing extra
+          step people expected the pill tap itself to trigger. Stays visible
+          (not hidden) while active so the selected duration stays visible as
+          a clear "this is running" indicator, per user feedback. */}
+      <div className="flex gap-2 mb-4">
+        {[12, 14, 16].map(h => (
+          <button key={h} disabled={!!active} onClick={() => startFast(h)}
+            className={`flex-1 py-2 text-sm font-bold border rounded-xl transition-all ${
+              active
+                ? (currentTarget === h ? "bg-indigo-600 text-white border-indigo-600 shadow-md" : "bg-neutral-50 dark:bg-neutral-800 text-neutral-400 dark:text-neutral-600 border-neutral-200 dark:border-neutral-700 opacity-50")
+                : (targetHours === h ? "bg-indigo-600 text-white border-indigo-600 shadow-md" : "bg-neutral-50 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 border-neutral-200 dark:border-neutral-700 active:scale-95")
+            }`}>
+            {h} Hours
+          </button>
+        ))}
+      </div>
 
       {active && (
         <div className="text-center py-4 mb-2">

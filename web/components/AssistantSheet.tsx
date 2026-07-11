@@ -33,6 +33,26 @@ export function AssistantSheet({
   const inputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
+  // iOS Safari (and PWA standalone mode) doesn't reliably resize a
+  // position:fixed sheet against `100dvh` when the keyboard opens — the
+  // sheet keeps its pre-keyboard height, so the bottom input bar ends up
+  // rendered underneath the keyboard instead of above it. Track the real
+  // visible height via the VisualViewport API and size the sheet to that
+  // directly instead of trusting dvh alone.
+  const [viewportH, setViewportH] = useState<number | null>(null);
+  useEffect(() => {
+    if (!isOpen || typeof window === "undefined" || !window.visualViewport) return;
+    const vv = window.visualViewport;
+    const update = () => setViewportH(vv.height);
+    update();
+    vv.addEventListener("resize", update);
+    vv.addEventListener("scroll", update);
+    return () => {
+      vv.removeEventListener("resize", update);
+      vv.removeEventListener("scroll", update);
+    };
+  }, [isOpen]);
+
   useEffect(() => {
     if (isOpen) {
       setTimeout(() => inputRef.current?.focus(), 100);
@@ -223,6 +243,7 @@ export function AssistantSheet({
       <div
         onClick={(e) => e.stopPropagation()}
         className="bg-white dark:bg-neutral-950 flex flex-col h-[100dvh] sm:h-[85vh] sm:rounded-3xl max-w-md w-full mx-auto sm:shadow-2xl"
+        style={viewportH != null && typeof window !== "undefined" && window.innerWidth < 640 ? { height: viewportH } : undefined}
       >
         <div className="flex items-center justify-between p-4 border-b border-neutral-200 dark:border-neutral-800 shrink-0">
           <div className="flex items-center gap-2">
