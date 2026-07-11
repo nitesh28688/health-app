@@ -7,62 +7,184 @@ import type { Session } from "@supabase/supabase-js";
 import { AnimatePresence, motion } from "framer-motion";
 import { AssistantSheet } from "@/components/AssistantSheet";
 import { FormCheckSheet } from "@/components/FormCheckSheet";
-import { Wand2, Book, Dumbbell, TrendingUp, Users, Smile, CloudUpload, Sparkles, FileText } from "lucide-react";
+import { Wand2, Book, Dumbbell, TrendingUp, Users, CloudUpload, Sparkles, FileText } from "lucide-react";
 import { subscribePendingCount } from "@/lib/offlineQueue";
 import { setAppMode, subscribeAppMode, type AppMode } from "@/lib/appMode";
 
-const TABS = [
-  { href: "/", label: "Diary", icon: Book, type: null as string | null },
-  { href: "/workout", label: "Workout", icon: Dumbbell, type: null as string | null },
-  { href: "/trends", label: "Trends", icon: TrendingUp, type: null as string | null },
-  { href: "/friends", label: "Friends", icon: Users, type: null as string | null },
-  { href: "/profile", label: "Profile", icon: Smile, type: null as string | null },
+// ── Tab definitions (Profile removed — it now lives behind the header avatar) ──
+
+type TabDef = { href: string; label: string; icon: typeof Book; type: string | null };
+
+const CORE_TABS: TabDef[] = [
+  { href: "/", label: "Diary", icon: Book, type: null },
+  { href: "/workout", label: "Workout", icon: Dumbbell, type: null },
+  // slot 2 (index 2) is the mode-toggle button — rendered inline, not from this array
+  { href: "/trends", label: "Trends", icon: TrendingUp, type: null },
+  { href: "/friends", label: "Friends", icon: Users, type: null },
 ];
 
-// Wellness Mode keeps only the destinations that are real today.
-const WELLNESS_TABS = [
-  { href: "/wellness", label: "Scan", icon: Sparkles, type: null as string | null },
+const WELLNESS_TABS: TabDef[] = [
+  { href: "/wellness", label: "Scan", icon: Sparkles, type: null },
+  // slot 1 (index 1) is the mode-toggle button
   { href: "/wellness?view=reports", label: "Reports", icon: FileText, type: "reports" },
-  { href: "/profile", label: "Profile", icon: Smile, type: null as string | null },
 ];
+
 const CORE_ONLY_PATHS = new Set(["/", "/workout", "/trends", "/friends"]);
-// Reads the ?view= query param to correctly highlight the wellness sub-view.
+
+// ── Header ─────────────────────────────────────────────────────────────────────
+
+function AppHeader({ mode, profile, onAvatarTap }: {
+  mode: AppMode;
+  profile: Profile | null;
+  onAvatarTap: () => void;
+}) {
+  const initial = profile?.display_name?.charAt(0)?.toUpperCase() || "?";
+  const isWellness = mode === "wellness";
+
+  return (
+    <header
+      className={`sticky top-0 z-40 flex items-center justify-between px-4 h-12 border-b backdrop-blur-xl transition-colors duration-300 ease-in-out ${
+        isWellness
+          ? "border-rose-200/50 dark:border-rose-900/40 bg-rose-50/70 dark:bg-rose-950/40"
+          : "border-indigo-200/50 dark:border-indigo-900/40 bg-white/70 dark:bg-neutral-950/70"
+      }`}
+    >
+      {/* Left: branding */}
+      <div className="flex items-center gap-2">
+        <img src="/icon-192.png" alt="" className="w-7 h-7 rounded-lg object-cover" />
+        <AnimatePresence mode="wait">
+          <motion.span
+            key={mode}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.3 }}
+            className={`text-base font-black tracking-tight ${
+              isWellness
+                ? "bg-gradient-to-r from-rose-600 to-pink-500 bg-clip-text text-transparent"
+                : "bg-gradient-to-r from-indigo-600 to-violet-500 bg-clip-text text-transparent"
+            }`}
+          >
+            {isWellness ? "Wellness" : "Core AI"}
+          </motion.span>
+        </AnimatePresence>
+      </div>
+
+      {/* Right: avatar */}
+      <button
+        onClick={onAvatarTap}
+        className="shrink-0 active:scale-95 transition-transform"
+        aria-label="Profile"
+      >
+        {profile?.avatar_url ? (
+          <img
+            src={profile.avatar_url}
+            alt=""
+            className={`w-8 h-8 rounded-full object-cover border-2 shadow-sm ${
+              isWellness ? "border-rose-300 dark:border-rose-700" : "border-indigo-300 dark:border-indigo-700"
+            }`}
+          />
+        ) : (
+          <div
+            className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white shadow-sm ${
+              isWellness
+                ? "bg-gradient-to-br from-rose-500 to-pink-600"
+                : "bg-gradient-to-br from-indigo-500 to-violet-600"
+            }`}
+          >
+            {initial}
+          </div>
+        )}
+      </button>
+    </header>
+  );
+}
+
+// ── Nav Tabs ────────────────────────────────────────────────────────────────────
+
 // `useSearchParams()` requires a Suspense boundary in the App Router (an
 // ungoverned build-time gotcha — get this wrong and it can break the
 // production build for every page, since AppShell wraps all of them), so
 // this is deliberately isolated into its own small component rather than
 // called at the top of AppShell itself.
-function NavTabs({ mode }: { mode: AppMode }) {
+function NavTabs({ mode, onModeToggle }: { mode: AppMode; onModeToggle: () => void }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const currentView = searchParams.get("view");
-  const activeTabs = mode === "wellness" ? WELLNESS_TABS : TABS;
+  const activeTabs = mode === "wellness" ? WELLNESS_TABS : CORE_TABS;
+  const isWellness = mode === "wellness";
+  // The index at which the mode-toggle button is inserted
+  const toggleIdx = mode === "wellness" ? 1 : 2;
+
+  const accentText = isWellness ? "text-rose-600 dark:text-rose-400" : "text-indigo-600 dark:text-indigo-400";
+  const accentBubble = isWellness ? "bg-rose-100 dark:bg-rose-900/30" : "bg-indigo-100 dark:bg-indigo-900/30";
+
+  // Build the tab items interspersed with the mode-toggle at the right slot
+  const items: React.ReactNode[] = [];
+  let tabIdx = 0;
+  const totalSlots = activeTabs.length + 1; // tabs + 1 toggle
+
+  for (let slot = 0; slot < totalSlots; slot++) {
+    if (slot === toggleIdx) {
+      // ── Mode Toggle Button ──
+      // The destination mode's identity: rose when in Core (inviting to Wellness),
+      // indigo when in Wellness (inviting back to Core).
+      const destLetter = isWellness ? "C" : "W";
+      const destBg = isWellness
+        ? "bg-gradient-to-br from-indigo-500 to-violet-600 shadow-indigo-500/30"
+        : "bg-gradient-to-br from-rose-500 to-pink-600 shadow-rose-500/30";
+
+      items.push(
+        <div key="mode-toggle" className="flex-1 flex flex-col items-center justify-center relative">
+          <button
+            onClick={onModeToggle}
+            className={`relative -mt-5 w-14 h-14 rounded-full ${destBg} text-white shadow-lg flex items-center justify-center active:scale-90 transition-all duration-200 border-4 border-white dark:border-neutral-950 z-10`}
+            aria-label={`Switch to ${isWellness ? "Core" : "Wellness"} mode`}
+          >
+            <AnimatePresence mode="wait">
+              <motion.span
+                key={mode}
+                initial={{ opacity: 0, scale: 0.5, rotate: -90 }}
+                animate={{ opacity: 1, scale: 1, rotate: 0 }}
+                exit={{ opacity: 0, scale: 0.5, rotate: 90 }}
+                transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+                className="text-xl font-black leading-none"
+              >
+                {destLetter}
+              </motion.span>
+            </AnimatePresence>
+          </button>
+        </div>
+      );
+    } else {
+      const t = activeTabs[tabIdx];
+      tabIdx++;
+      const Icon = t.icon;
+      const tabPath = t.href.split("?")[0];
+      const isActive = pathname === tabPath && (pathname !== "/wellness" || currentView === t.type);
+
+      items.push(
+        <Link key={t.href} href={t.href} replace
+          className={`flex-1 flex flex-col items-center justify-center py-2 min-h-[52px] text-[10px] transition-all relative ${
+            isActive ? `${accentText} font-semibold` : "text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300"}`}>
+          {isActive && (
+            <motion.div layoutId="tab-bubble" className={`absolute inset-1 rounded-xl ${accentBubble}`} transition={{ type: "spring", bounce: 0.2, duration: 0.6 }} />
+          )}
+          <Icon className={`w-5 h-5 mb-1 relative z-10 transition-transform ${isActive ? "scale-110" : ""}`} strokeWidth={isActive ? 2.5 : 2} />
+          <span className="relative z-10">{t.label}</span>
+        </Link>
+      );
+    }
+  }
 
   return (
     <div className="max-w-md mx-auto flex px-2 py-1">
-      {activeTabs.map((t) => {
-        const Icon = t.icon;
-        const tabPath = t.href.split("?")[0];
-        const isActive = pathname === tabPath && (pathname !== "/wellness" || currentView === t.type);
-        const accentText = mode === "wellness" ? "text-rose-600 dark:text-rose-400" : "text-indigo-600 dark:text-indigo-400";
-        const accentBubble = mode === "wellness" ? "bg-rose-100 dark:bg-rose-900/30" : "bg-indigo-100 dark:bg-indigo-900/30";
-        return (
-          <Link key={t.href} href={t.href} replace
-            className={`flex-1 flex flex-col items-center justify-center py-2 min-h-[52px] text-[10px] transition-all relative ${
-              isActive ? `${accentText} font-semibold` : "text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300"}`}>
-            {isActive && (
-              <motion.div layoutId="tab-bubble" className={`absolute inset-1 rounded-xl ${accentBubble}`} transition={{ type: "spring", bounce: 0.2, duration: 0.6 }} />
-            )}
-            <Icon className={`w-5 h-5 mb-1 relative z-10 transition-transform ${isActive ? "scale-110" : ""}`} strokeWidth={isActive ? 2.5 : 2} />
-            <span className="relative z-10">{t.label}</span>
-          </Link>
-        );
-      })}
+      {items}
     </div>
   );
 }
 
-/** Client-side auth gate + bottom nav. Wrap every signed-in page with this. */
+/** Client-side auth gate + top header + bottom nav. Wrap every signed-in page with this. */
 export function AppShell({ children }: {
   children: (ctx: { session: Session; profile: Profile | null; setProfile: (p: Profile) => void }) => React.ReactNode;
 }) {
@@ -86,10 +208,10 @@ export function AppShell({ children }: {
   // persists across navigation.
   useEffect(() => subscribePendingCount(setPendingWrites), []);
 
-  // App mode (Core vs Wellness) — toggled from Profile, subscribed here since
-  // this is where the nav actually renders. Same pub/sub shape as the offline
-  // queue badge above, deliberately not threaded through the AppShell
-  // render-prop signature to avoid touching every page that calls <AppShell>.
+  // App mode (Core vs Wellness) — toggled from the center nav button, subscribed
+  // here since this is where the nav and header actually render. Same pub/sub
+  // shape as the offline queue badge above, deliberately not threaded through the
+  // AppShell render-prop signature to avoid touching every page that calls <AppShell>.
   useEffect(() => subscribeAppMode(setMode), []);
 
   useEffect(() => {
@@ -112,7 +234,17 @@ export function AppShell({ children }: {
     }
   }, [loading, mode, pathname, router, session]);
 
-  const activeTabs = mode === "wellness" ? WELLNESS_TABS : TABS;
+  // For swipe navigation, use only the navigable tabs (excludes mode-toggle)
+  const activeTabs = mode === "wellness" ? WELLNESS_TABS : CORE_TABS;
+
+  // Mode toggle handler — mirrors the exact logic from the deleted
+  // toggleWellnessMode() in profile/page.tsx, reusing setAppMode()
+  // from lib/appMode.ts rather than reimplementing it.
+  function handleModeToggle() {
+    const next: AppMode = mode === "core" ? "wellness" : "core";
+    setAppMode(next);
+    router.push(next === "wellness" ? "/wellness" : "/");
+  }
 
   function onTouchStart(e: React.TouchEvent) {
     if ((e.target as Element).closest('.fixed.inset-0')) return;
@@ -145,8 +277,15 @@ export function AppShell({ children }: {
 
   return (
     <div className="flex-1 flex flex-col w-full h-full" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+      {/* ── Persistent Header ── */}
+      <AppHeader
+        mode={mode}
+        profile={profile}
+        onAvatarTap={() => router.push("/profile")}
+      />
+
       {pendingWrites > 0 && (
-        <div className="fixed top-[env(safe-area-inset-top)] inset-x-0 z-40 flex justify-center pt-2 pointer-events-none">
+        <div className="fixed top-[calc(env(safe-area-inset-top)+3.25rem)] inset-x-0 z-40 flex justify-center pt-2 pointer-events-none">
           <div className="flex items-center gap-1.5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 text-xs font-medium px-3 py-1.5 shadow-sm">
             <CloudUpload className="w-3.5 h-3.5" />
             {pendingWrites} pending — will sync automatically
@@ -223,7 +362,7 @@ export function AppShell({ children }: {
           : "border-neutral-200/50 dark:border-neutral-800/50 bg-white/70 dark:bg-neutral-950/70"
       }`}>
         <Suspense fallback={<div className="max-w-md mx-auto flex px-2 py-1 h-[68px]" />}>
-          <NavTabs mode={mode} />
+          <NavTabs mode={mode} onModeToggle={handleModeToggle} />
         </Suspense>
       </nav>
     </div>

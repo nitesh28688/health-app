@@ -9,11 +9,9 @@ import type { Profile } from "@/lib/useUser";
 import { BADGES } from "@/lib/badges";
 import { PhoneInput } from "@/lib/PhoneInput";
 import { PageSkeleton } from "@/lib/Skeleton";
-import { pushSupported, currentPushSubscription, enablePush, disablePush } from "@/lib/push";
 import { compressImage } from "@/lib/imageCompress";
 import { offlineWrite } from "@/lib/offlineWrite";
-import { Camera, Image as ImageIcon, Sparkles, Hand, Check, Pill, Activity } from "lucide-react";
-import { getAppMode, setAppMode } from "@/lib/appMode";
+import { Camera, Image as ImageIcon, Sparkles, Hand, Check, Settings } from "lucide-react";
 
 const inputCls =
   "rounded-xl border border-neutral-300 dark:border-neutral-700 bg-white/50 dark:bg-neutral-900/50 px-4 py-3 text-base w-full focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition-all shadow-sm";
@@ -23,15 +21,6 @@ function ProfileForm({ profile, setProfile, userId, email }: {
   profile: Profile; setProfile: (p: Profile) => void; userId: string; email?: string;
 }) {
   const router = useRouter();
-  const [wellnessOn, setWellnessOn] = useState(false);
-  useEffect(() => { setWellnessOn(getAppMode() === "wellness"); }, []);
-
-  function toggleWellnessMode() {
-    const next = wellnessOn ? "core" : "wellness";
-    setAppMode(next);
-    setWellnessOn(next === "wellness");
-    router.push(next === "wellness" ? "/wellness" : "/");
-  }
 
   const [f, setF] = useState({
     display_name: profile.display_name ?? "",
@@ -45,10 +34,6 @@ function ProfileForm({ profile, setProfile, userId, email }: {
     target_carbs: profile.target_carbs?.toString() ?? "250",
     target_fat: profile.target_fat?.toString() ?? "65",
     target_water_ml: profile.target_water_ml?.toString() ?? "3000",
-    share_workouts: profile.share_workouts,
-    share_diary: profile.share_diary,
-    share_weight: profile.share_weight,
-    track_cycle: profile.track_cycle ?? false,
     diet_type: (profile.diet_type ?? "balanced") as DietType,
     target_weight_kg: profile.target_weight_kg?.toString() ?? "",
   });
@@ -61,9 +46,6 @@ function ProfileForm({ profile, setProfile, userId, email }: {
   const [suggestedFor, setSuggestedFor] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [notifStatus, setNotifStatus] = useState<"unknown" | "enabled" | "disabled" | "unsupported">("unknown");
-  const [notifBusy, setNotifBusy] = useState(false);
-  const [notifError, setNotifError] = useState<string | null>(null);
   const [avatarBusy, setAvatarBusy] = useState(false);
   const [avatarError, setAvatarError] = useState<string | null>(null);
 
@@ -82,23 +64,7 @@ function ProfileForm({ profile, setProfile, userId, email }: {
       .then(({ data }) => {
         if (data) setEarnedBadges(new Set(data.map(r => r.badge_code)));
       });
-
-    if (!pushSupported()) { setNotifStatus("unsupported"); return; }
-    currentPushSubscription().then((sub) => setNotifStatus(sub ? "enabled" : "disabled"));
   }, [userId]);
-
-  async function toggleNotifications() {
-    setNotifBusy(true); setNotifError(null);
-    if (notifStatus === "enabled") {
-      await disablePush();
-      setNotifStatus("disabled");
-    } else {
-      const res = await enablePush();
-      if (!res.ok) { setNotifError(res.error ?? "couldn't enable"); setNotifBusy(false); return; }
-      setNotifStatus("enabled");
-    }
-    setNotifBusy(false);
-  }
 
   const w = parseFloat(weight), h = parseFloat(f.height_cm);
   const canSuggest = w > 0 && h > 0 && f.birth_date && f.sex;
@@ -143,10 +109,6 @@ function ProfileForm({ profile, setProfile, userId, email }: {
       target_carbs: +f.target_carbs || 250,
       target_fat: +f.target_fat || 65,
       target_water_ml: +f.target_water_ml || 3000,
-      share_workouts: f.share_workouts,
-      share_diary: f.share_diary,
-      share_weight: f.share_weight,
-      track_cycle: f.track_cycle,
       diet_type: f.diet_type,
       target_weight_kg: parseFloat(f.target_weight_kg) > 0 ? parseFloat(f.target_weight_kg) : null,
     };
@@ -209,10 +171,18 @@ function ProfileForm({ profile, setProfile, userId, email }: {
           </span>
           <input type="file" accept="image/*" onChange={onAvatarPicked} className="hidden" disabled={avatarBusy} />
         </label>
-        <div>
+        <div className="flex-1 min-w-0">
           <h1 className="text-2xl font-bold">{profile.display_name}</h1>
-          <p className="text-neutral-500 text-sm">@{profile.username} · {email}</p>
+          <p className="text-neutral-500 text-sm truncate">@{profile.username} · {email}</p>
         </div>
+        {/* Settings gear */}
+        <button
+          onClick={() => router.push("/settings")}
+          className="shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-900 transition-colors"
+          aria-label="Account settings"
+        >
+          <Settings className="w-5 h-5" />
+        </button>
       </div>
       {avatarError && <p className="text-xs text-amber-600 mb-4">{avatarError}</p>}
       <div className="flex items-center gap-6 mt-2 mb-4">
@@ -221,30 +191,6 @@ function ProfileForm({ profile, setProfile, userId, email }: {
           Progress photos →
         </Link>
       </div>
-
-      <button
-        type="button"
-        onClick={toggleWellnessMode}
-        className="w-full flex items-center justify-between gap-3 rounded-2xl border border-rose-200/60 dark:border-rose-900/40 bg-gradient-to-r from-rose-50 to-violet-50 dark:from-rose-950/20 dark:to-violet-950/20 px-4 py-3.5 mb-8 transition-all active:scale-[0.98] cursor-pointer"
-      >
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-rose-500 to-violet-600 flex items-center justify-center text-white shrink-0">
-            <Sparkles className="w-5 h-5" />
-          </div>
-          <div className="text-left">
-            <p className="font-bold text-sm text-neutral-900 dark:text-white">Wellness Mode</p>
-            <p className="text-xs text-neutral-500">Switch to Skin, Eye &amp; Hair scans</p>
-          </div>
-        </div>
-        <div
-          className={`w-11 h-6 rounded-full transition-colors relative shrink-0 ${wellnessOn ? "bg-rose-500" : "bg-neutral-300 dark:bg-neutral-700"}`}
-          role="switch"
-          aria-checked={wellnessOn}
-          aria-label="Toggle Wellness Mode"
-        >
-          <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform duration-200 ${wellnessOn ? "translate-x-5" : "translate-x-0.5"}`} />
-        </div>
-      </button>
 
       <section className="flex flex-col gap-4">
         <div>
@@ -376,47 +322,6 @@ function ProfileForm({ profile, setProfile, userId, email }: {
       </section>
 
       <section className="mt-8">
-        <h2 className="text-lg font-bold mb-1">Reminders</h2>
-        <p className="text-sm text-neutral-500 mb-3">
-          One evening nudge to log food or water — only if you haven&apos;t already.
-        </p>
-        <div className="flex items-center justify-between py-3 border-b border-neutral-100 dark:border-neutral-900">
-          <span>Push notifications</span>
-          <button onClick={toggleNotifications} disabled={notifBusy}
-            className={`rounded-full px-4 py-2 text-sm font-semibold transition-all shadow-sm ${
-              notifStatus === "enabled" ? "bg-gradient-to-r from-indigo-500 to-violet-600 text-white shadow-indigo-500/20" : "border border-neutral-300 dark:border-neutral-700 bg-white/50 dark:bg-neutral-900/50"}`}>
-            {notifBusy ? "…" : notifStatus === "enabled" ? <span className="flex items-center gap-1">On <Check className="w-3.5 h-3.5" /></span> : notifStatus === "unsupported" ? "Unavailable" : "Turn on"}
-          </button>
-        </div>
-        {notifError && <p className="text-xs text-amber-600 mt-1">{notifError}</p>}
-      </section>
-
-      <section className="mt-8">
-        <h2 className="text-lg font-bold mb-1">Health tracking</h2>
-        <Link href="/medications"
-          className="flex items-center justify-between py-3 border-b border-neutral-100 dark:border-neutral-900">
-          <span className="flex items-center gap-2"><Pill className="w-5 h-5 text-indigo-500" /> Medications</span>
-          <span className="text-neutral-400">→</span>
-        </Link>
-        {f.sex !== "male" && f.sex !== "" && (
-          <>
-            <label className="flex items-center justify-between py-3 border-b border-neutral-100 dark:border-neutral-900">
-              <span>Track menstrual cycle</span>
-              <input type="checkbox" checked={f.track_cycle}
-                onChange={(e) => setF({ ...f, track_cycle: e.target.checked })}
-                className="w-6 h-6 accent-indigo-600 cursor-pointer" />
-            </label>
-            {f.track_cycle && (
-              <Link href="/cycle" className="flex items-center justify-between py-3 border-b border-neutral-100 dark:border-neutral-900">
-                <span className="flex items-center gap-2"><Activity className="w-5 h-5 text-pink-500" /> Cycle tracking</span>
-                <span className="text-neutral-400">→</span>
-              </Link>
-            )}
-          </>
-        )}
-      </section>
-
-      <section className="mt-8">
         <h2 className="text-lg font-bold mb-3">Badges</h2>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
           {(showAllBadges ? BADGES : BADGES.slice(0, 4)).map((b) => {
@@ -437,54 +342,10 @@ function ProfileForm({ profile, setProfile, userId, email }: {
         )}
       </section>
 
-      <section className="mt-8">
-        <h2 className="text-lg font-bold mb-1">Appearance</h2>
-        <p className="text-sm text-neutral-500 mb-3">Customize your app experience.</p>
-        <label className="flex items-center justify-between py-3 border-b border-neutral-100 dark:border-neutral-900 cursor-pointer">
-          <span>Dark Mode</span>
-          <input type="checkbox" 
-            checked={typeof document !== "undefined" && document.documentElement.classList.contains("dark")}
-            onChange={(e) => {
-              const isDark = e.target.checked;
-              if (isDark) {
-                document.documentElement.classList.add("dark");
-                document.documentElement.classList.remove("light");
-                localStorage.setItem("theme", "dark");
-              } else {
-                document.documentElement.classList.remove("dark");
-                document.documentElement.classList.add("light");
-                localStorage.setItem("theme", "light");
-              }
-              // Force re-render of this checkbox
-              setF({ ...f }); 
-            }}
-            className="w-6 h-6 accent-indigo-600 cursor-pointer" />
-        </label>
-      </section>
-
-      <section className="mt-8">
-        <h2 className="text-lg font-bold mb-1">Sharing with friends</h2>
-        <p className="text-sm text-neutral-500 mb-3">Friends only ever see what you turn on.</p>
-        {([["share_workouts", "Workouts"], ["share_diary", "Daily calorie totals"],
-           ["share_weight", "Weight check-ins"]] as const).map(([k, label]) => (
-          <label key={k} className="flex items-center justify-between py-3 border-b border-neutral-100 dark:border-neutral-900">
-            <span>{label}</span>
-            <input type="checkbox" checked={f[k]}
-              onChange={(e) => setF({ ...f, [k]: e.target.checked })}
-              className="w-6 h-6 accent-indigo-600 cursor-pointer" />
-          </label>
-        ))}
-      </section>
-
       {error && <p className="text-red-500 text-sm mt-4">{error}</p>}
       <button onClick={save}
-        className="mt-6 w-full rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white py-3.5 font-semibold active:scale-[0.98] transition-all shadow-md shadow-indigo-500/20 hover:shadow-lg hover:shadow-indigo-500/30">
+        className="mt-6 mb-8 w-full rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white py-3.5 font-semibold active:scale-[0.98] transition-all shadow-md shadow-indigo-500/20 hover:shadow-lg hover:shadow-indigo-500/30">
         {saved ? <span className="flex items-center justify-center gap-1">Saved <Check className="w-5 h-5" /></span> : "Save"}
-      </button>
-      <button
-        onClick={async () => { await supabase.auth.signOut(); router.replace("/login"); }}
-        className="mt-3 mb-4 w-full rounded-xl border border-red-300 dark:border-red-900/50 text-red-600 dark:text-red-400 py-3 font-semibold active:scale-[0.98]">
-        Sign out
       </button>
     </main>
   );

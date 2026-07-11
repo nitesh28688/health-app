@@ -30,7 +30,7 @@ export function AssistantSheet({
   const [startingLive, setStartingLive] = useState(false);
   
   const bottomRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const router = useRouter();
 
   // iOS Safari (and PWA standalone mode) doesn't reliably resize a
@@ -55,7 +55,13 @@ export function AssistantSheet({
 
   useEffect(() => {
     if (isOpen) {
-      setTimeout(() => inputRef.current?.focus(), 100);
+      setTimeout(() => {
+        if (inputRef.current) {
+          inputRef.current.focus();
+          inputRef.current.style.height = "auto";
+          inputRef.current.style.height = inputRef.current.scrollHeight + "px";
+        }
+      }, 100);
       if (messages.length === 0) {
         setMessages([{
           id: "welcome",
@@ -120,6 +126,10 @@ export function AssistantSheet({
 
     const userText = input.trim();
     setInput("");
+    // Reset textarea height after clearing
+    if (inputRef.current) {
+      inputRef.current.style.height = "auto";
+    }
     setError(null);
 
     const newMessages = [...messages, { id: Math.random().toString(), role: "user" as const, text: userText }];
@@ -397,20 +407,33 @@ export function AssistantSheet({
         </div>
 
         <div className="p-3 bg-white dark:bg-neutral-950 border-t border-neutral-200 dark:border-neutral-800 pb-[calc(0.75rem+env(safe-area-inset-bottom))] shrink-0">
-          <form onSubmit={sendMessage} className="relative flex items-center">
-            <input
+          <form onSubmit={sendMessage} className="relative flex items-end">
+            <textarea
               ref={inputRef}
-              type="text"
               value={input}
-              onChange={(e) => setInput(e.target.value)}
+              onChange={(e) => {
+                setInput(e.target.value);
+                // Auto-grow: reset height then set to scrollHeight
+                const el = e.target;
+                el.style.height = "auto";
+                el.style.height = Math.min(el.scrollHeight, 144) + "px"; // ~6 lines max
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  sendMessage();
+                }
+              }}
               placeholder={isWellness ? "Ask about your scans..." : "Ask about your history..."}
-              className={`w-full bg-neutral-100 dark:bg-neutral-900 border-none rounded-full pl-4 pr-12 py-3 text-[15px] focus:ring-2 ${accent.focusRing} outline-none transition-shadow`}
+              rows={1}
+              className={`w-full bg-neutral-100 dark:bg-neutral-900 border-none rounded-2xl pl-4 pr-12 py-3 text-[15px] focus:ring-2 ${accent.focusRing} outline-none transition-shadow resize-none overflow-y-auto leading-snug`}
+              style={{ maxHeight: 144 }}
               disabled={loading}
             />
             <button
               type="submit"
               disabled={!input.trim() || loading}
-              className={`absolute right-1.5 p-2 ${accent.button} text-white rounded-full disabled:opacity-40 disabled:bg-neutral-300 dark:disabled:bg-neutral-700 transition-all`}
+              className={`absolute right-1.5 bottom-1.5 p-2 ${accent.button} text-white rounded-full disabled:opacity-40 disabled:bg-neutral-300 dark:disabled:bg-neutral-700 transition-all`}
             >
               <Send className="w-4 h-4" />
             </button>

@@ -178,25 +178,44 @@ one object.
 | `/progress` | Before/after progress photos — grid view, tap any two to compare side by side, upload via Cloudflare R2 |
 | `/wellness` | Wellness Mode home with two real sub-views: Scan (`/wellness`) and Reports (`/wellness?view=reports`). Scan shows the aggregate Wellness Score card, shareable branded score canvas, AI/seasonal insights, and Skin/Eye/Hair capture buttons. Reports shows latest results, wellness badges, compare mode, scan history, and report detail sheets with Overview/Routine tabs. Reports and history rows have confirm-gated delete actions for `wellness_scans`. Capture is manual-only in `WellnessCaptureSheet`: the old MediaPipe auto-tracking path was removed after unreliable browser behavior on Samsung Internet and Chrome. The sheet now uses a camera preview, cyan scientific framing guide, manual capture button, and scan-line confirmation animation. |
 | `/friends` | Feed / Leaderboard / People (search, requests, cheers) |
-| `/profile` | **Avatar upload** (tap the photo, compressed client-side before upload), body stats, target-suggestion wizard (goal toggle has **no default selection** — forces an explicit tap and labels the result "Calculated for: X" so there's never ambiguity about which goal a suggestion used), push-notification opt-in, links to Medications/Cycle/Progress-photos, sharing toggles, sign out |
+| `/profile` | **Avatar upload** (tap the photo, compressed client-side before upload), body stats, target-suggestion wizard (goal toggle has **no default selection** — forces an explicit tap and labels the result "Calculated for: X" so there's never ambiguity about which goal a suggestion used), badges. Reached via the persistent header avatar, not a bottom-nav tab. Settings gear icon navigates to `/settings`. |
+| `/settings` | Account Settings — change email (Supabase `auth.updateUser`), change password (link to `/reset`), push-notification opt-in, health tracking links (medications, cycle), dark mode toggle, sharing toggles, delete account placeholder (mailto), sign out |
 | `/admin` | (admin only) **Overview / Users / AI Foods tabs** — Users tab lists every real account (email, phone, join date, confirmation status) tap-through to a detail sheet (food/workout/water log counts, last weight, friend count) with a delete-user action; AI Foods tab is the moderation queue |
 
-### `AppShell.tsx` — the auth gate + bottom nav
+### `AppShell.tsx` — the auth gate + header + bottom nav
 
 Every signed-in page is wrapped in `<AppShell>{({ session, profile, setProfile }) => ...}</AppShell>`.
-It redirects to `/login` if there's no session, renders the bottom nav, and hands down the
-current user's session + profile so pages don't each need their own auth boilerplate.
+It redirects to `/login` if there's no session, renders a persistent top header and the
+bottom nav, and hands down the current user's session + profile so pages don't each need
+their own auth boilerplate.
 
-**App Mode (2026-07-11, updated Phase 47)**: the bottom nav now has two tab sets - the default
-5-tab "core" set (Diary/Workout/Trends/Friends/Profile) and a "wellness" set (`Scan`,
-`Reports`, `Profile`). `Reports` deep-links to `/wellness?view=reports`; `Scan` is
-`/wellness`. Mode is tracked in `web/lib/appMode.ts` (localStorage + pub/sub, same shape as
+**Persistent Header (2026-07-12, Phase 58)**: a slim sticky bar at the top of every
+signed-in page. Left side: app icon + mode-aware wordmark ("Core AI" in indigo gradient
+for Core mode, "Wellness" in rose gradient for Wellness mode, with an AnimatePresence
+crossfade on switch). Right side: user avatar (from `profile.avatar_url`, fallback
+initial-letter circle) that taps to `/profile`. The header uses the same `backdrop-blur-xl`
+and mode-colored border pattern as the bottom nav.
+
+**Bottom Nav + Mode Toggle (2026-07-12, Phase 58)**: the bottom nav has two tab sets —
+Core mode: Diary/Workout/**[Mode Toggle]**/Trends/Friends (5 slots).
+Wellness mode: Scan/**[Mode Toggle]**/Reports (3 slots).
+Profile was removed from both sets (now lives behind the header avatar). The center
+mode-toggle is a circular, elevated action button (not a navigation tab) showing the
+destination mode's letter ("W" in Core, "C" in Wellness) in the destination's accent color
+(rose bg in Core, indigo bg in Wellness). On tap it calls `setAppMode()` from
+`lib/appMode.ts` and navigates to `/wellness` or `/` — the exact same logic that was in
+the now-deleted `toggleWellnessMode()` in `profile/page.tsx`. The letter/color morphs via
+Framer Motion AnimatePresence keyed on mode, using the existing `wash-${mode}` color-wash
+transition already in AppShell (no separate animation system).
+
+**App Mode**: tracked in `web/lib/appMode.ts` (localStorage + pub/sub, same shape as
 `subscribePendingCount()` in `offlineQueue.ts`) rather than threaded through `AppShell`'s
-render-prop signature - only `AppShell` (renders the nav) and the Profile toggle need it,
-so this avoids touching every page that calls `<AppShell>`. Toggling from Profile
-(`profile/page.tsx`) calls `setAppMode()` then navigates to `/wellness` or `/` so the mode
-switch is immediately visible. The nav's background, active-tab accent, and the floating
-Assistant button all re-theme to rose when in Wellness Mode, with a `framer-motion` crossfade on the tab row when switching. `AppShell` also reconciles restored mode with the current route on cold PWA launches: if the manifest opens `/` while localStorage still says Wellness, it immediately replaces the route with `/wellness`; if a user deep-links directly to `/wellness`, it restores Wellness mode so the page and tabs do not disagree.
+render-prop signature. The nav's background, active-tab accent, header branding, and the
+floating Assistant button all re-theme to rose when in Wellness Mode. `AppShell` also
+reconciles restored mode with the current route on cold PWA launches: if the manifest opens
+`/` while localStorage still says Wellness, it immediately replaces the route with
+`/wellness`; if a user deep-links directly to `/wellness`, it restores Wellness mode so the
+page and tabs do not disagree.
 
 ### `lib/` — the shared logic
 
@@ -950,7 +969,202 @@ pre-skip exercise list instead of nothing. Fixed by routing that case through `o
 ## Wellness Tab (/wellness)
 - Contains Skin, Eye, and Hair capture/analysis logic via `WellnessCaptureSheet.tsx`.
 - Uses two sub-views: Scan (`/wellness`) for score + capture actions, and Reports (`/wellness?view=reports`) for latest results, badges, compare mode, history, and report sheets.
-- Wellness Mode bottom nav is `Scan`, `Reports`, `Profile`; old Skin/Eye/Hair nav entries were removed because they all opened the same page.
+- Wellness Mode bottom nav is `Scan`, `[Mode Toggle]`, `Reports`; Profile was removed (now behind the header avatar) and the center mode-toggle button replaces it.
+- Displays an aggregate Wellness Score Card and generates a branded 1080x1080 share image (with glowing gradients, perfect centering, and improved spacing) that draws `/icon-192.png` into the canvas.
+- Features a highly clinical Downloadable PDF Report (via `jspdf` and `html2canvas` in `PDFReportTemplate`) allowing users to save and print their detailed metrics and SVG trend graphs.
+- Score rings and progress bars use `framer-motion` for smooth, micro-animated reveals.
+- Fetches and displays a Weekly Wellness Insights Card via `/api/ai/wellness-insight`, heavily caching unchanged scan state to minimize AI cost.
+- Supports confirm-gated scan/report deletion from history rows and the report sheet footer.
+- Capture is manual-only. `WellnessCaptureSheet` no longer imports MediaPipe or auto-detects face/hair alignment; it opens the camera, shows a scientific framing guide, lets the user capture deliberately, then plays a short scan-line confirmation before submitting the image.
+- `AppShell` keeps Wellness mode and route content aligned on app reopen: a restored Wellness mode at `/` redirects to `/wellness`, avoiding Diary content under Wellness tabs.
+
+**Phase 54 (2026-07-12): Auth Pages Core AI Rebrand.**
+- Badges are awarded automatically during relevant actions (e.g. 7-day or 30-day streak on Trends page, logging first recipe, hitting water goal). Note: `challenge_won` evaluation is left for future server-side cron expansion since it depends on `end_date` passing.
+- `0021_search_name_local.sql` adds `name_local` check in `search_foods()` RPC. INDB dataset populated with Hindi/regional translations via Gemini AI.
+- `web/app/api/ai/daily-tip/route.ts` provides a proactive, context-aware AI tip based on the user's logged food/water today. Shown as a dismissible card on the Diary page instead of inside the push payload to avoid Vercel's 10s Hobby cron limit.
+- `0022_fasting.sql` adds a `fasting_sessions` table.
+- `web/components/FastingTimer.tsx` provides a live-updating fasting countdown, rendered directly at the top of the Diary page for easy access. (2026-07-10, Phase 23: history list moved out of this component into Trends — see below — so Diary stays short as fasts accumulate. Component now only fetches/shows the single in-progress session.)
+- Fasting history + delete (2026-07-10, Phase 23, superseded by Phase 24 below): originally added as a capped list on `web/app/trends/page.tsx`. Deletion goes through a direct `supabase.from("fasting_sessions").delete()` call rather than `offlineWrite()` (delete isn't in offlineWrite's insert/update/upsert op set, and this is an online user-initiated destructive action, not a background write needing offline queueing). RLS already permitted this — `0022_fasting.sql`'s policy is `for all using (user_id = auth.uid())`, which covers delete without any migration change.
+- Dedicated, uncapped, month-grouped history pages (2026-07-10, Phase 24): `web/app/trends/weight-history/page.tsx` and `web/app/trends/fasting-history/page.tsx`. Both fetch full history (no `.limit()`/row cap — weight via `get_bmi_series("2000-01-01", today)`, same unbounded pattern `/goals` already uses; fasting via a plain unbounded `fasting_sessions` select) and group rows into month sections client-side so old data stays reachable without ever needing to be deleted for the list to stay readable. `web/app/trends/page.tsx` now only shows a 5-row preview of each with a "See all →" link to the dedicated page; the fasting delete button lives only on `/trends/fasting-history` now.
+- `web/app/api/cron/weekly-digest/route.ts` added to calculate and send a Sunday weekly digest email via Brevo, gated behind a check for `BREVO_API_KEY`.
+- `scripts/seed-yoga.js` populated the `exercises` table with 12 standard yoga poses.
+- `web/app/workout/page.tsx` updated to include "yoga" in the category picker and handle yoga exercise logging gracefully.
+- `web/components/SetTimer.tsx` provides a reusable live timer component that relies on `Date.now() - startedAt` instead of state increments to survive background tab throttling. Integrated into the workout session UI for timing sets/poses.
+
+**Batch 2 review (Fable, 2026-07-09):** two real gaps found and fixed. (1)
+`suggest-exercises/route.ts` was never actually extended for yoga despite
+that being the point of Phase 11's AI-suggest requirement — the "AI Suggest"
+button in the yoga picker was sending Gemini the literal prompt "exercises
+for the yoga muscle group" with no field for a pose's hold duration. Fixed:
+the route branches on `muscle === "yoga"` into a themed-sequence prompt with
+an optional `typical_duration_sec`, the workout page shows a focus/goal text
+input in yoga mode, and a suggested pose's duration now pre-fills its first
+set. (2) `SetTimer` was stopwatch-only with no countdown/completion feedback,
+despite that being the explicit ask — added an optional `targetSeconds` prop
+(countdown + progress ring + feature-detected vibration on completion, still
+records the real elapsed time if stopped early). Both test scripts
+(`test-challenges-rls.js`, `test-badges-rls.js`) were independently re-run
+and confirmed to actually work this time, including full cleanup
+(`auth.users`/`auth.identities`, not just app tables) — the Batch 1 lesson
+held. Full notes in `UPGRADE.md`.
+
+**Phase 13 — exercise demo images (Fable, 2026-07-09).** Prompted by "does
+the asana/exercise show a demo animated video?" — checked `data/exercises.json`
+(the free-exercise-db seed source, confirmed public domain / Unlicense) and
+found it already references two real photos per exercise (start/end
+position), just never imported. Not a true video, but crossfading the two
+photos (`web/components/ExerciseDemo.tsx`, ~900ms interval) approximates a
+demo without needing real video or a paid GIF API. `scripts/seed-exercise-images.mjs`
+downloads and re-uploads each pair to Cloudflare R2 (`exercise-demos/`
+prefix, same bucket already used for progress photos) rather than hotlinking
+GitHub's raw CDN. Hit and fixed a real bug mid-run: the script's single
+long-lived DB connection got dropped by the pooler during the slow
+network-bound work and crashed the process (twice) via an unhandled error
+event — fixed by using a fresh short-lived connection per write instead.
+**874 of 879 exercises (99.4%) now have demo images**; the remaining 6 have
+no matching entry in the source data at all (not a bug, no image available
+without a different source). Yoga poses and AI-suggested/custom exercises
+stay text-only — no source photos exist for those. `exercises.image_urls
+text[]` added via migration `0023`.
+
+**Batch 3 (2026-07-09): UI/UX consistency pass, no schema changes.** Triggered
+by a real bug — the workout page's "log your own workout" entry point was a
+plain text link for a primary, frequent action (fixed directly, commit
+`017d213`). That prompted a full page-by-page audit (all 14 routes plus
+`SetTimer`/`ExerciseDemo`) against a checklist: button/link visual weight vs.
+actual importance, tap target sizing (~44px minimum, mobile-first hard rule),
+dark mode coverage, and empty/loading/error state handling. First audit
+attempt had fabricated findings (line numbers and UI elements that didn't
+exist — caught on review, sent back); the corrected second pass was verified
+against the real files and held up. 13 commits, one per page/component:
+- Tap targets brought to ~44px on icon-only buttons across Diary, Add,
+  Workout, Recipes, Progress, Medications, Cycle, Friends, and `SetTimer`
+  (was `w-8 h-8`/32px on the start/stop timer buttons).
+- Bare-text primary actions given real button chrome: Diary's "Suggest a
+  meal" AI button, Challenges' back button (was a plain `←` link, now matches
+  the `w-11 h-11` circular pattern used everywhere else), Friends' "unfriend"
+  action.
+- `aria-label`s added to icon-only buttons throughout (back buttons, delete/
+  remove ✕ buttons) that had none.
+- Dark mode variants added where missing (Goals page's status text colors,
+  Login's "Create account" link).
+- Empty/loading/error states audited page-by-page with specific citations
+  (not a blanket "looks fine" claim) — confirmed every list/data view already
+  had a real empty-state message and every async fetch already showed
+  `<Skeleton>`/`<PageSkeleton />`, so no code changes were needed there, only
+  documentation confirming it was actually checked.
+- Deliberately did **not** touch anything outside the checklist — this was a
+  consistency pass within the existing design system (green-600 primary
+  color, `rounded-xl` scale, existing card patterns), not a redesign.
+
+**Phase 16 (Antigravity, 2026-07-10): Core AI Update.** A major product pivot
+to rename the app to "Core AI", revamp the design, and introduce highly-capable
+"aware" AI features.
+- **Design Sweep**: Rebranded to Core AI. The visual language shifted from flat
+  green to a premium Indigo/Violet gradient (`bg-gradient-to-r from-indigo-600 to-violet-600`)
+  with heavy use of glassmorphism (`bg-white/50 backdrop-blur-md dark:bg-neutral-900/50`).
+  A manual dark mode switch was added to the Profile page, writing to `localStorage`
+  and toggling `.dark` on the document root (Tailwind's `darkMode: "selector"`).
+- **Smart "Aware" Logging**: originally claimed here as built, but the Phase 16 delivery was
+  actually a disconnected UI stub (confirmed via audit + independent review, 2026-07-10) —
+  see Phase 20 in `UPGRADE.md` for the real fix. Correct current state: `page.tsx`'s free-text
+  Smart Log box calls `api/ai/text-to-log/route.ts` (not `api/ai/smart-log` as previously
+  stated here — that route never existed), which returns a proposal only (zero DB writes) for
+  `SmartLogSheet.tsx` to show the user before confirming; the actual multi-inserts into
+  `foods`/`food_logs`, `water_logs`, `body_metrics`, and `workout_logs` happen client-side on
+  confirm, via `offlineWrite()` for the single-table writes and direct Supabase calls for the
+  online-only structured workout chain (same pattern as `logStructuredSession`).
+  (2026-07-11, Phase 25): the confirm sheet no longer unconditionally inserts a new `foods`
+  row per food — it first checks for a case-insensitive exact name match (own past AI-logged
+  foods, or the public catalog) and reuses that row's id + stored macros if found, so logging
+  the same food again (regardless of casing) doesn't create a duplicate `foods` entry.
+  `weight_kg`/`water_ml` on the proposal also normalize `0` (Gemini's "nothing mentioned"
+  placeholder, since its schema can't represent an absent number) to `null` at the API layer,
+  fixing a falsy-zero JSX bug where `{proposal.water_ml && (...)}` rendered a literal `0`.
+- **Core Insights**: The static daily tip was replaced by an aware coach (`api/ai/daily-tip/route.ts`)
+  that receives daily stats (kcal target vs eaten, active workout sessions) and issues
+  short, punchy hype or roasts.
+- **AI Routine Generator**: Expanded the old "AI Suggest" button into a full component
+  (`components/AiRoutineGenerator.tsx`) where users specify Location, Focus, Duration, and Equipment.
+  Vertex AI generates a fully-structured workout and persists it to `workout_plans`,
+  `workout_plan_days`, and `workout_plan_items`.
+- **Live Workout Mode**: Replaced the static, buggy workout logging flow with `components/LiveWorkout.tsx`,
+  a YouTube-style fullscreen component. It manages a global workout timer, active set UI, and triggers
+  an automatic 60-second rest countdown screen between sets. The UI passes the final mutated state back
+  to `logStructuredSession` to insert `workout_logs` and `workout_log_sets`.
+- **UI Quality-of-Life**: "Plans" were renamed to "Routines" across the app. The "All Routines" back
+  button was moved to the top left of the active day view. `ExerciseDemo.tsx` was wrapped in a
+  full-screen Lightbox modal on tap for better visibility of form.
+- **Icon Overhaul**: Across the entire application, text-based emojis (like 💪, 🍲) were completely
+  replaced with crisp SVG icons from `lucide-react`. This unifies the aesthetic into a more
+  professional and classy look.
+
+**Phase 17 (Antigravity, 2026-07-10): Social & Recipe Enhancements**
+- **AI Recipe Import**: Added a "Smart Import" feature in the Recipe Builder (`api/ai/parse-recipe`). It uses Vertex AI (Gemini 2.5 Flash) to parse natural language recipes, estimates raw gram weights, and auto-matches them against the food database using the `search_foods` RPC.
+- **Serving-based Yield**: Added a "Servings" input option in the Recipe Builder. If provided, it automatically adds a row to `food_servings` so the recipe can be logged in "servings" in the diary.
+- **Pre-canned Hype Messages**: Revamped the 'Cheer' button on the Friends feed. Users can click to reveal a popover with pre-canned hype options (🔥, 💪, or 'Beast mode!'). These are stored in the existing `emoji` text column of the `cheers` table.
+- **Feed Cheers Display**: Upgraded the Friends feed to fetch and display all cheers directed at the feed items inline, grouped by the sender's display name.
+
+**Offline write queue — built 2026-07-10 (Phase 18).** `web/lib/offlineQueue.ts`
+(IndexedDB storage, in-memory fallback for SSR/tests) + `web/lib/offlineWrite.ts`
+(drop-in `supabase.from().insert/update/upsert()` replacement, tries live then falls
+back to the queue on a network failure only — real errors like RLS denials surface
+immediately) + `web/lib/replayQueue.ts` (drains on `online`/`visibilitychange`/60s
+interval/mount, no Background Sync API dependency so Android and iOS behave the
+same). Migration `0024_offline_queue.sql` added `client_id uuid unique` to
+`food_logs`/`water_logs`/`workout_logs`/`medication_logs` as the idempotency key for
+tables with no pre-existing natural one; `body_metrics`/`cycle_logs`/`cheers` dedupe
+via their existing unique constraints, `fasting_sessions` via its own client-assigned
+PK. A `23505` (unique violation) on replay is treated as "already succeeded," the
+mechanism that makes an interrupted mid-batch replay safe. Structured workout
+logging and recipe creation (both multi-table dependent insert chains) deliberately
+stay online-only with an explicit guard — see Phase 18 in `UPGRADE.md` for why.
+
+**Phase 19 (Antigravity, 2026-07-10, fixed by Fable same day): AI Assistant (Gemini Function Calling).**
+A conversational "AI assistant" was added to answer natural language questions about the user's logged history (totals, trends, streaks, workouts) and propose repeating past workouts. The tools run on an RLS-scoped client in `aiTools.ts` to ensure data security. The chat route `api/ai/assistant/route.ts` runs a bounded tool-call loop and includes a `navigator.onLine` checked confirmation flow for multi-insert workout repetition. **As delivered, the feature was completely non-functional** — two Gemini API-shape bugs (`tools` needed a `{ functionDeclarations: [...] }` wrapper, not a flat array; `functionResponse.response` must be an object, not the bare arrays several tools naturally return) both caused immediate 400s on the very first tool call. Fixed and reverified with a real live round trip against Vertex — full detail and evidence in `UPGRADE.md` Phase 19's review section.
+
+**Phase 19 Extended (Antigravity, 2026-07-10, 1 bug fixed by Fable same day): AI Assistant Workout Handoff.**
+The assistant was expanded with a new `suggest_workout` tool. Based on user intent (e.g. "let's do a chest and triceps workout"), Gemini generates structured JSON proposals that push a `start_workout` card to the chat. When the user taps "Start Live Session", the custom exercises are immediately inserted into the database, and the generated session is passed seamlessly to the `LiveWorkout` component via `sessionStorage`. This maintains the core requirement that AI tools never mutate the database directly during generation, and offline-state guards prevent DB-writes while initializing a workout if the network is down. **Review found the `sessionStorage` hydration effect incorrectly also set `sessionOpen` (only `liveMode` should be set, per the proven `startDayLive` precedent) — canceling an AI-started live session would have dropped the user into the wrong sheet. Fixed.** `suggest_workout` itself was independently reverified live and works correctly — full detail in `UPGRADE.md`'s Phase 19 Extended review section.
+
+**Phase 20 (Fable, 2026-07-10): Skip Exercise in Live Workout Mode.**
+`LiveWorkout.tsx` had "Skip Rest" but no way to skip a whole exercise (equipment
+unavailable, too hard). Added a confirm-gated "Skip this exercise" button — drops only the
+not-yet-completed sets of the current exercise (already-logged sets are kept), drops the
+exercise entirely from the log if nothing was completed for it, and finishes the session if
+the skipped exercise was the last one. A Node-script simulation of the array logic (this app
+has no click-testable UI in this environment) caught a real bug before it shipped: skipping
+the *only* remaining exercise produces an empty array, and `logStructuredSession`'s
+`finalExercises = activeExercises` default-param fallback would silently re-log the stale
+pre-skip exercise list instead of nothing. Fixed by routing that case through `onCancel()`.
+**Not yet built:**
+- More frequent reminders (needs Vercel Pro cron, or a different scheduling approach).
+
+## 8. Candidate features not yet built (ideas for later)
+
+- ~~**Barcode scanner**~~ — **rejected as a product call (2026-07-09), don't
+  re-propose.** User's reasoning: nobody actually scans barcodes; people type a
+  name and expect results to appear. Effort goes to search quality (ranking,
+  synonyms, Hindi names) instead. (For the record, the technical path existed:
+  `BarcodeDetector` browser API on Chrome/Edge/Android mapping to the `off`
+  source's `OFF-<barcode>` codes — iOS Safari would have needed a JS fallback
+  library. Kept here only so the idea isn't re-researched from scratch.)
+- **Fasting timer** — cheap to build (a start/stop timestamp + a countdown UI), no
+  new infrastructure.
+- **Weekly summary email** — the Brevo SMTP is already paid for (as in, already set
+  up) and unused beyond auth emails; a Sunday-night "here's your week" digest reusing
+  the same sender is close to free to add.
+- **Step counter — deliberately not attempted.** There is no standard browser API
+  for step counting; pedometer data lives behind native platform health stores
+  (Apple HealthKit, Google Fit / Health Connect), which are OAuth-style integrations
+  requiring a native app or a dedicated web integration per platform — a materially
+  bigger project than anything else in this app, not a quick add. If step tracking
+  becomes a priority, treat it as a distinct v3 initiative, not an incremental
+  feature.
+
+## Wellness Tab (/wellness)
+- Contains Skin, Eye, and Hair capture/analysis logic via `WellnessCaptureSheet.tsx`.
+- Uses two sub-views: Scan (`/wellness`) for score + capture actions, and Reports (`/wellness?view=reports`) for latest results, badges, compare mode, history, and report sheets.
+- Wellness Mode bottom nav is `Scan`, `[Mode Toggle]`, `Reports`; Profile was removed (now behind the header avatar) and the center mode-toggle button replaces it.
 - Displays an aggregate Wellness Score Card and generates a branded 1080x1080 share image (with glowing gradients, perfect centering, and improved spacing) that draws `/icon-192.png` into the canvas.
 - Features a highly clinical Downloadable PDF Report (via `jspdf` and `html2canvas` in `PDFReportTemplate`) allowing users to save and print their detailed metrics and SVG trend graphs.
 - Score rings and progress bars use `framer-motion` for smooth, micro-animated reveals.
@@ -970,3 +1184,6 @@ Resolved an issue where incoming/outgoing friend requests on `friends/page.tsx` 
 
 **Phase 57 (2026-07-12): Smart Fasting Integration & IF Toggles.**
 Upgraded the Fasting feature from a simple timer to structured Intermittent Fasting with 12, 14, and 16-hour toggles and a visual progress bar. Integrated "Smart Fasting" logic directly into the food logging flow: if a user logs food while a fast is active, a custom `SmartFastingModal` intercepts the action and warns them that it will break their fast. Conversely, if a user logs "Dinner" and no fast is active, the app automatically suggests starting a 16-hour fast. This logic is wired into both manual searches (`add/page.tsx`) and the AI Quick Log (`SmartLogSheet.tsx`). Added browser `Notification` integration to alert users when their fast begins.
+
+**Phase 58 (2026-07-12): Nav/Header Redesign, Profile→Settings Split & Assistant Input Fix.**
+Major UI restructure of `AppShell.tsx`. Added a persistent per-mode sticky header bar: indigo "Core AI" wordmark in Core mode, rose "Wellness" wordmark in Wellness mode, user avatar on the right (from `profile.avatar_url`, initial-letter fallback) navigating to `/profile`. Trimmed the bottom nav to 5 Core (Diary/Workout/[Toggle]/Trends/Friends) and 3 Wellness (Scan/[Toggle]/Reports), removing Profile from both. The center mode-toggle is a circular elevated button showing the destination mode's letter ("W" in Core, "C" in Wellness) colored in the destination's accent, using the existing `wash-${mode}` AnimatePresence transition. It reuses the exact `setAppMode()` + `router.push()` logic from the deleted `toggleWellnessMode()` in profile/page.tsx. Profile was split: `/profile` keeps avatar/name/stats/targets/badges with a new settings-gear icon; new `/settings` page gets reminders, health tracking, appearance, sharing, sign out, plus Change Email (`supabase.auth.updateUser`), Change Password (link to `/reset`), and a Delete Account placeholder (mailto link, not a real self-serve delete). The Wellness Mode toggle switch was removed from Profile entirely. Also fixed `AssistantSheet.tsx`: replaced the single-line `<input type="text">` with an auto-growing `<textarea>` (starts 1 line, grows to ~6 lines max then scrolls; Enter submits, Shift+Enter inserts newline; send button anchored to bottom-right via `absolute bottom-1.5`). Verified: the AssistantSheet's `visualViewport` keyboard fix was NOT affected — the sheet still uses `fixed inset-0 z-[60]` with inline `style={{ height: viewportH }}`, and no z-index or layout changes in the new header/nav conflict with it (header is `sticky z-40`, nav is `fixed z-50`, assistant is `z-[60]`).
