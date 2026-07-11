@@ -39,11 +39,26 @@ export function AssistantSheet({
   // rendered underneath the keyboard instead of above it. Track the real
   // visible height via the VisualViewport API and size the sheet to that
   // directly instead of trusting dvh alone.
+  //
+  // Height alone isn't enough, though: opening the keyboard also shifts the
+  // *visual* viewport down relative to the layout viewport (visualViewport
+  // .offsetTop), which a `fixed inset-0` element doesn't follow on its own —
+  // that's exactly what left a stray gap between the last message and the
+  // input bar (the box was the right height, just not repositioned to match
+  // where the visible area actually starts). Track and correct for that too.
   const [viewportH, setViewportH] = useState<number | null>(null);
+  const [viewportOffsetTop, setViewportOffsetTop] = useState(0);
   useEffect(() => {
     if (!isOpen || typeof window === "undefined" || !window.visualViewport) return;
     const vv = window.visualViewport;
-    const update = () => setViewportH(vv.height);
+    const update = () => {
+      setViewportH(vv.height);
+      setViewportOffsetTop(vv.offsetTop);
+      // Defensive: some browsers let the layout viewport scroll behind the
+      // fixed overlay when the keyboard opens, which would reintroduce the
+      // same gap even with the offset correction above.
+      window.scrollTo(0, 0);
+    };
     update();
     vv.addEventListener("resize", update);
     vv.addEventListener("scroll", update);
@@ -271,7 +286,9 @@ export function AssistantSheet({
       <div
         onClick={(e) => e.stopPropagation()}
         className="bg-white dark:bg-neutral-950 flex flex-col h-[100dvh] sm:h-[85vh] sm:rounded-3xl max-w-md w-full mx-auto sm:shadow-2xl"
-        style={viewportH != null && typeof window !== "undefined" && window.innerWidth < 640 ? { height: viewportH } : undefined}
+        style={viewportH != null && typeof window !== "undefined" && window.innerWidth < 640
+          ? { height: viewportH, transform: `translateY(${viewportOffsetTop}px)` }
+          : undefined}
       >
         <div className="flex items-center justify-between p-4 border-b border-neutral-200 dark:border-neutral-800 shrink-0">
           <div className="flex items-center gap-2">
