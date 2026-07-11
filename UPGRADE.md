@@ -1459,3 +1459,35 @@ resolved to 0. Extended the migration to cover all six `kind` values actually in
 Verified live against the real database (post-fix, all four previously-broken kinds now
 fail only on the expected foreign-key check with a dummy user id, not the `kind` check —
 confirming the constraint itself is no longer the blocker).
+
+## Phase 30 (Antigravity, 2026-07-11) — Wellness Section (Skin + Eye Analysis)
+
+**Goal:** Create a Wellness Section supporting Skin and Eye Analysis, guided client-side by MediaPipe's Face Landmarker WASM model (centers/sizing and eye tracking checks), with R2 photo uploads, non-diagnostic Gemini analysis, month-grouped logs, and side-by-side comparison mode.
+
+**Status:** [x] Done
+
+**Do:**
+1. **Database Migration:** Created [0027_wellness_scans.sql](file:///c:/Users/mulch/Downloads/Projects/health-app/supabase/migrations/0027_wellness_scans.sql) to add the `wellness_scans` table (referencing `auth.users(id)`) and updated the `ai_suggestions_kind_check` check constraint to include all 10 in-use and new kind values (`daily_tip`, `daily_tip_calls`, `meal_idea`, `workout_tip`, `food_estimate`, `assistant_turn`, `workout_suggest`, `form_check`, `skin_scan`, `eye_scan`).
+2. **Extended Upload API:** Modified [route.ts](file:///c:/Users/mulch/Downloads/Projects/health-app/web/app/api/upload/photo/route.ts) to accept `kind: "wellness"` and save R2 uploads in a `wellness/` directory, returning the URL without database tracking.
+3. **WASM-based Guided Capture:** Built [WellnessCaptureSheet.tsx](file:///c:/Users/mulch/Downloads/Projects/health-app/web/components/WellnessCaptureSheet.tsx) to lazily load and cache MediaPipe's Face Landmarker. Calculated face center boundaries and eye coordinates. Turns zone green (triggering a 1.5s auto-capture countdown and manual capture button) when centered and properly sized. Checks online state before starting and falls back gracefully to manual capture if MediaPipe fails to load.
+4. **Non-Diagnostic AI Analysis:** Created POST [/api/ai/wellness-scan](file:///c:/Users/mulch/Downloads/Projects/health-app/web/app/api/ai/wellness-scan/route.ts) API endpoint. Restricts observations to descriptive observations (never diagnostic) and recommendations to unbranded active ingredients. Returns `is_usable: false` and empty recommendations if non-human or blurry photos are scanned. Checks and throws on daily cap upsert DB errors.
+5. **Wellness Page & Compare History:** Created [page.tsx](file:///c:/Users/mulch/Downloads/Projects/health-app/web/app/wellness/page.tsx) with a switcher tab, month-grouped history grids, tapped before/after side-by-side comparisons, and a persistent medical disclaimer overlay.
+6. **Profile Integration:** Linked `/wellness` inside [page.tsx](file:///c:/Users/mulch/Downloads/Projects/health-app/web/app/profile/page.tsx) right under the progress photos section.
+
+**Verify:**
+- Created and executed `web/test-wellness-scan.mjs` verifying R2 uploading, DB persistence, Gemini schemas, unusable non-human photo detection (`is_usable: false` for dog avatar), and the 10/day cap enforcement (11th call returned `429`). All checks passed.
+- TypeScript is clean (`npx tsc --noEmit`).
+- Removed `web/test-wellness-scan.mjs` before commit.
+
+
+**Review (Fable, 2026-07-11)**: independently verified the full diff — migration correctly
+includes all 10 `kind` values (confirmed the Phase 29 fix wasn't reverted, a real risk since
+this migration also drops-and-recreates the same constraint), `wellness_scans` references
+`auth.users(id)` matching the rest of the schema, `is_usable` correctly gates the
+recommendations UI, disclaimer is persistent on every result view, z-index/safe-area/dark
+mode conventions all correctly followed, camera uses `facingMode: "user"` (sensible —
+selfie scans, unlike Form Check's rear-camera exercise filming), `navigator.onLine` guard
+present before camera starts. `npx tsc --noEmit` clean independently. Verified live against
+the real database that all 6 `ai_suggestions` kind values (including the two fixed in Phase
+29) pass the constraint post-migration, and that `wellness_scans` exists with working RLS.
+Confirmed `web/test-wellness-scan.mjs` was actually deleted before this commit.

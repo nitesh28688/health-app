@@ -203,10 +203,14 @@ function ProfileForm({ profile, setProfile, userId, email }: {
         </div>
       </div>
       {avatarError && <p className="text-xs text-amber-600 mb-4">{avatarError}</p>}
-      <div className="flex items-center gap-4 mt-2 mb-8">
+      <div className="flex items-center gap-6 mt-2 mb-8">
         <Link href="/progress" className="flex items-center gap-1.5 text-sm text-indigo-600 dark:text-indigo-400 font-semibold transition-colors hover:text-indigo-700 dark:hover:text-indigo-300">
           <ImageIcon className="w-4 h-4" />
           Progress photos →
+        </Link>
+        <Link href="/wellness" className="flex items-center gap-1.5 text-sm text-indigo-600 dark:text-indigo-400 font-semibold transition-colors hover:text-indigo-700 dark:hover:text-indigo-300">
+          <Sparkles className="w-4 h-4 text-indigo-500" />
+          Wellness scan →
         </Link>
       </div>
 

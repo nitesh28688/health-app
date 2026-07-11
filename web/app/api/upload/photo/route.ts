@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
   if (typeof imageDataUrl !== "string" || !imageDataUrl.startsWith("data:image/")) {
     return NextResponse.json({ error: "bad image" }, { status: 400 });
   }
-  if (kind !== "avatar" && kind !== "progress") {
+  if (kind !== "avatar" && kind !== "progress" && kind !== "wellness") {
     return NextResponse.json({ error: "bad kind" }, { status: 400 });
   }
   const match = imageDataUrl.match(/^data:(image\/\w+);base64,(.+)$/);
@@ -46,6 +46,8 @@ export async function POST(req: NextRequest) {
   const ext = mimeType.split("/")[1] === "jpeg" ? "jpg" : mimeType.split("/")[1];
   const key = kind === "avatar"
     ? `avatars/${userId}.${ext}`
+    : kind === "wellness"
+    ? `wellness/${userId}/${Date.now()}.${ext}`
     : `progress/${userId}/${Date.now()}.${ext}`;
 
   await r2().send(new PutObjectCommand({
@@ -60,7 +62,7 @@ export async function POST(req: NextRequest) {
 
   if (kind === "avatar") {
     await db.from("profiles").update({ avatar_url: url }).eq("id", userId);
-  } else {
+  } else if (kind === "progress") {
     await db.from("progress_photos").insert({
       user_id: userId, url, taken_at: takenAt || new Date().toISOString().slice(0, 10),
       note: note || null,

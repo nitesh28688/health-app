@@ -3,6 +3,8 @@
 Short pointer document. For the deep "why is it built this way" reference, read
 `STRUCTURE.md` — that's the source of truth and is kept in sync every session.
 
+**Wellness Section (Skin + Eye Analysis) (2026-07-11, Phase 30)** — Built a new Wellness section (/wellness) featuring Skin and Eye Analysis. Implemented dynamic client-side face alignment and eye tracking using MediaPipe's Face Landmarker WASM model (cached client-side). Image uploads route through `/api/upload/photo` (`kind: "wellness"`). Gemini scans are strictly non-diagnostic and recommend unbranded active ingredients. Daily cap of 10/day for skin and eye scans is tracked via `ai_suggestions` (resolved database check constraints in migration `0027`). Tapped scans load detail sheets with persistent medical warnings, or support side-by-side Before/After comparisons.
+
 **AI Posture/Form Check (2026-07-11, Phase 29)** — Added video-based posture check functionality. Users can record a 5-8s clip during active sets or request checks via "check my squat form" in the AI Assistant chat. Payloads are capped at 1 Mbps to fit under Vercel's 4.5MB serverless limits, camera defaults to rear (environment) at 640x480 resolution, and calls are routed through the Vertex billing safeguard (`thinkingBudget: 0`) under a configurable 25s timeout. The backend implements a 5/day user quota capped via the `ai_suggestions` table (resolved constraint check in migration `0026`).
 
 **App renamed to Core AI (2026-07-10)**, rebranded with an indigo/violet palette and
