@@ -1755,3 +1755,49 @@ accent, and swapping them would have broken their meaning.
 **Verified**: `npx tsc --noEmit` clean. Confirmed via grep zero remaining `indigo-` tokens in
 either file, and confirmed the semantic tier logic (`clamped >= 80` emerald, `>= 50` rose,
 else amber) still reads correctly post-swap.
+
+## Phase 37 (Fable, 2026-07-11) — Wellness camera-open bug fix + Wellness Mode toggle
+
+**User report**: "New scan stuck on opening camera" — a live, blocking bug hit while testing.
+
+**Root cause**: `getUserMedia()` has no built-in timeout. If the camera permission prompt
+gets swallowed (a known issue in installed PWAs) or the exact `facingMode` constraint can't
+be satisfied on the device, the promise never resolves or rejects — the UI just spins on
+"Opening camera..." forever with no way out.
+
+**Fixed** in `WellnessCaptureSheet.tsx`: added a 10s fail-safe timeout on the camera-open
+step (same pattern already used for the MediaPipe model-load timeout), guarded against a
+late-resolving stream being used after a timeout already fired (releases it immediately
+instead), loosened `facingMode` from an exact match to `{ ideal: facingMode }` so devices
+without a camera matching it exactly fall back to whatever's available instead of
+potentially hanging, and wired the error-state UI to actually show the specific
+timeout/permission message (`guideMsg`) instead of a generic hardcoded string.
+
+**Second request — Wellness Mode as a real app-mode toggle, not a buried Profile link.**
+User wanted Wellness to feel like its own transformed section of the app, own nav tabs,
+"not diary, workout etc", reached via a toggle on Profile with a transition animation.
+
+**Built:**
+- New `web/lib/appMode.ts` — localStorage + pub/sub for `"core" | "wellness"` mode, same
+  shape as `subscribePendingCount()` in `offlineQueue.ts`. Deliberately not threaded through
+  `AppShell`'s render-prop signature (would require touching every page that calls
+  `<AppShell>`) — only `AppShell` (owns the nav) and the Profile toggle need it.
+- `AppShell.tsx`: added a `WELLNESS_TABS` set (**Scan** → `/wellness`, **Profile** → `/profile`
+  — deliberately just 2 tabs, since only one real Wellness page exists today with its own
+  internal Skin/Eye/Hair switcher; padding the nav with tabs that'd all point to the same
+  page would be hollow navigation, expand this naturally as more Wellness pages get built).
+  Nav background/border, active-tab color, and the floating Assistant button all re-theme to
+  rose when in Wellness Mode (matching Phase 36's Wellness accent), with a `framer-motion`
+  `AnimatePresence` crossfade on the tab row itself when switching modes.
+- `profile/page.tsx`: replaced the plain "Wellness scan →" text link with a real toggle
+  row (rose/violet gradient icon tile + animated switch), which calls `setAppMode()` and
+  immediately navigates to `/wellness` (turning on) or `/` (turning off) so the mode change
+  is visible right away.
+
+**Verified**: `npx tsc --noEmit` clean. Reasoned through the mount-lifecycle question (does
+`AppShell` persist across navigation or remount per-page?) and confirmed the pub/sub design
+is correct either way — `subscribeAppMode`'s subscribe call always reads fresh from
+localStorage on mount (`cb(getAppMode())`), so it self-corrects regardless of remount
+timing. Camera timeout logic couldn't be live-tested in this environment (no real
+device/camera), but the fix directly targets the described symptom (indefinite hang) rather
+than a guess — a 10s ceiling replaces "forever" regardless of the underlying root cause.

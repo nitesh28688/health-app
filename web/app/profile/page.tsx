@@ -13,6 +13,7 @@ import { pushSupported, currentPushSubscription, enablePush, disablePush } from 
 import { compressImage } from "@/lib/imageCompress";
 import { offlineWrite } from "@/lib/offlineWrite";
 import { Camera, Image as ImageIcon, Sparkles, Hand, Check, Pill, Activity } from "lucide-react";
+import { getAppMode, setAppMode } from "@/lib/appMode";
 
 const inputCls =
   "rounded-xl border border-neutral-300 dark:border-neutral-700 bg-white/50 dark:bg-neutral-900/50 px-4 py-3 text-base w-full focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition-all shadow-sm";
@@ -22,6 +23,16 @@ function ProfileForm({ profile, setProfile, userId, email }: {
   profile: Profile; setProfile: (p: Profile) => void; userId: string; email?: string;
 }) {
   const router = useRouter();
+  const [wellnessOn, setWellnessOn] = useState(false);
+  useEffect(() => { setWellnessOn(getAppMode() === "wellness"); }, []);
+
+  function toggleWellnessMode() {
+    const next = wellnessOn ? "core" : "wellness";
+    setAppMode(next);
+    setWellnessOn(next === "wellness");
+    router.push(next === "wellness" ? "/wellness" : "/");
+  }
+
   const [f, setF] = useState({
     display_name: profile.display_name ?? "",
     phone: profile.phone ?? "+91",
@@ -203,16 +214,36 @@ function ProfileForm({ profile, setProfile, userId, email }: {
         </div>
       </div>
       {avatarError && <p className="text-xs text-amber-600 mb-4">{avatarError}</p>}
-      <div className="flex items-center gap-6 mt-2 mb-8">
+      <div className="flex items-center gap-6 mt-2 mb-4">
         <Link href="/progress" className="flex items-center gap-1.5 text-sm text-indigo-600 dark:text-indigo-400 font-semibold transition-colors hover:text-indigo-700 dark:hover:text-indigo-300">
           <ImageIcon className="w-4 h-4" />
           Progress photos →
         </Link>
-        <Link href="/wellness" className="flex items-center gap-1.5 text-sm text-indigo-600 dark:text-indigo-400 font-semibold transition-colors hover:text-indigo-700 dark:hover:text-indigo-300">
-          <Sparkles className="w-4 h-4 text-indigo-500" />
-          Wellness scan →
-        </Link>
       </div>
+
+      <button
+        type="button"
+        onClick={toggleWellnessMode}
+        className="w-full flex items-center justify-between gap-3 rounded-2xl border border-rose-200/60 dark:border-rose-900/40 bg-gradient-to-r from-rose-50 to-violet-50 dark:from-rose-950/20 dark:to-violet-950/20 px-4 py-3.5 mb-8 transition-all active:scale-[0.98] cursor-pointer"
+      >
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-rose-500 to-violet-600 flex items-center justify-center text-white shrink-0">
+            <Sparkles className="w-5 h-5" />
+          </div>
+          <div className="text-left">
+            <p className="font-bold text-sm text-neutral-900 dark:text-white">Wellness Mode</p>
+            <p className="text-xs text-neutral-500">Switch to Skin, Eye &amp; Hair scans</p>
+          </div>
+        </div>
+        <div
+          className={`w-11 h-6 rounded-full transition-colors relative shrink-0 ${wellnessOn ? "bg-rose-500" : "bg-neutral-300 dark:bg-neutral-700"}`}
+          role="switch"
+          aria-checked={wellnessOn}
+          aria-label="Toggle Wellness Mode"
+        >
+          <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform duration-200 ${wellnessOn ? "translate-x-5" : "translate-x-0.5"}`} />
+        </div>
+      </button>
 
       <section className="flex flex-col gap-4">
         <div>

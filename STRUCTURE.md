@@ -184,9 +184,20 @@ one object.
 ### `AppShell.tsx` — the auth gate + bottom nav
 
 Every signed-in page is wrapped in `<AppShell>{({ session, profile, setProfile }) => ...}</AppShell>`.
-It redirects to `/login` if there's no session, renders the 5-tab bottom nav (Diary /
-Workout / Trends / Friends / Profile), and hands down the current user's session +
-profile so pages don't each need their own auth boilerplate.
+It redirects to `/login` if there's no session, renders the bottom nav, and hands down the
+current user's session + profile so pages don't each need their own auth boilerplate.
+
+**App Mode (2026-07-11, Phase 37)**: the bottom nav now has two tab sets — the default
+5-tab "core" set (Diary/Workout/Trends/Friends/Profile) and a "wellness" set (just Scan +
+Profile, deliberately minimal since only one real Wellness page exists today). Mode is
+tracked in `web/lib/appMode.ts` (localStorage + pub/sub, same shape as
+`subscribePendingCount()` in `offlineQueue.ts`) rather than threaded through `AppShell`'s
+render-prop signature — only `AppShell` (renders the nav) and the Profile toggle need it,
+so this avoids touching every page that calls `<AppShell>`. Toggling from Profile
+(`profile/page.tsx`) calls `setAppMode()` then navigates to `/wellness` or `/` so the mode
+switch is immediately visible. The nav's background, active-tab accent, and the floating
+Assistant button all re-theme to rose when in Wellness Mode (matching the Phase 36
+Wellness palette), with a `framer-motion` crossfade on the tab row when switching.
 
 ### `lib/` — the shared logic
 

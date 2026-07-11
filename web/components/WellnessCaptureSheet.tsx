@@ -141,18 +141,45 @@ export function WellnessCaptureSheet({ scanType, onClose, onCapture }: WellnessC
 
     // Stop current stream before restarting
     stopCamera();
+    setCameraStatus("init");
+
+    // Fail-safe: getUserMedia() has no built-in timeout. If the permission
+    // prompt gets swallowed (a known issue in installed PWAs / some webviews)
+    // or the device just never resolves the promise, the UI would otherwise
+    // spin on "Opening camera..." forever with no way out. Same pattern as
+    // the MediaPipe model-load timeout above.
+    let settled = false;
+    const openTimeout = setTimeout(() => {
+      if (!settled && activeRef.current) {
+        settled = true;
+        console.warn("Camera open timed out after 10s.");
+        setCameraStatus("error");
+        setGuideMsg("Camera took too long to open. Check camera permissions for this app/browser, then try again.");
+      }
+    }, 10000);
 
     try {
       const constraints = {
         video: {
           width: { ideal: 640 },
           height: { ideal: 480 },
-          facingMode: facingMode
+          // `ideal` (a preference), not an exact match — a hard facingMode
+          // constraint can fail to resolve at all on devices without a
+          // camera matching it exactly (e.g. some desktops/webcams), which
+          // was one likely cause of the open hanging indefinitely.
+          facingMode: { ideal: facingMode }
         },
         audio: false
       };
 
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      if (settled || !activeRef.current) {
+        // Timed out (or unmounted) before this resolved — don't act on a
+        // stale stream, just release it immediately.
+        stream.getTracks().forEach((track) => track.stop());
+        return;
+      }
+      clearTimeout(openTimeout);
       streamRef.current = stream;
 
       if (videoRef.current) {
@@ -169,8 +196,12 @@ export function WellnessCaptureSheet({ scanType, onClose, onCapture }: WellnessC
         };
       }
     } catch (err) {
+      if (settled) return;
+      settled = true;
+      clearTimeout(openTimeout);
       console.error("Camera access failed:", err);
       setCameraStatus("error");
+      setGuideMsg("Couldn't access the camera. Check camera permissions for this app/browser.");
     }
   }
 
@@ -444,7 +475,7 @@ export function WellnessCaptureSheet({ scanType, onClose, onCapture }: WellnessC
               </div>
               <h3 className="font-semibold text-white mb-2">Camera Error</h3>
               <p className="text-xs text-neutral-400 max-w-xs mb-6">
-                Please make sure camera access is allowed in settings and you are online.
+                {guideMsg || "Please make sure camera access is allowed in settings and you are online."}
               </p>
               <button
                 onClick={startCameraFlow}

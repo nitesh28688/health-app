@@ -3,6 +3,12 @@
 Short pointer document. For the deep "why is it built this way" reference, read
 `STRUCTURE.md` — that's the source of truth and is kept in sync every session.
 
+**Wellness camera-open bug fix + Wellness Mode toggle (2026-07-11, Phase 37)** — fixed a
+real "stuck on opening camera" bug (`getUserMedia()` had no timeout, could hang forever).
+Also: Wellness is now a real app-mode toggle from Profile (`web/lib/appMode.ts`), swapping
+the bottom nav to its own 2-tab set (Scan/Profile) with rose theming and a transition
+animation, instead of a buried link. See UPGRADE.md Phase 37.
+
 **Wellness Score Share Card (2026-07-11, Phase 33)** — Implemented client-side Canvas drawing to render a square $1080 \times 1080$ sharing card for aggregate scores. For privacy protection, the card excludes actual camera scan photos, rendering only aggregate values, circular progress rings, branding labels, and the URL. Adds native `navigator.share` trigger with a programmatic click fallback download.
 
 **Wellness Aggregate Scoring & Badges (2026-07-11, Phase 32)** — Added a client-side aggregate Wellness Score card averaging the latest usable scan scores across Skin, Eye, and Hair, displaying contributing scan types alongside a calendar-month scan count statistic. Added 3 new badges to `web/lib/badges.ts` (`wellness_first_scan`, `wellness_full_spectrum`, `wellness_glow_up`) and wired their awarding triggers in the scan-capture success flow with full null-safety optional chaining checks on trend.score_delta.
