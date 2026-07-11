@@ -64,7 +64,8 @@ Observations & recommendations schema:
 - classification: string (one of 'oily', 'dry', 'combination', 'normal', 'sensitive'). Set to null if is_usable is false.
 - sub_scores: Array of { category: string, score: integer, note: string } for: "Hydration", "Texture", "Radiance", "Pore Visibility", "Evenness".
 - observations: Array of { area: string, note: string }. You MUST provide a highly detailed, "full spectrum" analysis of every facial zone (T-zone, cheeks, under-eyes, forehead, chin) covering texture, hydration, pores, elasticity, and tone.
-- recommendations: Array of { ingredient: string, why: string, how_to_use: string }. You MUST provide a comprehensive, multi-step skincare routine (e.g., Cleanser, Exfoliant like AHA/BHA, Treatment like Retinol/Vitamin C, Moisturizer, Sunscreen). Detail exactly how to incorporate them into an AM/PM regimen. Set to empty array [] if is_usable is false.`;
+- recommendations: Array of { ingredient: string, why: string, how_to_use: string }. You MUST provide a comprehensive, multi-step skincare routine (e.g., Cleanser, Exfoliant like AHA/BHA, Treatment like Retinol/Vitamin C, Moisturizer, Sunscreen). Detail exactly how to incorporate them into an AM/PM regimen. Set to empty array [] if is_usable is false.
+- skin_age_estimate: integer. Based on your holistic assessment of texture, fine lines, hydration, pore size, and radiance, estimate the visible skin age (e.g. 24, 31, 38). This should reflect the apparent skin condition, not the person's calendar age. Set to null if is_usable is false.`;
   } else if (scanType === "eye") {
     systemPrompt = `You are a professional eye region appearance analysis AI. Analyze the eye region from the uploaded photo.
 
@@ -141,7 +142,8 @@ Observations & recommendations schema:
           },
           required: ["ingredient", "why", "how_to_use"]
         }
-      }
+      },
+      skin_age_estimate: { type: "INTEGER", nullable: true }
     },
     required: ["is_usable", "overall_score", "sub_scores", "observations", "recommendations"]
   };
@@ -179,7 +181,8 @@ Observations & recommendations schema:
     recommendations: estimate.recommendations,
     overall_score: estimate.overall_score ?? null,
     sub_scores: estimate.sub_scores ?? null,
-    classification: estimate.classification ?? null
+    classification: estimate.classification ?? null,
+    skin_age_estimate: estimate.skin_age_estimate ?? null
   }).select("id").single();
 
   if (insertErr) {

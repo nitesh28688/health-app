@@ -67,6 +67,7 @@ export function WellnessCaptureSheet({ scanType, onClose, onCapture }: WellnessC
           console.warn("MediaPipe load timed out. Falling back to manual capture.");
           isModelLoading = false;
           setModelStatus("fallback");
+          setGuideMsg("Live guide unavailable — center yourself and capture manually.");
         }
       }, 6000);
 
@@ -117,6 +118,7 @@ export function WellnessCaptureSheet({ scanType, onClose, onCapture }: WellnessC
         isModelLoading = false;
         if (activeRef.current) {
           setModelStatus("fallback");
+          setGuideMsg("Live guide unavailable — center yourself and capture manually.");
         }
       }
     }
