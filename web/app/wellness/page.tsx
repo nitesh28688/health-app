@@ -60,6 +60,27 @@ function getSeasonalTip(month: number, skinType: string | null): string | null {
   return null;
 }
 
+// Loads a same-origin static asset (e.g. the app icon) into a PNG data URL for
+// jsPDF's addImage, which needs a data URL/base64 string rather than a plain
+// <img> src. Resolves null on failure so callers can render without the logo
+// instead of failing the whole PDF export over a missing decorative image.
+function loadImageAsDataUrl(src: string): Promise<string | null> {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) { resolve(null); return; }
+      ctx.drawImage(img, 0, 0);
+      resolve(canvas.toDataURL("image/png"));
+    };
+    img.onerror = () => resolve(null);
+    img.src = src;
+  });
+}
+
 // ─── Sparkline ────────────────────────────────────────────────────────────────
 function Sparkline({ scores, positive }: { scores: number[]; positive: boolean }) {
   if (scores.length < 2) return null;
@@ -454,10 +475,12 @@ function WellnessMain({ userId, displayName }: { userId: string; displayName: st
     if (!pdfRef.current || !scan.is_usable) return;
     setDownloadingPDF(true);
     try {
+      const root = pdfRef.current;
+
       // Wait for every image inside the report (scan photo included) to actually
       // finish loading — html2canvas snapshots whatever is painted at call time,
       // so capturing before the R2-hosted photo decodes produces a blank box.
-      const imgs = Array.from(pdfRef.current.querySelectorAll("img"));
+      const imgs = Array.from(root.querySelectorAll("img"));
       await Promise.all(imgs.map(img => {
         if (img.complete && img.naturalWidth > 0) return Promise.resolve();
         return new Promise<void>(resolve => {
@@ -467,7 +490,17 @@ function WellnessMain({ userId, displayName }: { userId: string; displayName: st
       }));
       await new Promise(r => setTimeout(r, 50));
 
-      const canvas = await html2canvas(pdfRef.current, {
+      // Measure every atomic block's position in the DOM *before* rasterizing,
+      // in CSS px relative to the capture root — used below so a page break
+      // never falls inside a card.
+      const rootTop = root.getBoundingClientRect().top;
+      const blockEls = Array.from(root.querySelectorAll<HTMLElement>("[data-pdf-block]"));
+      const blocks = blockEls.map(el => {
+        const r = el.getBoundingClientRect();
+        return { top: r.top - rootTop, bottom: r.bottom - rootTop };
+      });
+
+      const canvas = await html2canvas(root, {
         scale: 2,
         useCORS: true,
         allowTaint: false,
@@ -475,40 +508,104 @@ function WellnessMain({ userId, displayName }: { userId: string; displayName: st
         backgroundColor: "#ffffff"
       });
 
+      const scaleFactor = canvas.width / root.offsetWidth;
+
       const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfPageHeight = pdf.internal.pageSize.getHeight();
-      const fullImgHeight = (canvas.height * pdfWidth) / canvas.width;
+      const pageW = pdf.internal.pageSize.getWidth();
+      const pageH = pdf.internal.pageSize.getHeight();
+      const marginX = 12;
+      const headerH = 22;
+      const footerH = 14;
+      const contentW = pageW - marginX * 2;
+      const contentAreaH = pageH - headerH - footerH - 4; // 4mm breathing room below header
 
-      // The report can be taller than a single A4 page (long recommendation
-      // lists especially). Slice the captured canvas into page-sized chunks
-      // instead of squashing everything onto one page, which was clipping
-      // content past 1123px of source height.
-      const pxPerMm = canvas.width / pdfWidth;
-      const pageHeightPx = Math.floor(pdfPageHeight * pxPerMm);
-      let renderedHeightPx = 0;
-      let pageIndex = 0;
-
-      // Guard against a zero/degenerate pageHeightPx (e.g. an unexpectedly
+      const pxPerMm = canvas.width / contentW;
+      const contentAreaPx = contentAreaH * pxPerMm;
+      // Guard against a zero/degenerate content area (e.g. an unexpectedly
       // empty capture) looping forever instead of ever finishing.
-      if (pageHeightPx < 1) throw new Error("Report failed to render — please try again.");
+      if (contentAreaPx < 1) throw new Error("Report failed to render — please try again.");
 
-      while (renderedHeightPx < canvas.height) {
-        const sliceHeightPx = Math.min(pageHeightPx, canvas.height - renderedHeightPx);
+      // Walk the measured blocks and choose page-break offsets (in canvas px)
+      // that always land on a block boundary, never inside one.
+      const breaks: number[] = [0];
+      let pageStartPx = 0;
+      for (const b of blocks) {
+        const topPx = b.top * scaleFactor;
+        const bottomPx = b.bottom * scaleFactor;
+        if (bottomPx - pageStartPx > contentAreaPx && topPx > pageStartPx) {
+          breaks.push(topPx);
+          pageStartPx = topPx;
+        }
+      }
+      breaks.push(canvas.height);
+
+      // Logo for the header mark + background watermark on every page.
+      const logoDataUrl = await loadImageAsDataUrl("/icon-512.png");
+      const dateStr = new Date(scan.taken_at + "T12:00:00").toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" });
+      const displayName = userProfile?.name || "Wellness Member";
+
+      function drawHeaderFooter() {
+        // Header band
+        pdf.setFillColor(248, 250, 252);
+        pdf.rect(0, 0, pageW, headerH, "F");
+        if (logoDataUrl) pdf.addImage(logoDataUrl, "PNG", marginX, 5, 12, 12);
+        pdf.setTextColor(225, 29, 72);
+        pdf.setFont("helvetica", "bold");
+        pdf.setFontSize(15);
+        pdf.text("CORE AI", marginX + 15, 11);
+        pdf.setTextColor(100, 116, 139);
+        pdf.setFont("helvetica", "normal");
+        pdf.setFontSize(7);
+        pdf.text("AI WELLNESS REPORT", marginX + 15, 15.5);
+        pdf.setTextColor(30, 41, 59);
+        pdf.setFont("helvetica", "bold");
+        pdf.setFontSize(11);
+        pdf.text(displayName, pageW - marginX, 10, { align: "right" });
+        pdf.setTextColor(100, 116, 139);
+        pdf.setFont("helvetica", "normal");
+        pdf.setFontSize(8);
+        pdf.text(dateStr, pageW - marginX, 15, { align: "right" });
+        pdf.setDrawColor(226, 232, 240);
+        pdf.line(0, headerH, pageW, headerH);
+
+        // Watermark, low-opacity, centered in the content area
+        if (logoDataUrl) {
+          pdf.setGState(new (pdf as any).GState({ opacity: 0.045 }));
+          const wmSize = 100;
+          pdf.addImage(logoDataUrl, "PNG", (pageW - wmSize) / 2, headerH + (contentAreaH - wmSize) / 2, wmSize, wmSize);
+          pdf.setGState(new (pdf as any).GState({ opacity: 1 }));
+        }
+
+        // Footer band
+        pdf.setDrawColor(241, 245, 249);
+        pdf.line(marginX, pageH - footerH, pageW - marginX, pageH - footerH);
+        pdf.setTextColor(148, 163, 184);
+        pdf.setFont("helvetica", "bold");
+        pdf.setFontSize(8);
+        pdf.text("Core AI - a product of Linear Ventures", pageW / 2, pageH - footerH + 6, { align: "center" });
+        pdf.setFont("helvetica", "normal");
+        pdf.setFontSize(6.5);
+        pdf.text("health.linearventures.in  |  AI-generated observations only. Not a medical diagnosis.", pageW / 2, pageH - footerH + 10, { align: "center" });
+      }
+
+      for (let i = 0; i < breaks.length - 1; i++) {
+        if (i > 0) pdf.addPage();
+        drawHeaderFooter();
+
+        const sliceStartPx = breaks[i];
+        const sliceHeightPx = breaks[i + 1] - sliceStartPx;
+        if (sliceHeightPx <= 0) continue;
+
         const pageCanvas = document.createElement("canvas");
         pageCanvas.width = canvas.width;
         pageCanvas.height = sliceHeightPx;
         const ctx = pageCanvas.getContext("2d");
-        if (!ctx) break;
-        ctx.drawImage(canvas, 0, renderedHeightPx, canvas.width, sliceHeightPx, 0, 0, canvas.width, sliceHeightPx);
+        if (!ctx) continue;
+        ctx.drawImage(canvas, 0, sliceStartPx, canvas.width, sliceHeightPx, 0, 0, canvas.width, sliceHeightPx);
         const sliceData = pageCanvas.toDataURL("image/jpeg", 0.92);
-        const sliceHeightMm = (sliceHeightPx * pdfWidth) / canvas.width;
+        const sliceHeightMm = sliceHeightPx / pxPerMm;
 
-        if (pageIndex > 0) pdf.addPage();
-        pdf.addImage(sliceData, "JPEG", 0, 0, pdfWidth, sliceHeightMm);
-
-        renderedHeightPx += sliceHeightPx;
-        pageIndex++;
+        pdf.addImage(sliceData, "JPEG", marginX, headerH + 2, contentW, sliceHeightMm);
       }
 
       pdf.save(`CoreAI_${scan.scan_type}_Report.pdf`);
@@ -517,7 +614,7 @@ function WellnessMain({ userId, displayName }: { userId: string; displayName: st
     } finally {
       setDownloadingPDF(false);
     }
-  }, []);
+  }, [userProfile]);
 
   function toggleCompare(s: Scan) {
     if (compareA?.id === s.id) { setCompareA(compareB); setCompareB(null); return; }

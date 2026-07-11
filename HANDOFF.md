@@ -3,6 +3,23 @@
 Short pointer document. For the deep "why is it built this way" reference, read
 `STRUCTURE.md` - that's the source of truth and is kept in sync every session.
 
+**PDF real pagination + branded header/footer/watermark (2026-07-11, Phase 53)** - Reviewed
+another real generated PDF and found the single-column fix from Phase 52 wasn't enough on its
+own: pixel-height-only slicing still cut individual cards in half across a page boundary (a
+box's top half on one page, bottom half on the next), and the header/footer/logo only existed
+once at the very top/bottom of the whole document instead of repeating per page — leaving
+page 3 nearly blank. Rewrote `handleDownloadPDF` with real block-aware pagination:
+`PDFReportTemplate.tsx` now marks every atomic card/row with `data-pdf-block`, and before
+rasterizing, the export measures each block's actual DOM position and only allows a page break
+to fall on a block boundary — a card can never be split in half again. The header, footer, and
+a centered low-opacity watermark (both using the real `/icon-512.png` app icon) are no longer
+part of the captured DOM at all — they're drawn directly via jsPDF on every generated page, so
+they now repeat correctly instead of appearing once. Verified: `tsc --noEmit` and
+`npx next build` both clean; the header/footer/watermark rendering was independently verified
+by generating a real multi-page test PDF via jsPDF in Node and visually inspecting it (caught
+and fixed a would-have-shipped bug where the footer's em-dash/bullet characters could have
+rendered incorrectly under jsPDF's standard font encoding — swapped for plain ASCII).
+
 **PDF layout + name fix (2026-07-11, Phase 52)** - Reviewed a real generated PDF (user shared
 the actual file) and found two more defects beyond the CORS fix in Phase 51. Layout:
 `PDFReportTemplate` was a fixed two-column flex layout (300px photo/score column next to a
