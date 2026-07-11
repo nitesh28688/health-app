@@ -10,6 +10,10 @@ pass" entry below for what Antigravity built and what Fable built/fixed on revie
 **Fasting history moved off Diary (2026-07-10, Phase 23)** — Diary's Fasting card now
 only shows the live timer, not a growing list of past fasts.
 
+**Smart Log fixes (2026-07-11, Phase 25)** — fixed a stray "0" rendering in the confirm
+sheet (falsy-zero JSX bug on `water_ml`) and duplicate food entries on every re-log of the
+same food (no name-match lookup existed before inserting). See UPGRADE.md Phase 25.
+
 **Weight + fasting history got dedicated, month-grouped pages (2026-07-10, Phase 24)** —
 `/trends/weight-history` and `/trends/fasting-history`, no row cap, grouped by month so
 old data (e.g. January's weight) stays reachable without ever needing deletion. Trends

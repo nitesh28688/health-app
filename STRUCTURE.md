@@ -828,6 +828,13 @@ to rename the app to "Core AI", revamp the design, and introduce highly-capable
   `foods`/`food_logs`, `water_logs`, `body_metrics`, and `workout_logs` happen client-side on
   confirm, via `offlineWrite()` for the single-table writes and direct Supabase calls for the
   online-only structured workout chain (same pattern as `logStructuredSession`).
+  (2026-07-11, Phase 25): the confirm sheet no longer unconditionally inserts a new `foods`
+  row per food — it first checks for a case-insensitive exact name match (own past AI-logged
+  foods, or the public catalog) and reuses that row's id + stored macros if found, so logging
+  the same food again (regardless of casing) doesn't create a duplicate `foods` entry.
+  `weight_kg`/`water_ml` on the proposal also normalize `0` (Gemini's "nothing mentioned"
+  placeholder, since its schema can't represent an absent number) to `null` at the API layer,
+  fixing a falsy-zero JSX bug where `{proposal.water_ml && (...)}` rendered a literal `0`.
 - **Core Insights**: The static daily tip was replaced by an aware coach (`api/ai/daily-tip/route.ts`)
   that receives daily stats (kcal target vs eaten, active workout sessions) and issues
   short, punchy hype or roasts.

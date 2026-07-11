@@ -126,8 +126,13 @@ Do not invent anything not mentioned. Return empty arrays if nothing is found.`;
   // only if the user confirms.
   return NextResponse.json({
     proposal: {
-      weight_kg: parsed.weight_kg ?? null,
-      water_ml: parsed.water_ml ?? null,
+      // Gemini's schema requires these fields to always be numbers (no
+      // "absent" representation) — when nothing was mentioned it returns 0,
+      // not null. Normalize that here so "not logged" and "logged as zero"
+      // (a case that never legitimately happens for weight/water) collapse
+      // to the same null, instead of leaking a literal "0" into the UI.
+      weight_kg: parsed.weight_kg || null,
+      water_ml: parsed.water_ml || null,
       foods: parsed.foods ?? [],
       exercises: exercisesWithBurn,
       user_weight_kg: userWeightKg, // sent back so the client can recompute if needed

@@ -1320,3 +1320,32 @@ navigable, not capped.
 accepts an arbitrary wide date range without issue (already proven by `/goals` doing the
 exact same `p_from: "2000-01-01"` call). No RLS/migration changes needed (delete already
 covered by `0022_fasting.sql`'s `for all` policy, confirmed in Phase 23).
+
+## Phase 25 (Fable, 2026-07-11) — Smart Log: stray "0" + duplicate food entries
+
+**Two bugs reported by the user, with a screenshot showing the confirm sheet**: an unlabeled
+"0" rendering between the Body Weight and Breakfast rows, and every Smart Log of "milk
+coffee" creating a brand new food entry even though an identical one was logged the day
+before.
+
+**Bug 1 — stray "0":** `web/components/SmartLogSheet.tsx` gated the Water row on
+`{proposal.water_ml && (...)}`. Gemini's structured-output schema requires `water_ml` to
+always be a number (no way to represent "absent"), so when nothing was mentioned it returned
+`0`, not omitted. `0 && (...)` evaluates to `0` in JS, and React renders that literal `0` as
+text — a classic falsy-zero JSX bug. Fixed at the source in
+`web/app/api/ai/text-to-log/route.ts`: `weight_kg`/`water_ml` now go through `|| null`
+instead of `?? null`, collapsing the AI's placeholder `0` into `null` (a real weight/water of
+exactly 0 is never a legitimate logged value here, so this is safe).
+
+**Bug 2 — duplicate foods:** `SmartLogSheet.tsx`'s food-confirm step had no lookup at all —
+it unconditionally ran `supabase.from("foods").insert(...)` for every food, every time,
+regardless of whether the exact same food already existed. Fixed by checking for an existing
+food (own past AI-logged foods, or the public catalog) via a case-insensitive exact-name
+match (`.ilike("name", f.name)`, no wildcards) before inserting, and reusing its id + stored
+macros if found. Scaling now uses the *reused* food's stored per-100g macros rather than this
+run's fresh AI estimate, so repeated logs of the same food stay numerically consistent
+instead of drifting slightly each time Gemini re-estimates it.
+
+**Verified**: `npx tsc --noEmit` clean. Small, contained fix (2 files) — done directly rather
+than delegated, consistent with the "hand off only when there's real surface area" rule
+established earlier this session.

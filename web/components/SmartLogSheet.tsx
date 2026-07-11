@@ -83,30 +83,47 @@ export function SmartLogSheet({ proposal, logDate, onClose, onConfirmed }: Props
         });
       }
 
-      // 3. Foods — create a per-100g food row, then log with correct scaled snapshot
+      // 3. Foods — reuse an existing food (own past AI logs, or the public
+      // catalog) by case-insensitive exact name match before creating a new
+      // one. Without this, logging "milk coffee" today after "Milk Coffee"
+      // yesterday silently created a second, duplicate `foods` row every
+      // single time — there was no lookup at all, just an unconditional insert.
       for (const f of proposal.foods) {
-        // Insert into foods table (private, owner-scoped)
-        const { data: foodRow, error: foodErr } = await supabase
+        type FoodMacros = { id: number; kcal: number; protein_g: number; carbs_g: number; fat_g: number; fiber_g: number };
+        const { data: existing } = await supabase
           .from("foods")
-          .insert({
-            name: f.name,
-            source: "ai_log",
-            owner_id: userId,
-            // These are per-100g values — the model was told to return them that way
-            kcal: f.kcal,
-            protein_g: f.protein_g,
-            carbs_g: f.carbs_g,
-            fat_g: f.fat_g,
-            fiber_g: f.fiber_g,
-          })
-          .select("id")
-          .single();
+          .select("id,kcal,protein_g,carbs_g,fat_g,fiber_g")
+          .or(`owner_id.eq.${userId},owner_id.is.null`)
+          .ilike("name", f.name)
+          .limit(1)
+          .maybeSingle();
 
-        if (foodErr || !foodRow) continue;
+        let food: FoodMacros | null = existing as FoodMacros | null;
+        if (!food) {
+          const { data: foodRow, error: foodErr } = await supabase
+            .from("foods")
+            .insert({
+              name: f.name,
+              source: "ai_log",
+              owner_id: userId,
+              // These are per-100g values — the model was told to return them that way
+              kcal: f.kcal,
+              protein_g: f.protein_g,
+              carbs_g: f.carbs_g,
+              fat_g: f.fat_g,
+              fiber_g: f.fiber_g,
+            })
+            .select("id,kcal,protein_g,carbs_g,fat_g,fiber_g")
+            .single();
+          if (foodErr || !foodRow) continue;
+          food = foodRow as FoodMacros;
+        }
 
-        // Use logSnapshot to correctly scale to qty_g — matches everywhere else in the app
+        // Use logSnapshot to correctly scale to qty_g — matches everywhere else in the app.
+        // Scales the reused food's actual stored macros, not this run's fresh AI
+        // estimate, so the same food logged repeatedly stays numerically consistent.
         const snap = logSnapshot(
-          { kcal: f.kcal, protein_g: f.protein_g, carbs_g: f.carbs_g, fat_g: f.fat_g, fiber_g: f.fiber_g },
+          { kcal: food.kcal, protein_g: food.protein_g, carbs_g: food.carbs_g, fat_g: food.fat_g, fiber_g: food.fiber_g },
           f.qty_g,
           f.qty_unit_label
         );
@@ -117,7 +134,7 @@ export function SmartLogSheet({ proposal, logDate, onClose, onConfirmed }: Props
           payload: {
             user_id: userId,
             log_date: logDate,
-            food_id: foodRow.id,
+            food_id: food.id,
             meal: f.meal || "snack",
             ...snap,
           },
