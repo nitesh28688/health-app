@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
   if (typeof imageDataUrl !== "string" || !imageDataUrl.startsWith("data:image/")) {
     return NextResponse.json({ error: "bad image payload" }, { status: 400 });
   }
-  if (scanType !== "skin" && scanType !== "eye") {
+  if (scanType !== "skin" && scanType !== "eye" && scanType !== "hair") {
     return NextResponse.json({ error: "bad scan type" }, { status: 400 });
   }
   if (typeof photoUrl !== "string" || !photoUrl.startsWith("http")) {
@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
   if (!userData.user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   const userId = userData.user.id;
 
-  const capKind = scanType === "skin" ? "skin_scan" : "eye_scan";
+  const capKind = scanType === "skin" ? "skin_scan" : scanType === "eye" ? "eye_scan" : "hair_scan";
   const today = new Date().toISOString().slice(0, 10);
 
   // 1. Quota Check
@@ -54,30 +54,71 @@ export async function POST(req: NextRequest) {
 CRITICAL RULES:
 1. STRICTLY NON-DIAGNOSTIC: You must only describe visual characteristics. Never mention medical conditions, syndromes, or diagnoses (e.g., do NOT mention "rosacea", "acne vulgaris", "eczema", "dermatitis", "melasma", "infection"). Instead, use descriptions like "skin appears slightly uneven in tone", "redness visible in cheeks area", "signs of dryness or flaking", "clogged pores or excess shine in T-zone".
 2. UNBRANDED ACTIVE INGREDIENTS ONLY: Recommend only generic active ingredients (e.g., "salicylic acid", "vitamin C", "niacinamide", "hyaluronic acid", "retinol"). Do NOT recommend any specific product brands or names.
-3. UNUSABLE PHOTO CHECK: If the photo is highly blurry, does not contain a human face, is taken at an unreadable angle, or is of a non-human subject (like a toy, pet, food, or rabbit), you MUST set "is_usable" to false.
+3. WEIGH CLASSIFICATION: You must classify the user's skin type under "classification" as one of: 'oily', 'dry', 'combination', 'normal', 'sensitive'. This classification MUST directly shape your active ingredient recommendations (e.g., do NOT recommend heavy oils or occlusives for 'oily' skin classification, and avoid harsh drying agents or acids for 'dry' or 'sensitive' skin).
+4. GROUNDED SCORING: You must calculate an "overall_score" (0-100) and an array of five "sub_scores" (for categories: "Hydration", "Texture", "Radiance", "Pore Visibility", "Evenness"). Each score MUST be grounded strictly in your observations. Do not make scores arbitrary or contradictory (e.g., if you observe "skin appears highly dehydrated and flaky", the Hydration sub-score must be low, and the sub-score note must explain this observation).
+5. UNUSABLE PHOTO CHECK: If the photo is highly blurry, does not contain a human face, is taken at an unreadable angle, or is of a non-human subject (like a toy, pet, food, or rabbit), you MUST set "is_usable" to false. If is_usable is false, you must set overall_score to 0, sub_scores to [], classification to null, and recommendations to [].
 
 Observations & recommendations schema:
 - is_usable: boolean (set to false if photo is not a human face or is completely unreadable).
+- overall_score: integer (0-100, where 100 is optimal skin health). Set to 0 if is_usable is false.
+- classification: string (one of 'oily', 'dry', 'combination', 'normal', 'sensitive'). Set to null if is_usable is false.
+- sub_scores: Array of { category: string, score: integer, note: string } for: "Hydration", "Texture", "Radiance", "Pore Visibility", "Evenness". Set to [] if is_usable is false.
 - observations: Array of { area: string, note: string } describing areas analyzed and notes (descriptive only).
 - recommendations: Array of { ingredient: string, why: string, how_to_use: string } for generic active ingredients. Set to empty array [] if is_usable is false.`;
-  } else {
+  } else if (scanType === "eye") {
     systemPrompt = `You are a professional eye region appearance analysis AI. Analyze the eye region from the uploaded photo.
 
 CRITICAL RULES:
 1. STRICTLY NON-DIAGNOSTIC: Describe only visual appearance traits (e.g. puffiness, dark circles, hydration). Never mention medical conditions or eye diseases (e.g., do NOT mention "conjunctivitis", "jaundice", "anemia", "cataracts", "allergy", "infection"). Instead, use terms like "visible shadow/darkness under eyes", "appearance of minor swelling or puffiness", "dryness/fine lines in the outer eye area".
 2. UNBRANDED ACTIVE INGREDIENTS ONLY: Recommend generic actives suitable for the eye area (e.g., "caffeine", "hyaluronic acid", "peptides", "retinol for eye area", "niacinamide"). Do NOT recommend product brands.
-3. UNUSABLE PHOTO CHECK: If the photo doesn't clearly contain human eyes, is taken at an unreadable angle, or is of a non-human subject (like a toy, animal, or rabbit), you MUST set "is_usable" to false.
+3. GROUNDED SCORING: You must calculate an "overall_score" (0-100) and an array of four "sub_scores" (for categories: "Dark Circles", "Puffiness", "Hydration", "Fine Lines"). Each score MUST be grounded strictly in your observations. Do not make scores arbitrary or contradictory.
+4. NO CLASSIFICATION: Since classification is not applicable for eyes, you MUST set "classification" to null.
+5. UNUSABLE PHOTO CHECK: If the photo doesn't clearly contain human eyes, is taken at an unreadable angle, or is of a non-human subject (like a toy, animal, or rabbit), you MUST set "is_usable" to false. If is_usable is false, you must set overall_score to 0, sub_scores to [], classification to null, and recommendations to [].
 
 Observations & recommendations schema:
 - is_usable: boolean (set to false if photo does not contain a clear eye area).
+- overall_score: integer (0-100). Set to 0 if is_usable is false.
+- classification: string (always null/absent).
+- sub_scores: Array of { category: string, score: integer, note: string } for: "Dark Circles", "Puffiness", "Hydration", "Fine Lines". Set to [] if is_usable is false.
 - observations: Array of { area: string, note: string } describing areas analyzed (descriptive only).
 - recommendations: Array of { ingredient: string, why: string, how_to_use: string } for eye area active ingredients. Set to empty array [] if is_usable is false.`;
+  } else {
+    systemPrompt = `You are a professional hair and scalp analysis AI. Analyze the hair and scalp condition from the uploaded photo.
+
+CRITICAL RULES:
+1. STRICTLY NON-DIAGNOSTIC: Describe only visual traits (e.g., dryness, frizz, thickness, flaking). Never mention medical conditions or scalp diseases (e.g., do NOT mention "dandruff", "seborrheic dermatitis", "alopecia", "psoriasis", "infection"). Instead, use terms like "visible dryness or frizz in mid-lengths", "scalp appears to have some flaking or redness", "hair density appears even".
+2. UNBRANDED ACTIVE INGREDIENTS ONLY: Recommend generic hair and scalp actives (e.g., "argan oil", "keratin", "biotin", "tea tree oil", "salicylic acid for scalp", "coconut oil"). Do NOT recommend product brands.
+3. WEIGH CLASSIFICATION: You must classify the user's hair type under "classification" as one of: 'straight', 'wavy', 'curly', 'coily'. This classification MUST directly shape your active ingredient recommendations (e.g., curly or coily hair types might require deep hydration oils or rich masks, while straight hair requires lighter, non-weighing formulations).
+4. GROUNDED SCORING: You must calculate an "overall_score" (0-100) and an array of four "sub_scores" (for categories: "Scalp Health", "Hair Thickness/Density", "Dryness/Damage", "Frizz"). Each score MUST be grounded strictly in your observations. Do not make scores arbitrary or contradictory.
+5. UNUSABLE PHOTO CHECK: If the photo doesn't clearly contain human hair or scalp, is taken at an unreadable angle, or is of a non-human subject (like a toy, animal, or rabbit), you MUST set "is_usable" to false. If is_usable is false, you must set overall_score to 0, sub_scores to [], classification to null, and recommendations to [].
+
+Observations & recommendations schema:
+- is_usable: boolean (set to false if photo does not contain clear hair or scalp).
+- overall_score: integer (0-100). Set to 0 if is_usable is false.
+- classification: string (one of 'straight', 'wavy', 'curly', 'coily'). Set to null if is_usable is false.
+- sub_scores: Array of { category: string, score: integer, note: string } for: "Scalp Health", "Hair Thickness/Density", "Dryness/Damage", "Frizz". Set to [] if is_usable is false.
+- observations: Array of { area: string, note: string } describing areas analyzed (descriptive only).
+- recommendations: Array of { ingredient: string, why: string, how_to_use: string } for generic active hair ingredients. Set to empty array [] if is_usable is false.`;
   }
 
   const schema = {
     type: "OBJECT",
     properties: {
       is_usable: { type: "BOOLEAN" },
+      overall_score: { type: "INTEGER" },
+      classification: { type: "STRING", nullable: true },
+      sub_scores: {
+        type: "ARRAY",
+        items: {
+          type: "OBJECT",
+          properties: {
+            category: { type: "STRING" },
+            score: { type: "INTEGER" },
+            note: { type: "STRING" }
+          },
+          required: ["category", "score", "note"]
+        }
+      },
       observations: {
         type: "ARRAY",
         items: {
@@ -102,7 +143,7 @@ Observations & recommendations schema:
         }
       }
     },
-    required: ["is_usable", "observations", "recommendations"]
+    required: ["is_usable", "overall_score", "sub_scores", "observations", "recommendations"]
   };
 
   // 3. Call generateWithFallback with 20 seconds timeout
@@ -128,22 +169,48 @@ Observations & recommendations schema:
   }
 
   // 4. Save scan to Database
-  const { error: insertErr } = await db.from("wellness_scans").insert({
+  const { data: insertedScan, error: insertErr } = await db.from("wellness_scans").insert({
     user_id: userId,
     scan_type: scanType,
     taken_at: today,
     photo_url: photoUrl,
     is_usable: estimate.is_usable,
     observations: estimate.observations,
-    recommendations: estimate.recommendations
-  });
+    recommendations: estimate.recommendations,
+    overall_score: estimate.overall_score ?? null,
+    sub_scores: estimate.sub_scores ?? null,
+    classification: estimate.classification ?? null
+  }).select("id").single();
 
   if (insertErr) {
     console.error("Failed to insert wellness scan:", insertErr);
     return NextResponse.json({ error: "Failed to persist scan results in database" }, { status: 500 });
   }
 
-  // 5. Update daily cap, checking the database error
+  const newScanId = insertedScan?.id;
+
+  // 5. Query prior scan of same scan_type to compute trend/delta
+  let trend = null;
+  if (newScanId) {
+    const { data: priorScan } = await db.from("wellness_scans")
+      .select("overall_score, taken_at")
+      .eq("user_id", userId)
+      .eq("scan_type", scanType)
+      .neq("id", newScanId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (priorScan && priorScan.overall_score != null && estimate.overall_score != null) {
+      trend = {
+        previous_score: priorScan.overall_score,
+        score_delta: estimate.overall_score - priorScan.overall_score,
+        previous_scan_date: priorScan.taken_at
+      };
+    }
+  }
+
+  // 6. Update daily cap, checking the database error
   const { error: upsertErr } = await db.from("ai_suggestions").upsert(
     { user_id: userId, log_date: today, kind: capKind, content: { count: used + 1 } },
     { onConflict: "user_id,log_date,kind" }
@@ -155,5 +222,10 @@ Observations & recommendations schema:
   }
 
   const backendModel = (res as any).selectedModel || "unknown";
-  return NextResponse.json({ result: estimate, backend_model: backendModel, photo_url: photoUrl });
+  return NextResponse.json({
+    result: estimate,
+    trend,
+    backend_model: backendModel,
+    photo_url: photoUrl
+  });
 }

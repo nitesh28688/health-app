@@ -1491,3 +1491,53 @@ present before camera starts. `npx tsc --noEmit` clean independently. Verified l
 the real database that all 6 `ai_suggestions` kind values (including the two fixed in Phase
 29) pass the constraint post-migration, and that `wellness_scans` exists with working RLS.
 Confirmed `web/test-wellness-scan.mjs` was actually deleted before this commit.
+
+## Phase 31 (Antigravity, 2026-07-11) — Wellness Scoring Upgrade + Hair/Scalp Analysis
+
+**Goal:** Extend the Wellness section to include scoring (overall and sub-scores for skin, eyes, and hair), support Hair & Scalp Analysis using MediaPipe ImageSegmenter (Hair Segmenter), and render previous scan trend delta logs.
+
+**Status:** [x] Done
+
+**Do:**
+1. **Database Migration:** Created [0028_wellness_scoring_hair.sql](file:///c:/Users/mulch/Downloads/Projects/health-app/supabase/migrations/0028_wellness_scoring_hair.sql) adding `overall_score` (integer), `sub_scores` (jsonb), and `classification` (text) columns to `wellness_scans`. Updated constraint checks to support `'hair'` in `scan_type` and added `'hair_scan'` to `ai_suggestions_kind_check` (total of 11 kinds supported).
+2. **Scoring API & Grounding:** Updated POST [/api/ai/wellness-scan](file:///c:/Users/mulch/Downloads/Projects/health-app/web/app/api/ai/wellness-scan/route.ts) with scoring parameters (0-100 overall score and specific sub-score categories) for Skin, Eye, and Hair. Explicitly instructed Gemini to ground scores in observations. Wired classification (`skin_type` / `hair_type`) to tailor ingredient recommendations. Set standard OpenAPI nullable option (`classification: { type: "STRING", nullable: true }`) for eye scan compatibility.
+3. **Trend Delta Calculation:** The route queries the user's most recent prior scan of the same type and calculates `previous_score`, `score_delta`, and `previous_scan_date` returned as `trend` metadata.
+4. **WASM Hair Segmenter & Flip camera:** Updated [WellnessCaptureSheet.tsx](file:///c:/Users/mulch/Downloads/Projects/health-app/web/components/WellnessCaptureSheet.tsx) to lazily load and cache MediaPipe's `ImageSegmenter` for hair scans. Throttles frame detection at 10 FPS for mobile performance. Evaluates hair pixel coverage mask, turning alignment green between 12% and 75% coverage. Draws transparent indigo segmentation overlay over detected hair. Added scalp tilting guides and a flip-camera toggle button.
+5. **Upgraded UI Summary:** Added "Hair" tab to [page.tsx](file:///c:/Users/mulch/Downloads/Projects/health-app/web/app/wellness/page.tsx). Renders overall score cards, active classifications, previous scan trend labels (`+X / -X since last scan on [date]`), sub-scores progress bars, and ingredient recommendations in the details sheet.
+
+**Verify:**
+- Executed `web/test-wellness-scan.mjs` verifying:
+  - All 11 `ai_suggestions` constraint kinds upsert successfully.
+  - Skin, Eye, and Hair scans successfully parse overall scores, sub-scores, and classifications.
+  - Eye scan classification is null.
+  - Calling Skin scan twice verifies trend calculation (`score_delta` matches).
+- TypeScript runs clean (`npx tsc --noEmit`).
+- Removed `web/test-wellness-scan.mjs` before commit.
+
+
+**Review (Fable, 2026-07-11)**: independently verified the full diff. Migration correctly
+preserves all 10 prior `ai_suggestions` kind values plus `hair_scan` (11 total) — confirmed
+live against the real database this wasn't silently regressed, the same risk class that
+bit Phase 30's initial draft. Prompt correctly grounds every score in the corresponding
+observation text (verified by reading the actual prompt wording, not just trusting the
+"grounded scoring" claim), correctly zeroes out score/classification/recommendations when
+`is_usable` is false, and correctly wires `skin_type`/`hair_type` classification into the
+ingredient-recommendation instructions rather than displaying it decoratively. The nullable
+`classification` field (`{ type: "STRING", nullable: true }`) — flagged as a risk before
+building since no prior route in this app had used a nullable schema field — was
+implemented correctly and confirmed working live (eye scans return `classification: null`
+without a schema-validation error). Trend query correctly excludes the just-inserted row
+via `neq("id", newScanId)`, ordered by `created_at desc`. `npx tsc --noEmit` clean
+independently.
+
+**Found and fixed on review**: `WellnessCaptureSheet.tsx`'s hair-capture path never called
+`.close()` on `results.categoryMask` from `ImageSegmenter.segmentForVideo()`. MediaPipe's
+segmentation masks are backed by WASM/GPU memory, not garbage-collected by JS — at the
+10fps throttle, a 20-30 second capture session would leak 200-300+ uncleaned mask
+allocations before the user even finishes scanning, risking a slowdown or tab crash on
+lower-end phones. This is a client-side-only runtime issue invisible to both `tsc` and a
+short-lived Node test script that only exercises the API route, not the capture loop —
+exactly the class of bug that needs a real code-reading review pass, not just automated
+tests. Fixed directly (one-line `.close()` call) rather than round-tripped back to
+Antigravity, since it was small and contained. Confirmed `web/test-wellness-scan.mjs` was
+actually deleted before this commit.

@@ -10,13 +10,16 @@ import { Sparkles, Camera, Eye, RefreshCw, X, AlertTriangle, CheckCircle, Info, 
 
 interface Scan {
   id: string;
-  scan_type: "skin" | "eye";
+  scan_type: "skin" | "eye" | "hair";
   taken_at: string;
   photo_url: string;
   is_usable: boolean;
   observations: { area: string; note: string }[];
   recommendations: { ingredient: string; why: string; how_to_use: string }[];
   created_at: string;
+  overall_score?: number | null;
+  sub_scores?: { category: string; score: number; note: string }[] | null;
+  classification?: string | null;
 }
 
 function monthLabel(dateStr: string) {
@@ -25,7 +28,7 @@ function monthLabel(dateStr: string) {
 
 function WellnessMain({ userId }: { userId: string }) {
   const router = useRouter();
-  const [tab, setTab] = useState<"skin" | "eye">("skin");
+  const [tab, setTab] = useState<"skin" | "eye" | "hair">("skin");
   const [scans, setScans] = useState<Scan[] | null>(null);
   const [selectedScan, setSelectedScan] = useState<Scan | null>(null);
   const [compareA, setCompareA] = useState<Scan | null>(null);
@@ -33,6 +36,23 @@ function WellnessMain({ userId }: { userId: string }) {
   const [captureOpen, setCaptureOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  function getScanTrend(scan: Scan) {
+    if (!scans) return null;
+    const filtered = scans.filter((s) => s.scan_type === scan.scan_type);
+    const idx = filtered.findIndex((s) => s.id === scan.id);
+    if (idx !== -1 && idx < filtered.length - 1) {
+      const prior = filtered[idx + 1];
+      if (scan.overall_score != null && prior.overall_score != null) {
+        const delta = scan.overall_score - prior.overall_score;
+        return {
+          delta,
+          date: prior.taken_at
+        };
+      }
+    }
+    return null;
+  }
 
   const load = useCallback(async () => {
     const { data, error: fetchErr } = await supabase
@@ -193,7 +213,7 @@ function WellnessMain({ userId }: { userId: string }) {
       </div>
 
       <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-6 leading-relaxed">
-        Guided scans analyze facial skin alignment or eye puffiness, listing active unbranded active recommendations. Tap two scans in the history grid to compare them side-by-side.
+        Guided scans analyze facial skin, eye appearance, or hair segmenter coverage, listing unbranded active recommendations. Tap two scans in the history grid to compare them side-by-side.
       </p>
 
       {/* Tab Switcher */}
@@ -227,6 +247,21 @@ function WellnessMain({ userId }: { userId: string }) {
         >
           <Eye className="w-4 h-4" />
           Eye Analysis
+        </button>
+        <button
+          onClick={() => {
+            setTab("hair");
+            setCompareA(null);
+            setCompareB(null);
+          }}
+          className={`flex-1 rounded-xl py-3 text-sm font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+            tab === "hair"
+              ? "bg-white dark:bg-neutral-800 text-indigo-600 dark:text-indigo-400 shadow-sm border border-neutral-200/20 dark:border-neutral-700/10"
+              : "text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-350"
+          }`}
+        >
+          <Sparkles className="w-4 h-4 text-violet-500" />
+          Hair Analysis
         </button>
       </div>
 
@@ -331,7 +366,7 @@ function WellnessMain({ userId }: { userId: string }) {
             <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-100 dark:border-neutral-800 shrink-0">
               <div>
                 <h3 className="font-bold text-lg text-neutral-900 dark:text-white">
-                  {selectedScan.scan_type === "skin" ? "Skin Scan Results" : "Eye Scan Results"}
+                  {selectedScan.scan_type === "skin" ? "Skin Scan Results" : selectedScan.scan_type === "eye" ? "Eye Scan Results" : "Hair Scan Results"}
                 </h3>
                 <p className="text-xs text-neutral-500">
                   Logged on {new Date(selectedScan.taken_at).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}
@@ -353,15 +388,80 @@ function WellnessMain({ userId }: { userId: string }) {
                 <img src={selectedScan.photo_url} alt="Scan Detail" className="w-full h-full object-cover" />
               </div>
 
+              {/* Overall Score Dashboard Card */}
+              {selectedScan.is_usable && selectedScan.overall_score != null && (
+                <div className="p-4 bg-neutral-50 dark:bg-neutral-800/40 rounded-2xl border border-neutral-250/30 dark:border-neutral-800/35 flex flex-col items-center text-center">
+                  <div className="bg-gradient-to-tr from-indigo-500 to-violet-600 text-white rounded-full w-16 h-16 flex items-center justify-center text-2xl font-black shadow-lg shadow-indigo-500/20 mb-2 select-none animate-pulse">
+                    {selectedScan.overall_score}
+                  </div>
+                  <span className="text-xs font-bold text-neutral-400 uppercase tracking-wider block">
+                    Overall Score
+                  </span>
+                  
+                  {selectedScan.classification && (
+                    <span className="mt-2.5 px-3.5 py-1.5 bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400 text-[10px] font-black rounded-full uppercase tracking-wider">
+                      {selectedScan.scan_type === "skin" ? `Skin Type: ${selectedScan.classification}` : `Hair Type: ${selectedScan.classification}`}
+                    </span>
+                  )}
+
+                  {(() => {
+                    const trend = getScanTrend(selectedScan);
+                    if (!trend) return null;
+                    const absDelta = Math.abs(trend.delta);
+                    const sign = trend.delta > 0 ? "+" : trend.delta < 0 ? "-" : "";
+                    const color = trend.delta > 0 ? "text-emerald-500" : trend.delta < 0 ? "text-red-500" : "text-neutral-400";
+                    return (
+                      <p className={`text-xs font-bold mt-2.5 flex items-center gap-1 ${color}`}>
+                        {sign}{absDelta} since last scan on {new Date(trend.date).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+                      </p>
+                    );
+                  })()}
+                </div>
+              )}
+
               {/* Unusable Warning Card */}
               {!selectedScan.is_usable && (
                 <div className="p-4 bg-amber-50/60 dark:bg-amber-950/10 border border-amber-100 dark:border-amber-950/30 rounded-2xl flex items-start gap-3 text-amber-800 dark:text-amber-300">
                   <AlertTriangle className="w-5 h-5 shrink-0 text-amber-500 mt-0.5" />
                   <div>
-                    <h4 className="font-bold text-sm">Image Analysis Limited</h4>
+                    <h4 className="font-bold text-sm">Analysis Limited</h4>
                     <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1 leading-relaxed">
-                      The AI coach was unable to perform a full facial alignment analysis on this photo. Please make sure to frame clearly under proper light.
+                      The AI coach was unable to perform a full tracking analysis on this photo. Please make sure to capture your face or hair clearly under proper lighting.
                     </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Sub-Scores Section */}
+              {selectedScan.is_usable && selectedScan.sub_scores && selectedScan.sub_scores.length > 0 && (
+                <div className="space-y-3">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-neutral-400">Sub-scores</h4>
+                  <div className="grid grid-cols-1 gap-2.5">
+                    {selectedScan.sub_scores.map((sub, idx) => (
+                      <div
+                        key={idx}
+                        className="p-3.5 bg-neutral-50 dark:bg-neutral-800/20 rounded-2xl border border-neutral-200/40 dark:border-neutral-800/40"
+                      >
+                        <div className="flex items-center justify-between mb-1.5">
+                          <span className="text-xs font-bold text-indigo-500 dark:text-indigo-400">
+                            {sub.category}
+                          </span>
+                          <span className="text-xs font-black text-indigo-600 dark:text-indigo-400">
+                            {sub.score}/100
+                          </span>
+                        </div>
+                        {/* Progress bar wrapper */}
+                        <div className="w-full bg-neutral-200 dark:bg-neutral-800 rounded-full h-1.5 mb-2 overflow-hidden">
+                          <div
+                            className="bg-gradient-to-r from-indigo-500 to-violet-600 h-1.5 rounded-full transition-all duration-500"
+                            style={{ width: `${sub.score}%` }}
+                          />
+                        </div>
+                        <p className="text-[11px] text-neutral-600 dark:text-neutral-350 leading-relaxed font-medium">
+                          {sub.note}
+                        </p>
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}
@@ -386,19 +486,19 @@ function WellnessMain({ userId }: { userId: string }) {
                     ))}
                   </div>
                 ) : (
-                  <p className="text-sm text-neutral-500 py-2">No observations available.</p>
+                  <p className="text-xs text-neutral-500 py-1 pl-1">No observations available.</p>
                 )}
               </div>
 
               {/* Recommendations Section */}
               {selectedScan.is_usable && selectedScan.recommendations && selectedScan.recommendations.length > 0 && (
                 <div className="space-y-2.5">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-neutral-400">Ingredient Recommendations</h4>
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-neutral-400">Active Ingredient Recommendations</h4>
                   <div className="space-y-2.5">
                     {selectedScan.recommendations.map((rec, idx) => (
                       <div
                         key={idx}
-                        className="p-4 bg-emerald-50/30 dark:bg-emerald-950/5 rounded-2xl border border-emerald-100/50 dark:border-emerald-950/20"
+                        className="p-4 bg-emerald-50/20 dark:bg-emerald-950/5 rounded-2xl border border-emerald-100/30 dark:border-emerald-950/20"
                       >
                         <div className="flex items-center gap-1.5 mb-1.5">
                           <CheckCircle className="w-4 h-4 text-emerald-500" />

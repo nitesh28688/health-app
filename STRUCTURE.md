@@ -94,6 +94,8 @@ edit an already-applied migration; add a new one.
 | 0025 | `0025_match_exercise.sql` | Adds `match_exercise(p_name)` fuzzy matching postgres function to reuse seed library exercises |
 | 0026 | `0026_form_check_cap.sql` | Alters `ai_suggestions_kind_check` constraint to support 'assistant_turn' and 'form_check' kinds |
 | 0027 | `0027_wellness_scans.sql` | Creates `wellness_scans` table (skin/eye scans) and updates `ai_suggestions_kind_check` check constraint for cap tracking |
+| 0028 | `0028_wellness_scoring_hair.sql` | Adds `overall_score`, `sub_scores`, and `classification` to `wellness_scans`, adds 'hair' scan type, and expands kind constraint to 11 kinds |
+
 
 
 
@@ -174,7 +176,7 @@ one object.
 | `/medications` | Add medications with dosage + multiple reminder times, mark "Taken", pause/resume/delete |
 | `/cycle` | Opt-in (toggle in Profile) menstrual cycle logging — period start/flow/symptoms, predicted next period from cycle history |
 | `/progress` | Before/after progress photos — grid view, tap any two to compare side by side, upload via Cloudflare R2 |
-| `/wellness` | Tabswitcher for Skin Analysis & Eye Analysis; month-grouped history grids; taps open detail sheets with active ingredient recommendations, photo details, and persistent disclaimers; taps on two scans starts side-by-side Before/After comparison. guided capture via MediaPipe Face Landmarker. |
+| `/wellness` | Tabswitcher for Skin, Eye, and Hair Analysis; month-grouped history grids; taps open detail sheets with overall score and sub-scores progress bars, previous scan trend delta (+X/-X), active unbranded ingredient recommendations (filtered by skin/hair types), photo details, and persistent medical disclaimers; taps on two scans starts side-by-side Before/After comparison. guided capture via MediaPipe Face Landmarker (face/eye scans) and Hair Segmenter (hair scans). |
 | `/friends` | Feed / Leaderboard / People (search, requests, cheers) |
 | `/profile` | **Avatar upload** (tap the photo, compressed client-side before upload), body stats, target-suggestion wizard (goal toggle has **no default selection** — forces an explicit tap and labels the result "Calculated for: X" so there's never ambiguity about which goal a suggestion used), push-notification opt-in, links to Medications/Cycle/Progress-photos, sharing toggles, sign out |
 | `/admin` | (admin only) **Overview / Users / AI Foods tabs** — Users tab lists every real account (email, phone, join date, confirmation status) tap-through to a detail sheet (food/workout/water log counts, last weight, friend count) with a delete-user action; AI Foods tab is the moderation queue |
@@ -233,7 +235,7 @@ profile so pages don't each need their own auth boilerplate.
   logs) and asks Gemini for 2-3 short observations + one suggestion. Capped at once
   per user per day via `ai_suggestions` (`kind='workout_tip'`).
 - **`/api/ai/form-check`** — POST route accepting a base64 video payload. Enforces a 5/day daily cap (`kind='form_check'`) and queries Gemini 2.5 Flash under a 25s timeout with thinking budget disabled to return structured posture analysis observations.
-- **`/api/ai/wellness-scan`** — POST route accepting a base64 image payload. Enforces 10/day daily cap for skin_scan and eye_scan, uploads photo to R2, and queries Gemini 2.5 Flash with thinking budget disabled under a 20s timeout to return structured cosmetic observations and generic unbranded ingredients recommendations.
+- **`/api/ai/wellness-scan`** — POST route accepting a base64 image payload. Enforces 10/day daily cap for skin_scan, eye_scan, and hair_scan, uploads photo to R2, and queries Gemini 2.5 Flash with thinking budget disabled under a 20s timeout to return structured cosmetic observations, overall score, sub-scores, classification, and generic unbranded ingredients recommendations (informed by classification). Computes and returns score trend deltas at request time.
 - **`/api/admin/users`** (GET/DELETE) + **`/api/admin/user-detail`** (GET) — the
   admin user-management backend. Both verify the caller is an admin (checks their JWT
   → `profiles.is_admin`) before using the **service-role key** to bypass RLS and read

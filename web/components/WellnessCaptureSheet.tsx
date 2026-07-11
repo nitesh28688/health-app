@@ -3,13 +3,14 @@ import { useEffect, useRef, useState } from "react";
 import { X, Camera, RefreshCw, AlertTriangle, CheckCircle, Loader2 } from "lucide-react";
 
 interface WellnessCaptureSheetProps {
-  scanType: "skin" | "eye";
+  scanType: "skin" | "eye" | "hair";
   onClose: () => void;
   onCapture: (imageDataUrl: string) => void;
 }
 
-// Module-level cache for the Face Landmarker to prevent re-downloads/re-initializations
+// Module-level caches for MediaPipe models
 let cachedLandmarker: any = null;
+let cachedSegmenter: any = null;
 let cachedVision: any = null;
 let isModelLoading = false;
 
@@ -17,8 +18,9 @@ export function WellnessCaptureSheet({ scanType, onClose, onCapture }: WellnessC
   const [modelStatus, setModelStatus] = useState<"loading" | "ready" | "fallback">("loading");
   const [cameraStatus, setCameraStatus] = useState<"init" | "active" | "error">("init");
   const [alignment, setAlignment] = useState<"red" | "green">("red");
-  const [guideMsg, setGuideMsg] = useState("Positioning face...");
+  const [guideMsg, setGuideMsg] = useState("Positioning scan area...");
   const [autoCaptureSecs, setAutoCaptureSecs] = useState<number | null>(null);
+  const [facingMode, setFacingMode] = useState<"user" | "environment">("user");
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -27,29 +29,29 @@ export function WellnessCaptureSheet({ scanType, onClose, onCapture }: WellnessC
   const alignRef = useRef<"red" | "green">("red");
   const greenTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // 1. Load MediaPipe Face Landmarker lazily and cache it
+  // 1. Load MediaPipe models lazily and cache them
   useEffect(() => {
     activeRef.current = true;
     let modelTimeout: NodeJS.Timeout;
 
     async function loadModel() {
-      if (cachedLandmarker) {
+      const isHair = scanType === "hair";
+      const cached = isHair ? cachedSegmenter : cachedLandmarker;
+
+      if (cached) {
         setModelStatus("ready");
-        startCameraFlow();
         return;
       }
 
       if (isModelLoading) {
-        // Wait and check again
         const checkInterval = setInterval(() => {
-          if (cachedLandmarker) {
+          const loaded = isHair ? cachedSegmenter : cachedLandmarker;
+          if (loaded) {
             clearInterval(checkInterval);
             setModelStatus("ready");
-            startCameraFlow();
-          } else if (!isModelLoading && !cachedLandmarker) {
+          } else if (!isModelLoading && !loaded) {
             clearInterval(checkInterval);
             setModelStatus("fallback");
-            startCameraFlow();
           }
         }, 100);
         return;
@@ -59,43 +61,53 @@ export function WellnessCaptureSheet({ scanType, onClose, onCapture }: WellnessC
 
       // Fail-safe timeout: if MediaPipe takes > 6 seconds, fall back to manual capture
       modelTimeout = setTimeout(() => {
-        if (!cachedLandmarker && activeRef.current) {
+        const loaded = isHair ? cachedSegmenter : cachedLandmarker;
+        if (!loaded && activeRef.current) {
           console.warn("MediaPipe load timed out. Falling back to manual capture.");
           isModelLoading = false;
           setModelStatus("fallback");
-          startCameraFlow();
         }
       }, 6000);
 
       try {
-        const { FilesetResolver, FaceLandmarker } = await import("@mediapipe/tasks-vision");
+        const { FilesetResolver, FaceLandmarker, ImageSegmenter } = await import("@mediapipe/tasks-vision");
         
         cachedVision = await FilesetResolver.forVisionTasks(
           "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.8/wasm"
         );
         
-        cachedLandmarker = await FaceLandmarker.createFromOptions(cachedVision, {
-          baseOptions: {
-            modelAssetPath: "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
-            delegate: "GPU"
-          },
-          runningMode: "VIDEO",
-          numFaces: 1
-        });
+        if (isHair) {
+          cachedSegmenter = await ImageSegmenter.createFromOptions(cachedVision, {
+            baseOptions: {
+              modelAssetPath: "https://storage.googleapis.com/mediapipe-models/image_segmenter/hair_segmenter/float32/1/hair_segmenter.task",
+              delegate: "GPU"
+            },
+            runningMode: "VIDEO",
+            outputCategoryMask: true,
+            outputConfidenceMasks: false
+          });
+        } else {
+          cachedLandmarker = await FaceLandmarker.createFromOptions(cachedVision, {
+            baseOptions: {
+              modelAssetPath: "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
+              delegate: "GPU"
+            },
+            runningMode: "VIDEO",
+            numFaces: 1
+          });
+        }
 
         clearTimeout(modelTimeout);
         isModelLoading = false;
         if (activeRef.current) {
           setModelStatus("ready");
-          startCameraFlow();
         }
       } catch (err) {
-        console.error("Failed to load Face Landmarker. Falling back to manual capture.", err);
+        console.error("Failed to load MediaPipe model. Falling back to manual capture.", err);
         clearTimeout(modelTimeout);
         isModelLoading = false;
         if (activeRef.current) {
           setModelStatus("fallback");
-          startCameraFlow();
         }
       }
     }
@@ -108,9 +120,18 @@ export function WellnessCaptureSheet({ scanType, onClose, onCapture }: WellnessC
       stopCamera();
       if (greenTimerRef.current) clearTimeout(greenTimerRef.current);
     };
-  }, []);
+  }, [scanType]);
 
-  // 2. Start Camera stream
+  // 2. Restart camera stream whenever facingMode changes or model becomes ready
+  useEffect(() => {
+    if (modelStatus !== "loading") {
+      startCameraFlow();
+    }
+    return () => {
+      stopCamera();
+    };
+  }, [facingMode, modelStatus]);
+
   async function startCameraFlow() {
     if (!navigator.onLine) {
       setCameraStatus("error");
@@ -118,12 +139,15 @@ export function WellnessCaptureSheet({ scanType, onClose, onCapture }: WellnessC
       return;
     }
 
+    // Stop current stream before restarting
+    stopCamera();
+
     try {
       const constraints = {
         video: {
           width: { ideal: 640 },
           height: { ideal: 480 },
-          facingMode: "user" // Selfie camera default
+          facingMode: facingMode
         },
         audio: false
       };
@@ -137,7 +161,8 @@ export function WellnessCaptureSheet({ scanType, onClose, onCapture }: WellnessC
           if (videoRef.current) {
             videoRef.current.play().catch(() => {});
             setCameraStatus("active");
-            if (modelStatus === "ready" || cachedLandmarker) {
+            const loaded = scanType === "hair" ? cachedSegmenter : cachedLandmarker;
+            if (modelStatus === "ready" || loaded) {
               startTrackingLoop();
             }
           }
@@ -164,6 +189,7 @@ export function WellnessCaptureSheet({ scanType, onClose, onCapture }: WellnessC
 
     const ctx = canvas.getContext("2d")!;
     let lastVideoTime = -1;
+    let lastProcessedTime = 0;
 
     function renderLoop() {
       const v = videoRef.current;
@@ -178,16 +204,37 @@ export function WellnessCaptureSheet({ scanType, onClose, onCapture }: WellnessC
 
       ctx.clearRect(0, 0, c.width, c.height);
 
-      if (v.currentTime !== lastVideoTime && cachedLandmarker) {
+      const now = performance.now();
+      // Throttle analysis to 10 FPS (every 100ms) for smooth mobile performance
+      if (v.currentTime !== lastVideoTime && now - lastProcessedTime > 100) {
         lastVideoTime = v.currentTime;
+        lastProcessedTime = now;
         try {
-          const results = cachedLandmarker.detectForVideo(v, performance.now());
-          
-          if (results.faceLandmarks && results.faceLandmarks.length > 0) {
-            const landmarks = results.faceLandmarks[0];
-            processLandmarks(landmarks, c.width, c.height, ctx);
+          if (scanType === "hair") {
+            if (cachedSegmenter) {
+              cachedSegmenter.segmentForVideo(v, now, (results: any) => {
+                if (results.categoryMask) {
+                  const mask = results.categoryMask.getAsUint8Array();
+                  processHairMask(mask, c.width, c.height, ctx);
+                  // MPMask is backed by WASM/GPU memory, not GC'd by JS — must be
+                  // closed explicitly or every ~100ms frame at 10fps leaks a mask
+                  // allocation (200-300+ over a 20-30s capture session).
+                  results.categoryMask.close();
+                } else {
+                  updateAlignment("red", "No hair detected");
+                }
+              });
+            }
           } else {
-            updateAlignment("red", "No face detected");
+            if (cachedLandmarker) {
+              const results = cachedLandmarker.detectForVideo(v, now);
+              if (results.faceLandmarks && results.faceLandmarks.length > 0) {
+                const landmarks = results.faceLandmarks[0];
+                processLandmarks(landmarks, c.width, c.height, ctx);
+              } else {
+                updateAlignment("red", "No face detected");
+              }
+            }
           }
         } catch (e) {
           console.error("Tracking frame processing error", e);
@@ -202,7 +249,6 @@ export function WellnessCaptureSheet({ scanType, onClose, onCapture }: WellnessC
 
   // 4. Calculate Face/Eye placement
   function processLandmarks(landmarks: any[], width: number, height: number, ctx: CanvasRenderingContext2D) {
-    // Get bounding box
     let minX = 1, maxX = 0, minY = 1, maxY = 0;
     landmarks.forEach((pt) => {
       if (pt.x < minX) minX = pt.x;
@@ -216,17 +262,13 @@ export function WellnessCaptureSheet({ scanType, onClose, onCapture }: WellnessC
     const centerX = minX + boxWidth / 2;
     const centerY = minY + boxHeight / 2;
 
-    // Check Centered (center coordinate should be within 18% of frame center: 0.5)
     const isCentered = Math.abs(centerX - 0.5) < 0.18 && Math.abs(centerY - 0.5) < 0.18;
-
-    // Check Size (face width should cover between 25% and 65% of screen width)
     const isSizeOk = boxWidth >= 0.25 && boxWidth <= 0.65;
 
-    // Draw helper guide lines on canvas (mirrored)
+    // Draw helper guide oval
     ctx.strokeStyle = alignRef.current === "green" ? "rgba(16, 185, 129, 0.4)" : "rgba(239, 68, 68, 0.3)";
     ctx.lineWidth = 3;
     ctx.beginPath();
-    // Draw outer guide oval
     ctx.ellipse(width / 2, height / 2, width * 0.25, height * 0.35, 0, 0, 2 * Math.PI);
     ctx.stroke();
 
@@ -240,17 +282,13 @@ export function WellnessCaptureSheet({ scanType, onClose, onCapture }: WellnessC
       } else {
         updateAlignment("green", "Position correct! Hold still...");
       }
-    } else {
-      // Eye Scan constraints: eyes must be visible
-      // Landmark indexes for eyes: Left eye center/iris around 468-472, Right eye around 473-477
-      // In Face Landmarker, left eye centers and right eye centers are tracked
-      const leftEye = landmarks[33]; // Corner of left eye
-      const rightEye = landmarks[263]; // Corner of right eye
+    } else if (scanType === "eye") {
+      const leftEye = landmarks[33]; 
+      const rightEye = landmarks[263]; 
 
       const eyesTracked = leftEye && rightEye;
       const eyesDistance = eyesTracked ? Math.abs(rightEye.x - leftEye.x) : 0;
       
-      // Eyes should be relatively horizontal and close enough (distance > 0.08)
       const eyesAligned = eyesTracked && Math.abs(leftEye.y - rightEye.y) < 0.08;
       const eyesCloseEnough = eyesDistance > 0.08;
 
@@ -266,7 +304,46 @@ export function WellnessCaptureSheet({ scanType, onClose, onCapture }: WellnessC
     }
   }
 
-  // 5. Update alignment zone & handle auto-capture logic
+  // 5. Hair Segmenter Mask Processing
+  function processHairMask(mask: Uint8Array, width: number, height: number, ctx: CanvasRenderingContext2D) {
+    let hairPixels = 0;
+    for (let i = 0; i < mask.length; i++) {
+      if (mask[i] === 1) {
+        hairPixels++;
+      }
+    }
+    const coverageRatio = hairPixels / mask.length;
+
+    // Draw transparent green segmentation overlay on detected hair pixels to wow the user
+    const imgData = ctx.createImageData(width, height);
+    for (let i = 0; i < mask.length; i++) {
+      const idx = i * 4;
+      if (mask[i] === 1) {
+        imgData.data[idx] = 99;     // R
+        imgData.data[idx+1] = 102;  // G
+        imgData.data[idx+2] = 241;  // B (indigo tint)
+        imgData.data[idx+3] = 75;   // ~30% Alpha
+      } else {
+        imgData.data[idx+3] = 0;    // Transparent
+      }
+    }
+    ctx.putImageData(imgData, 0, 0);
+
+    // Green zone when coverage is between 12% and 75%
+    const isCoverageOk = coverageRatio >= 0.12 && coverageRatio <= 0.75;
+
+    if (!isCoverageOk) {
+      if (coverageRatio < 0.12) {
+        updateAlignment("red", "Frame your hair clearly (move closer/adjust angle)");
+      } else {
+        updateAlignment("red", "Move slightly back");
+      }
+    } else {
+      updateAlignment("green", "Hair coverage optimal! Hold still...");
+    }
+  }
+
+  // 6. Update alignment zone & handle auto-capture logic
   function updateAlignment(zone: "red" | "green", msg: string) {
     setGuideMsg(msg);
     if (alignRef.current !== zone) {
@@ -290,7 +367,7 @@ export function WellnessCaptureSheet({ scanType, onClose, onCapture }: WellnessC
     }
   }
 
-  // 6. Capture photo
+  // 7. Capture photo
   function captureSnapshot() {
     if (greenTimerRef.current) {
       clearTimeout(greenTimerRef.current);
@@ -300,7 +377,6 @@ export function WellnessCaptureSheet({ scanType, onClose, onCapture }: WellnessC
     const video = videoRef.current;
     if (!video) return;
 
-    // Standard high-quality canvas snapshot
     const captureCanvas = document.createElement("canvas");
     captureCanvas.width = video.videoWidth || 640;
     captureCanvas.height = video.videoHeight || 480;
@@ -327,7 +403,7 @@ export function WellnessCaptureSheet({ scanType, onClose, onCapture }: WellnessC
         <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-800 shrink-0">
           <div>
             <h2 className="font-bold text-lg text-white">
-              {scanType === "skin" ? "Facial Skin Capture" : "Eye Region Capture"}
+              {scanType === "skin" ? "Facial Skin Capture" : scanType === "eye" ? "Eye Region Capture" : "Hair & Scalp Capture"}
             </h2>
             <p className="text-xs text-neutral-400">
               {modelStatus === "loading" ? "Initializing tracking AI..." : "Align camera"}
@@ -349,7 +425,7 @@ export function WellnessCaptureSheet({ scanType, onClose, onCapture }: WellnessC
               <Loader2 className="w-10 h-10 text-indigo-500 animate-spin mb-4" />
               <h3 className="font-semibold text-white mb-2">Loading Smart Guides</h3>
               <p className="text-xs text-neutral-400 max-w-xs">
-                Downloading face landmarker model (~5MB). This only happens once.
+                Downloading MediaPipe vision model (~5MB). This only happens once.
               </p>
             </div>
           )}
@@ -399,6 +475,15 @@ export function WellnessCaptureSheet({ scanType, onClose, onCapture }: WellnessC
                   className="w-full h-full object-cover scale-x-[-1]"
                 />
                 
+                {/* Flip camera overlay button */}
+                <button
+                  onClick={() => setFacingMode((prev) => (prev === "user" ? "environment" : "user"))}
+                  className="absolute top-4 right-4 z-10 bg-black/60 hover:bg-black/80 border border-neutral-700/50 p-2.5 rounded-full text-white active:scale-95 transition-all shadow-md cursor-pointer"
+                  title="Flip camera"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                </button>
+
                 {/* Canvas Overlay for tracking guides */}
                 {modelStatus === "ready" && (
                   <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none scale-x-[-1]" />
@@ -415,8 +500,15 @@ export function WellnessCaptureSheet({ scanType, onClose, onCapture }: WellnessC
                 )}
               </div>
 
+              {/* Scalp scan tips overlay */}
+              {scanType === "hair" && (
+                <div className="w-full mt-2.5 px-3 py-2 bg-indigo-950/20 border border-indigo-900/30 rounded-xl text-indigo-400 text-[10px] font-bold text-center">
+                  💡 Crown/Scalp scan: tilt head down with camera above, or have someone help.
+                </div>
+              )}
+
               {/* Instructions Banner */}
-              <div className="w-full mt-4 flex items-center gap-2 px-4 py-3 bg-neutral-950/50 rounded-xl border border-neutral-800">
+              <div className="w-full mt-3 flex items-center gap-2 px-4 py-3 bg-neutral-950/50 rounded-xl border border-neutral-800">
                 {modelStatus === "fallback" ? (
                   <div className="flex-1 text-center text-xs text-neutral-400">
                     ℹ️ Manual mode. Center yourself and press capture when ready.
