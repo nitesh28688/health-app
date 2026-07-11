@@ -52,7 +52,7 @@ export function WellnessCaptureSheet({ scanType, onClose, onCapture }: WellnessC
             setModelStatus("ready");
           } else if (!isModelLoading && !loaded) {
             clearInterval(checkInterval);
-            setModelStatus("fallback");
+            enterManualFallback();
           }
         }, 100);
         return;
@@ -236,6 +236,19 @@ export function WellnessCaptureSheet({ scanType, onClose, onCapture }: WellnessC
     }
   }
 
+  function enterManualFallback() {
+    if (greenTimerRef.current) {
+      clearTimeout(greenTimerRef.current);
+      greenTimerRef.current = null;
+    }
+
+    alignRef.current = "green";
+    setAlignment("green");
+    setAutoCaptureSecs(null);
+    setModelStatus("fallback");
+    setGuideMsg("Live guide unavailable â€” center yourself and capture manually.");
+  }
+
   // 3. MediaPipe tracking loops
   function startTrackingLoop() {
     const video = videoRef.current;
@@ -246,6 +259,8 @@ export function WellnessCaptureSheet({ scanType, onClose, onCapture }: WellnessC
     let lastVideoTime = -1;
     let lastProcessedTime = 0;
     let consecutiveFailures = 0;
+    let successfulFaceDetections = 0;
+    const trackingStartedAt = performance.now();
 
     function renderLoop() {
       const v = videoRef.current;
@@ -296,9 +311,19 @@ export function WellnessCaptureSheet({ scanType, onClose, onCapture }: WellnessC
             if (cachedLandmarker) {
               const results = cachedLandmarker.detectForVideo(v, now);
               if (results.faceLandmarks && results.faceLandmarks.length > 0) {
+                successfulFaceDetections++;
                 const landmarks = results.faceLandmarks[0];
                 processLandmarks(landmarks, c.width, c.height, ctx);
               } else {
+                const hasNeverDetectedFace = successfulFaceDetections === 0;
+                const hasTrackedForTwoSeconds = now - trackingStartedAt >= 2000;
+
+                if (hasNeverDetectedFace && hasTrackedForTwoSeconds) {
+                  console.warn("Face tracking returned no landmarks for 2s. Falling back to manual capture.");
+                  enterManualFallback();
+                  return;
+                }
+
                 updateAlignment("red", "No face detected");
               }
             }
@@ -313,8 +338,7 @@ export function WellnessCaptureSheet({ scanType, onClose, onCapture }: WellnessC
             // pretending live guidance is coming and drop to manual capture
             // instead of leaving the UI stuck on stale guide text forever.
             console.warn("Live tracking failed repeatedly — falling back to manual capture.");
-            setModelStatus("fallback");
-            updateAlignment("green", "Live guide unavailable — center yourself and capture manually.");
+            enterManualFallback();
           } else {
             updateAlignment("red", "Positioning...");
           }
@@ -555,7 +579,7 @@ export function WellnessCaptureSheet({ scanType, onClose, onCapture }: WellnessC
                   cameraStatus !== "active"
                     ? "border-neutral-700"
                     : modelStatus === "fallback"
-                    ? "border-neutral-700"
+                    ? "border-emerald-500 shadow-emerald-500/10"
                     : alignment === "green"
                     ? "border-emerald-500 shadow-emerald-500/10"
                     : "border-red-500/80 shadow-red-500/10"
@@ -641,7 +665,7 @@ export function WellnessCaptureSheet({ scanType, onClose, onCapture }: WellnessC
                   <div className="w-full mt-3 flex items-center gap-2 px-4 py-3 bg-neutral-950/50 rounded-xl border border-neutral-800">
                     {modelStatus === "fallback" ? (
                       <div className="flex-1 text-center text-xs text-neutral-400">
-                        ℹ️ Manual mode. Center yourself and press capture when ready.
+                        {guideMsg}
                       </div>
                     ) : (
                       <>

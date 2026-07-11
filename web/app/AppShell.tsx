@@ -7,7 +7,7 @@ import type { Session } from "@supabase/supabase-js";
 import { AnimatePresence, motion } from "framer-motion";
 import { AssistantSheet } from "@/components/AssistantSheet";
 import { FormCheckSheet } from "@/components/FormCheckSheet";
-import { Bot, Book, Dumbbell, TrendingUp, Users, Smile, Salad, CloudUpload, Sparkles, Eye } from "lucide-react";
+import { Bot, Book, Dumbbell, TrendingUp, Users, Smile, Salad, CloudUpload, Sparkles, FileText } from "lucide-react";
 import { subscribePendingCount } from "@/lib/offlineQueue";
 import { subscribeAppMode, type AppMode } from "@/lib/appMode";
 
@@ -19,20 +19,13 @@ const TABS = [
   { href: "/profile", label: "Profile", icon: Smile, type: null as string | null },
 ];
 
-// Wellness Mode's own tab set — 5 tabs matching Core mode's nav weight.
-// Scan/Skin/Eye/Hair all point at the same /wellness page (which has no
-// separate routes of its own) but deep-link into its internal tab switcher
-// via ?type=, so each is a real distinct destination, not a hollow duplicate.
+// Wellness Mode keeps only the destinations that are real today.
 const WELLNESS_TABS = [
   { href: "/wellness", label: "Scan", icon: Sparkles, type: null as string | null },
-  { href: "/wellness?type=skin", label: "Skin", icon: Sparkles, type: "skin" },
-  { href: "/wellness?type=eye", label: "Eye", icon: Eye, type: "eye" },
-  { href: "/wellness?type=hair", label: "Hair", icon: Sparkles, type: "hair" },
+  { href: "/wellness?view=reports", label: "Reports", icon: FileText, type: "reports" },
   { href: "/profile", label: "Profile", icon: Smile, type: null as string | null },
 ];
-
-// Reads the ?type= query param to correctly highlight Skin/Eye/Hair as
-// distinct active tabs even though they share the /wellness pathname.
+// Reads the ?view= query param to correctly highlight the wellness sub-view.
 // `useSearchParams()` requires a Suspense boundary in the App Router (an
 // ungoverned build-time gotcha — get this wrong and it can break the
 // production build for every page, since AppShell wraps all of them), so
@@ -41,7 +34,7 @@ const WELLNESS_TABS = [
 function NavTabs({ mode }: { mode: AppMode }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const currentType = searchParams.get("type");
+  const currentView = searchParams.get("view");
   const activeTabs = mode === "wellness" ? WELLNESS_TABS : TABS;
 
   return (
@@ -49,7 +42,7 @@ function NavTabs({ mode }: { mode: AppMode }) {
       {activeTabs.map((t) => {
         const Icon = t.icon;
         const tabPath = t.href.split("?")[0];
-        const isActive = pathname === tabPath && (pathname !== "/wellness" || currentType === t.type);
+        const isActive = pathname === tabPath && (pathname !== "/wellness" || currentView === t.type);
         const accentText = mode === "wellness" ? "text-rose-600 dark:text-rose-400" : "text-indigo-600 dark:text-indigo-400";
         const accentBubble = mode === "wellness" ? "bg-rose-100 dark:bg-rose-900/30" : "bg-indigo-100 dark:bg-indigo-900/30";
         return (

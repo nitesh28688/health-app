@@ -1,8 +1,24 @@
-# Handoff — current status
+# Handoff - current status
 
 Short pointer document. For the deep "why is it built this way" reference, read
-`STRUCTURE.md` — that's the source of truth and is kept in sync every session.
+`STRUCTURE.md` - that's the source of truth and is kept in sync every session.
 
+**Wellness polish + Samsung Internet fallback fix (2026-07-11, Phase 41)** - Wellness
+Mode bottom nav is now intentionally limited to `Scan`, `Reports`, and `Profile`; the
+old Skin/Eye/Hair nav entries were removed because they all landed on the same experience.
+`/wellness` now has a real `?view=reports` mode with an in-page Scan/Reports switcher:
+Scan focuses on the aggregate score and new scan actions, Reports contains Latest Results,
+badges, comparison, and scan history. Added confirm-gated delete actions for wellness scans
+from history rows and from the report sheet footer (`wellness_scans.delete().eq("id").eq("user_id")`).
+The shareable aggregate score card was redesigned as a cleaner light branded 1080x1080
+canvas card and now draws the app logo from `/icon-192.png`. Fixed the Samsung Internet
+FaceLandmarker stuck-red bug: if Skin/Eye tracking has a ready model + active camera but
+gets zero successful face detections for the first ~2 seconds, it enters the existing
+manual fallback path, turns the viewfinder green, enables capture, and shows "Live guide
+unavailable - center yourself and capture manually." TypeScript verified clean with
+`npx.cmd tsc --noEmit`.
+
+---
 **Wellness Mode Full Design Overhaul (2026-07-11, Phase 40)** — Complete rewrite of
 `web/app/wellness/page.tsx`. Removed the 3 redundant Skin/Eye/Hair sub-tabs (they all did
 the same thing). Replaced with a single unified scrollable dashboard: AI Insight card,
@@ -297,3 +313,4 @@ visible ring card instead of a buried text link.
 - Re-used the caching architecture from daily_tip, tracking regeneration caps (5/day) via calls_today encoded directly into the JSON content blob to avoid needlessly expanding Postgres ENUM/check constraint kinds.
 - Pushed constraint migration 0029, formally incorporating wellness_insight and verifying the total length of 12 against local database constraints.
 - Employs exact comparison logic between cache state and current UI derivation limits (number of scans and scores).
+

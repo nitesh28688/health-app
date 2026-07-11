@@ -1,6 +1,6 @@
 "use client";
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { AppShell } from "../AppShell";
 import { supabase } from "@/lib/supabase";
 import { WellnessCaptureSheet } from "@/components/WellnessCaptureSheet";
@@ -10,7 +10,7 @@ import { awardBadge, BADGES } from "@/lib/badges";
 import {
   Sparkles, Camera, X, AlertTriangle, CheckCircle,
   Loader2, Share2, Lock, TrendingUp, TrendingDown, Minus, ChevronRight,
-  Sun, Moon, Flame, Clock, Zap, Star
+  Sun, Moon, Flame, Clock, Zap, Star, Trash2
 } from "lucide-react";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -126,6 +126,8 @@ function daysSince(scans: Scan[], type: ScanType): number | null {
 // ─── Main ──────────────────────────────────────────────────────────────────────
 function WellnessMain({ userId }: { userId: string }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const wellnessView = searchParams.get("view") === "reports" ? "reports" : "scan";
   const [scans, setScans] = useState<Scan[] | null>(null);
   const [selectedScan, setSelectedScan] = useState<Scan | null>(null);
   const [captureType, setCaptureType] = useState<ScanType>("skin");
@@ -137,6 +139,7 @@ function WellnessMain({ userId }: { userId: string }) {
   const [error, setError] = useState<string | null>(null);
   const [sharing, setSharing] = useState(false);
   const [sharingDetailed, setSharingDetailed] = useState(false);
+  const [deletingScanId, setDeletingScanId] = useState<string | null>(null);
   const [insight, setInsight] = useState<string | null>(null);
   const [showInsight, setShowInsight] = useState(true);
   const [earnedBadges, setEarnedBadges] = useState<Set<string>>(new Set());
@@ -221,46 +224,81 @@ function WellnessMain({ userId }: { userId: string }) {
     finally { setBusy(false); }
   }
 
+  async function deleteScan(scan: Scan) {
+    if (!confirm("Delete this wellness scan and report? This can't be undone.")) return;
+    setDeletingScanId(scan.id);
+    setError(null);
+    try {
+      const { error: deleteError } = await supabase
+        .from("wellness_scans")
+        .delete()
+        .eq("id", scan.id)
+        .eq("user_id", userId);
+      if (deleteError) throw deleteError;
+
+      setScans(prev => (prev ?? []).filter(s => s.id !== scan.id));
+      setCompareA(prev => prev?.id === scan.id ? null : prev);
+      setCompareB(prev => prev?.id === scan.id ? null : prev);
+      if (selectedScan?.id === scan.id) setSelectedScan(null);
+    } catch (err: any) {
+      setError(err.message || "Couldn't delete this scan.");
+    } finally {
+      setDeletingScanId(null);
+    }
+  }
+
   const fallbackDownload = useCallback((canvas: HTMLCanvasElement, name: string) => {
     const a = document.createElement("a"); a.href = canvas.toDataURL("image/png"); a.download = name;
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
   }, []);
+
+  const loadCanvasImage = useCallback((src: string) => new Promise<HTMLImageElement | null>((resolve) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => resolve(null);
+    img.src = src;
+  }), []);
 
   // ── Share Aggregate Score ──────────────────────────────────────────────────
   const handleShareScore = useCallback(async () => {
     if (aggregateScore === null) return;
     setSharing(true);
     try {
+      const logo = await loadCanvasImage("/icon-192.png");
       const canvas = document.createElement("canvas"); canvas.width = 1080; canvas.height = 1080;
       const ctx = canvas.getContext("2d")!;
       const bg = ctx.createLinearGradient(0, 0, 0, 1080);
-      bg.addColorStop(0, "#1e1b4b"); bg.addColorStop(0.5, "#312e81"); bg.addColorStop(1, "#4c1d95");
+      bg.addColorStop(0, "#fff7f8"); bg.addColorStop(0.45, "#ffffff"); bg.addColorStop(1, "#f5f3ff");
       ctx.fillStyle = bg; ctx.fillRect(0, 0, 1080, 1080);
-      ctx.strokeStyle = "rgba(255,255,255,0.04)"; ctx.lineWidth = 2;
-      for (let r = 120; r <= 900; r += 160) { ctx.beginPath(); ctx.arc(540, 540, r, 0, Math.PI * 2); ctx.stroke(); }
-      ctx.fillStyle = "rgba(255,255,255,0.06)"; ctx.beginPath();
-      if (ctx.roundRect) ctx.roundRect(80, 80, 920, 920, 56); else ctx.rect(80, 80, 920, 920);
-      ctx.fill(); ctx.strokeStyle = "rgba(255,255,255,0.13)"; ctx.lineWidth = 2; ctx.stroke();
+      ctx.fillStyle = "rgba(244,63,94,0.10)"; ctx.beginPath(); ctx.arc(880, 120, 260, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "rgba(139,92,246,0.10)"; ctx.beginPath(); ctx.arc(140, 900, 300, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "rgba(255,255,255,0.84)"; ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(70, 70, 940, 940, 64); else ctx.rect(70, 70, 940, 940);
+      ctx.fill(); ctx.strokeStyle = "rgba(15,23,42,0.08)"; ctx.lineWidth = 2; ctx.stroke();
       ctx.textAlign = "center"; ctx.textBaseline = "middle";
-      ctx.fillStyle = "#ffffff"; ctx.font = "900 52px system-ui,sans-serif"; ctx.fillText("CORE AI", 540, 200);
-      ctx.font = "500 26px system-ui,sans-serif"; ctx.fillStyle = "rgba(255,255,255,0.4)"; ctx.fillText("Wellness Intelligence", 540, 258);
-      if (userProfile?.name) { ctx.fillStyle = "#fb7185"; ctx.font = "bold 30px system-ui,sans-serif"; ctx.fillText(userProfile.name, 540, 315); }
+      ctx.save(); ctx.beginPath(); ctx.arc(540, 170, 54, 0, Math.PI * 2); ctx.clip();
+      if (logo) ctx.drawImage(logo, 486, 116, 108, 108); else { ctx.fillStyle = "#f43f5e"; ctx.fillRect(486, 116, 108, 108); }
+      ctx.restore();
+      ctx.fillStyle = "#0f172a"; ctx.font = "900 50px system-ui,sans-serif"; ctx.fillText("Core AI", 540, 265);
+      ctx.font = "600 25px system-ui,sans-serif"; ctx.fillStyle = "#64748b"; ctx.fillText("Wellness Intelligence Score", 540, 308);
+      if (userProfile?.name) { ctx.fillStyle = "#e11d48"; ctx.font = "bold 30px system-ui,sans-serif"; ctx.fillText(userProfile.name, 540, 360); }
       const score = aggregateScore;
-      ctx.strokeStyle = "rgba(255,255,255,0.12)"; ctx.lineWidth = 22; ctx.lineCap = "round";
-      ctx.beginPath(); ctx.arc(540, 510, 160, 0, Math.PI * 2); ctx.stroke();
+      ctx.strokeStyle = "#f1f5f9"; ctx.lineWidth = 24; ctx.lineCap = "round";
+      ctx.beginPath(); ctx.arc(540, 540, 160, 0, Math.PI * 2); ctx.stroke();
       ctx.strokeStyle = score >= 80 ? "#10b981" : score >= 50 ? "#f43f5e" : "#f59e0b";
-      ctx.beginPath(); ctx.arc(540, 510, 160, -Math.PI / 2, -Math.PI / 2 + (score / 100) * Math.PI * 2); ctx.stroke();
-      ctx.fillStyle = "#ffffff"; ctx.font = "900 128px system-ui,sans-serif"; ctx.fillText(String(Math.round(score)), 540, 510);
-      ctx.font = "bold 34px system-ui,sans-serif"; ctx.fillStyle = "rgba(255,255,255,0.7)"; ctx.fillText("WELLNESS SCORE", 540, 720);
-      ctx.font = "500 26px system-ui,sans-serif"; ctx.fillStyle = "rgba(255,255,255,0.4)";
-      ctx.fillText(activeTypes.map(t => t.charAt(0).toUpperCase() + t.slice(1)).join(" · "), 540, 765);
+      ctx.beginPath(); ctx.arc(540, 540, 160, -Math.PI / 2, -Math.PI / 2 + (score / 100) * Math.PI * 2); ctx.stroke();
+      ctx.fillStyle = "#0f172a"; ctx.font = "900 132px system-ui,sans-serif"; ctx.fillText(String(Math.round(score)), 540, 525);
+      ctx.font = "800 28px system-ui,sans-serif"; ctx.fillStyle = "#94a3b8"; ctx.fillText("/100", 540, 615);
+      ctx.font = "bold 30px system-ui,sans-serif"; ctx.fillStyle = "#0f172a"; ctx.fillText("WELLNESS SCORE", 540, 745);
+      ctx.font = "500 25px system-ui,sans-serif"; ctx.fillStyle = "#64748b";
+      ctx.fillText(activeTypes.map(t => SCAN_META[t].label).join("  |  "), 540, 792);
       if (streak >= 2) {
-        ctx.fillStyle = "rgba(251,113,133,0.15)"; ctx.strokeStyle = "rgba(251,113,133,0.4)"; ctx.lineWidth = 1.5;
-        ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(390, 810, 300, 60, 30); else ctx.rect(390, 810, 300, 60);
+        ctx.fillStyle = "#fff1f2"; ctx.strokeStyle = "#fecdd3"; ctx.lineWidth = 1.5;
+        ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(390, 830, 300, 58, 29); else ctx.rect(390, 830, 300, 58);
         ctx.fill(); ctx.stroke();
-        ctx.fillStyle = "#fb7185"; ctx.font = "bold 26px system-ui,sans-serif"; ctx.fillText("🔥 " + streak + "-week streak", 540, 842);
+        ctx.fillStyle = "#e11d48"; ctx.font = "bold 25px system-ui,sans-serif"; ctx.fillText(streak + "-week scan streak", 540, 860);
       }
-      ctx.fillStyle = "#fb7185"; ctx.font = "bold 24px system-ui,sans-serif"; ctx.fillText("health.linearventures.in", 540, 930);
+      ctx.fillStyle = "#e11d48"; ctx.font = "bold 24px system-ui,sans-serif"; ctx.fillText("health.linearventures.in", 540, 940);
       canvas.toBlob(async blob => {
         if (!blob) { fallbackDownload(canvas, "wellness-score.png"); return; }
         const file = new File([blob], "wellness-score.png", { type: "image/png" });
@@ -271,8 +309,7 @@ function WellnessMain({ userId }: { userId: string }) {
       }, "image/png");
     } catch (err: any) { setError(err.message || "Failed to generate score card"); }
     finally { setSharing(false); }
-  }, [aggregateScore, activeTypes, streak, userProfile, fallbackDownload]);
-
+  }, [aggregateScore, activeTypes, streak, userProfile, fallbackDownload, loadCanvasImage]);
   // ── Share Detailed Report ─────────────────────────────────────────────────
   const handleShareDetailed = useCallback(async (scan: Scan) => {
     if (!scan.is_usable || scan.overall_score == null) return;
@@ -453,6 +490,20 @@ function WellnessMain({ userId }: { userId: string }) {
         </div>
       )}
 
+      <div className="mb-5 grid grid-cols-2 gap-1 rounded-2xl bg-neutral-100 dark:bg-neutral-900 p-1 border border-neutral-200/60 dark:border-neutral-800/60">
+        <button onClick={() => router.replace("/wellness")}
+          className={"py-2.5 rounded-xl text-sm font-black transition-all cursor-pointer " + (wellnessView === "scan" ? "bg-white dark:bg-neutral-800 text-rose-600 dark:text-rose-400 shadow-sm" : "text-neutral-500")}>
+          Scan
+        </button>
+        <button onClick={() => router.replace("/wellness?view=reports")}
+          className={"py-2.5 rounded-xl text-sm font-black transition-all cursor-pointer " + (wellnessView === "reports" ? "bg-white dark:bg-neutral-800 text-rose-600 dark:text-rose-400 shadow-sm" : "text-neutral-500")}>
+          Reports
+        </button>
+      </div>
+
+      {wellnessView === "scan" ? (
+        <>
+
       {/* Aggregate Score Card */}
       <div className="mb-6">
         {aggregateScore === null ? (
@@ -517,6 +568,10 @@ function WellnessMain({ userId }: { userId: string }) {
           })}
         </div>
       </div>
+
+        </>
+      ) : (
+        <>
 
       {/* Latest Results + Sparklines */}
       {activeTypes.length > 0 && (
@@ -628,7 +683,14 @@ function WellnessMain({ userId }: { userId: string }) {
                       {sel && <span className="text-white text-xs font-black">{compareA?.id === s.id ? "A" : "B"}</span>}
                     </div>
                   ) : (
-                    <ChevronRight className="w-4 h-4 text-neutral-300 shrink-0 cursor-pointer" onClick={() => { setSelectedScan(s); setReportTab("overview"); }} />
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button onClick={() => deleteScan(s)} disabled={deletingScanId === s.id}
+                        className="w-8 h-8 rounded-full flex items-center justify-center text-neutral-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors cursor-pointer disabled:opacity-50"
+                        aria-label="Delete scan">
+                        {deletingScanId === s.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                      </button>
+                      <ChevronRight className="w-4 h-4 text-neutral-300 cursor-pointer" onClick={() => { setSelectedScan(s); setReportTab("overview"); }} />
+                    </div>
                   )}
                 </div>
               );
@@ -641,8 +703,11 @@ function WellnessMain({ userId }: { userId: string }) {
         <div className="flex flex-col items-center justify-center text-center py-14 border border-dashed border-neutral-200 dark:border-neutral-800 rounded-3xl">
           <Camera className="w-10 h-10 text-neutral-300 dark:text-neutral-700 mb-3 animate-bounce" />
           <h3 className="font-bold text-neutral-800 dark:text-neutral-200 mb-1">No Scans Yet</h3>
-          <p className="text-xs text-neutral-500 max-w-xs">Tap the scan buttons above to run your first guided AI wellness scan.</p>
+          <p className="text-xs text-neutral-500 max-w-xs">Run a guided scan from the Scan tab, then your reports will appear here.</p>
         </div>
+      )}
+
+        </>
       )}
 
       {/* Capture Modal */}
@@ -798,6 +863,11 @@ function WellnessMain({ userId }: { userId: string }) {
                 className="flex-1 flex items-center justify-center gap-2 bg-gradient-to-r from-rose-600 to-violet-600 text-white font-bold py-3.5 rounded-2xl active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50 shadow-lg shadow-rose-500/20">
                 {sharingDetailed ? <Loader2 className="w-4 h-4 animate-spin" /> : <Share2 className="w-4 h-4" />} Share Report
               </button>
+              <button onClick={() => deleteScan(selectedScan)} disabled={deletingScanId === selectedScan.id}
+                className="w-14 bg-red-50 hover:bg-red-100 dark:bg-red-950/20 dark:hover:bg-red-950/40 text-red-500 font-bold rounded-2xl active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center"
+                aria-label="Delete report">
+                {deletingScanId === selectedScan.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+              </button>
               <button onClick={() => setSelectedScan(null)}
                 className="flex-1 bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 font-bold py-3.5 rounded-2xl active:scale-[0.98] transition-all cursor-pointer">
                 Close
@@ -819,3 +889,4 @@ export default function WellnessPage() {
     </Suspense>
   );
 }
+
