@@ -92,9 +92,27 @@ export function AssistantSheet({
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, loading]);
+  }, [messages, loading, viewportH]);
 
   if (!isOpen) return null;
+
+  // Wellness Mode uses the rose/violet identity everywhere else in the app;
+  // Core Mode keeps the existing indigo. Centralized here so every accent
+  // usage below (icon, bubbles, proposal cards, send button, focus ring)
+  // stays in sync instead of drifting one at a time.
+  const isWellness = mode === "wellness";
+  const accent = {
+    iconBg: isWellness ? "bg-rose-100 dark:bg-rose-900/40" : "bg-indigo-100 dark:bg-indigo-900/40",
+    iconText: isWellness ? "text-rose-600" : "text-indigo-600",
+    userBubble: isWellness ? "bg-rose-600" : "bg-indigo-600",
+    cardBorder: isWellness ? "border-rose-200 dark:border-rose-800" : "border-indigo-200 dark:border-indigo-800",
+    cardHeaderBg: isWellness ? "bg-rose-50 dark:bg-rose-900/20" : "bg-indigo-50 dark:bg-indigo-900/20",
+    cardHeaderBorder: isWellness ? "border-rose-100 dark:border-rose-800/50" : "border-indigo-100 dark:border-indigo-800/50",
+    cardIconText: isWellness ? "text-rose-600" : "text-indigo-600",
+    cardTitleText: isWellness ? "text-rose-900 dark:text-rose-200" : "text-indigo-900 dark:text-indigo-200",
+    button: isWellness ? "bg-rose-600 hover:bg-rose-700" : "bg-indigo-600 hover:bg-indigo-700",
+    focusRing: isWellness ? "focus:ring-rose-500/30" : "focus:ring-indigo-500/30",
+  };
 
   async function sendMessage(e?: React.FormEvent) {
     e?.preventDefault();
@@ -247,12 +265,12 @@ export function AssistantSheet({
       >
         <div className="flex items-center justify-between p-4 border-b border-neutral-200 dark:border-neutral-800 shrink-0">
           <div className="flex items-center gap-2">
-            <div className="bg-indigo-100 dark:bg-indigo-900/40 p-2 rounded-xl text-indigo-600">
+            <div className={`${accent.iconBg} p-2 rounded-xl ${accent.iconText}`}>
               <Bot className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="font-semibold">Core Assistant</h2>
-              <p className="text-xs text-neutral-500">Ask about your history</p>
+              <h2 className="font-semibold">{isWellness ? "Wellness Assistant" : "Core Assistant"}</h2>
+              <p className="text-xs text-neutral-500">{isWellness ? "Ask about your scans" : "Ask about your history"}</p>
             </div>
           </div>
           <button onClick={onClose} aria-label="Close"
@@ -263,8 +281,8 @@ export function AssistantSheet({
           {messages.map((m) => (
             <div key={m.id} className={`flex flex-col ${m.role === "user" ? "self-end items-end" : "self-start items-start"} max-w-[85%]`}>
               <div className={`p-3 rounded-2xl whitespace-pre-wrap ${
-                m.role === "user" 
-                  ? "bg-indigo-600 text-white rounded-br-sm" 
+                m.role === "user"
+                  ? `${accent.userBubble} text-white rounded-br-sm`
                   : "bg-neutral-100 dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 rounded-bl-sm"
               }`}>
                 {m.text}
@@ -275,10 +293,10 @@ export function AssistantSheet({
                   {m.proposals.map((p, i) => {
                     if (p.type === "check_form") {
                       return (
-                        <div key={i} className="bg-white dark:bg-neutral-900 border border-indigo-200 dark:border-indigo-800 rounded-xl overflow-hidden shadow-sm mt-2 first:mt-0">
-                          <div className="bg-indigo-50 dark:bg-indigo-900/20 px-3 py-2 border-b border-indigo-100 dark:border-indigo-800/50 flex items-center gap-2">
-                            <Video className="w-4 h-4 text-indigo-600" />
-                            <span className="text-sm font-semibold text-indigo-900 dark:text-indigo-200">
+                        <div key={i} className={`bg-white dark:bg-neutral-900 border ${accent.cardBorder} rounded-xl overflow-hidden shadow-sm mt-2 first:mt-0`}>
+                          <div className={`${accent.cardHeaderBg} px-3 py-2 border-b ${accent.cardHeaderBorder} flex items-center gap-2`}>
+                            <Video className={`w-4 h-4 ${accent.cardIconText}`} />
+                            <span className={`text-sm font-semibold ${accent.cardTitleText}`}>
                               Form Check
                             </span>
                           </div>
@@ -289,12 +307,12 @@ export function AssistantSheet({
                             <p className="text-xs text-neutral-500 mb-3">
                               Record a 5-8 second clip to analyze technique.
                             </p>
-                            <button 
+                            <button
                               onClick={() => {
                                 onOpenFormCheck(p.exercise_hint || "");
                                 onClose();
                               }}
-                              className="w-full bg-indigo-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 active:scale-95 transition-all cursor-pointer"
+                              className={`w-full ${accent.button} text-white py-2 rounded-lg text-sm font-medium active:scale-95 transition-all cursor-pointer`}
                             >
                               Open Form Check
                             </button>
@@ -305,10 +323,10 @@ export function AssistantSheet({
                     if (p.type === "start_workout") {
                       const estMins = Math.round(p.exercises?.reduce((sum: number, ex: any) => sum + (ex.duration_min || ((ex.sets || 3) * 1.5)), 0) || 0);
                       return (
-                        <div key={i} className="bg-white dark:bg-neutral-900 border border-indigo-200 dark:border-indigo-800 rounded-xl overflow-hidden shadow-sm">
-                          <div className="bg-indigo-50 dark:bg-indigo-900/20 px-3 py-2 border-b border-indigo-100 dark:border-indigo-800/50 flex items-center gap-2">
-                            <Dumbbell className="w-4 h-4 text-indigo-600" />
-                            <span className="text-sm font-semibold text-indigo-900 dark:text-indigo-200">
+                        <div key={i} className={`bg-white dark:bg-neutral-900 border ${accent.cardBorder} rounded-xl overflow-hidden shadow-sm`}>
+                          <div className={`${accent.cardHeaderBg} px-3 py-2 border-b ${accent.cardHeaderBorder} flex items-center gap-2`}>
+                            <Dumbbell className={`w-4 h-4 ${accent.cardIconText}`} />
+                            <span className={`text-sm font-semibold ${accent.cardTitleText}`}>
                               Live Session
                             </span>
                           </div>
@@ -317,10 +335,10 @@ export function AssistantSheet({
                             <p className="text-xs text-neutral-500 mb-3">
                               {p.exercises?.length || 0} exercises · ~{estMins} min
                             </p>
-                            <button 
+                            <button
                               onClick={() => startLiveWorkout(p)}
                               disabled={startingLive}
-                              className="w-full bg-indigo-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 active:scale-95 transition-all disabled:opacity-50"
+                              className={`w-full ${accent.button} text-white py-2 rounded-lg text-sm font-medium active:scale-95 transition-all disabled:opacity-50`}
                             >
                               {startingLive ? "Preparing..." : `Start Live Session`}
                             </button>
@@ -330,10 +348,10 @@ export function AssistantSheet({
                     }
                     // default to repeat_workout (or explicit type)
                     return (
-                      <div key={i} className="bg-white dark:bg-neutral-900 border border-indigo-200 dark:border-indigo-800 rounded-xl overflow-hidden shadow-sm mt-2 first:mt-0">
-                        <div className="bg-indigo-50 dark:bg-indigo-900/20 px-3 py-2 border-b border-indigo-100 dark:border-indigo-800/50 flex items-center gap-2">
-                          <Dumbbell className="w-4 h-4 text-indigo-600" />
-                          <span className="text-sm font-semibold text-indigo-900 dark:text-indigo-200">
+                      <div key={i} className={`bg-white dark:bg-neutral-900 border ${accent.cardBorder} rounded-xl overflow-hidden shadow-sm mt-2 first:mt-0`}>
+                        <div className={`${accent.cardHeaderBg} px-3 py-2 border-b ${accent.cardHeaderBorder} flex items-center gap-2`}>
+                          <Dumbbell className={`w-4 h-4 ${accent.cardIconText}`} />
+                          <span className={`text-sm font-semibold ${accent.cardTitleText}`}>
                             Repeat Workout
                           </span>
                         </div>
@@ -342,10 +360,10 @@ export function AssistantSheet({
                           <p className="text-xs text-neutral-500 mb-3">
                             {p.workout_log_exercises?.length || 0} exercises · {p.duration_min} min
                           </p>
-                          <button 
+                          <button
                             onClick={() => confirmWorkout(p.log_date)}
                             disabled={confirming}
-                            className="w-full bg-indigo-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 active:scale-95 transition-all disabled:opacity-50"
+                            className={`w-full ${accent.button} text-white py-2 rounded-lg text-sm font-medium active:scale-95 transition-all disabled:opacity-50`}
                           >
                             {confirming ? "Confirming..." : `Log for Today`}
                           </button>
@@ -385,14 +403,14 @@ export function AssistantSheet({
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Ask about your history..."
-              className="w-full bg-neutral-100 dark:bg-neutral-900 border-none rounded-full pl-4 pr-12 py-3 text-[15px] focus:ring-2 focus:ring-indigo-500/30 outline-none transition-shadow"
+              placeholder={isWellness ? "Ask about your scans..." : "Ask about your history..."}
+              className={`w-full bg-neutral-100 dark:bg-neutral-900 border-none rounded-full pl-4 pr-12 py-3 text-[15px] focus:ring-2 ${accent.focusRing} outline-none transition-shadow`}
               disabled={loading}
             />
             <button
               type="submit"
               disabled={!input.trim() || loading}
-              className="absolute right-1.5 p-2 bg-indigo-600 text-white rounded-full disabled:opacity-40 disabled:bg-neutral-300 dark:disabled:bg-neutral-700 transition-all hover:bg-indigo-700"
+              className={`absolute right-1.5 p-2 ${accent.button} text-white rounded-full disabled:opacity-40 disabled:bg-neutral-300 dark:disabled:bg-neutral-700 transition-all`}
             >
               <Send className="w-4 h-4" />
             </button>
