@@ -1881,3 +1881,39 @@ Phase 37 code line-by-line against what actually ends the loading UI state
 (`cameraStatus === "active"`), not just whether `getUserMedia()` itself returns — this is
 the kind of gap that only surfaces from a real user hitting it, since the original fix
 looked correct in isolation but addressed the less common of the two hang points.
+
+## Phase 41 (Fable, 2026-07-11) — Camera-open hang: the actual root cause (chicken-and-egg render bug)
+
+**User confirmed**: camera permission was genuinely allowed (browser's own camera-access
+log showed "last accessed" at a real timestamp), yet the sheet still surfaced the Phase 40
+timeout error. This ruled out permissions entirely and confirmed the earlier hypothesis —
+`getUserMedia()` was succeeding, but something after that was failing.
+
+**Real root cause, finally found**: the `<video>` element was only rendered when
+`cameraStatus === "active"`. But `cameraStatus` can only ever *become* `"active"` from
+inside that same `<video>` element's `onloadedmetadata` handler — which requires the
+element to already exist so `startCameraFlow()` can attach the stream to it via
+`videoRef.current`. During `"init"` the video element didn't exist at all, so
+`videoRef.current` was `null`, and `if (videoRef.current) { ... }` silently did nothing.
+The stream was obtained (hence the browser's real access-log entry) and then had nowhere
+to go — a genuine chicken-and-egg bug present since the original Phase 30 build, never
+caused by the Phase 37/40 timeout fixes (which were both real improvements, just couldn't
+fix a render-order bug underneath them).
+
+**Fixed**: the `<video>` element (and its wrapping viewfinder box) now renders during both
+`"init"` and `"active"`, not only `"active"` — the loading spinner is now an overlay drawn
+*on top of* the video element instead of a separate block that excluded it from the DOM.
+Flip-camera button, tracking canvas, capture indicator, and the bottom instructions banner
+still only render once `"active"`, matching their original intent.
+
+**Why this took three passes to find**: Phase 37 fixed a real hang class (getUserMedia
+itself never resolving). Phase 40 fixed a real second hang class (the timeout being
+cleared too early, before onloadedmetadata). Both were genuine, correct fixes for the
+failure modes they targeted — but the actual bug hit in practice was a third, structural
+one that only a live device test with real permission state could surface: a working
+timeout correctly caught a hang that had no rescue path within the component's own render
+logic, because the element needed to break the deadlock didn't exist yet.
+
+**Verified**: `npx tsc --noEmit` clean. Confirmed every `cameraStatus === "active"` gate
+elsewhere (flip button, canvas overlay, capture indicator, instructions banner, footer
+Capture button) is unaffected — only the video element's mount condition changed.

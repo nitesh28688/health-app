@@ -474,13 +474,6 @@ export function WellnessCaptureSheet({ scanType, onClose, onCapture }: WellnessC
             </div>
           )}
 
-          {modelStatus !== "loading" && cameraStatus === "init" && (
-            <div className="flex flex-col items-center justify-center text-center py-12">
-              <Loader2 className="w-10 h-10 text-rose-500 animate-spin mb-4" />
-              <h3 className="font-semibold text-white mb-2">Opening camera...</h3>
-            </div>
-          )}
-
           {cameraStatus === "error" && (
             <div className="flex flex-col items-center justify-center text-center py-8">
               <div className="w-12 h-12 bg-red-950/40 border border-red-900 rounded-full flex items-center justify-center text-red-500 mb-4">
@@ -500,12 +493,22 @@ export function WellnessCaptureSheet({ scanType, onClose, onCapture }: WellnessC
             </div>
           )}
 
-          {cameraStatus === "active" && (
+          {(cameraStatus === "init" || cameraStatus === "active") && (
             <div className="w-full flex flex-col items-center">
-              {/* Viewfinder box */}
+              {/* Viewfinder box — the <video> element must exist in the DOM
+                  from "init" onward, not only once "active": startCameraFlow()
+                  attaches the stream via videoRef.current, and cameraStatus can
+                  only ever BECOME "active" from inside that same video
+                  element's onloadedmetadata handler. Rendering it only when
+                  already "active" was a chicken-and-egg bug — the stream had
+                  nowhere to attach to, so it silently went nowhere (confirmed
+                  live: the browser's own camera-access log showed the stream
+                  was obtained, but the UI never left "Opening camera..."). */}
               <div
                 className={`relative w-full aspect-[4/3] bg-black rounded-2xl overflow-hidden border-3 shadow-2xl transition-all duration-300 ${
-                  modelStatus === "fallback"
+                  cameraStatus !== "active"
+                    ? "border-neutral-700"
+                    : modelStatus === "fallback"
                     ? "border-neutral-700"
                     : alignment === "green"
                     ? "border-emerald-500 shadow-emerald-500/10"
@@ -518,54 +521,69 @@ export function WellnessCaptureSheet({ scanType, onClose, onCapture }: WellnessC
                   playsInline
                   className="w-full h-full object-cover scale-x-[-1]"
                 />
-                
-                {/* Flip camera overlay button */}
-                <button
-                  onClick={() => setFacingMode((prev) => (prev === "user" ? "environment" : "user"))}
-                  className="absolute top-4 right-4 z-10 bg-black/60 hover:bg-black/80 border border-neutral-700/50 p-2.5 rounded-full text-white active:scale-95 transition-all shadow-md cursor-pointer"
-                  title="Flip camera"
-                >
-                  <RefreshCw className="w-4 h-4" />
-                </button>
 
-                {/* Canvas Overlay for tracking guides */}
-                {modelStatus === "ready" && (
-                  <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none scale-x-[-1]" />
-                )}
-
-                {/* Auto Capture Indicator overlay */}
-                {alignment === "green" && autoCaptureSecs !== null && (
-                  <div className="absolute inset-0 bg-emerald-500/10 flex items-center justify-center pointer-events-none">
-                    <div className="bg-black/80 px-4 py-2 rounded-2xl text-center border border-emerald-500/30">
-                      <span className="text-2xl font-black text-emerald-400 animate-pulse">CAPTURING</span>
-                      <p className="text-[10px] text-neutral-400 mt-0.5">Hold perfectly still</p>
-                    </div>
+                {cameraStatus === "init" && (
+                  <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center text-center">
+                    <Loader2 className="w-8 h-8 text-rose-500 animate-spin mb-3" />
+                    <h3 className="font-semibold text-white text-sm">Opening camera...</h3>
                   </div>
                 )}
-              </div>
 
-              {/* Scalp scan tips overlay */}
-              {scanType === "hair" && (
-                <div className="w-full mt-2.5 px-3 py-2 bg-rose-950/20 border border-rose-900/30 rounded-xl text-rose-400 text-[10px] font-bold text-center">
-                  💡 Crown/Scalp scan: tilt head down with camera above, or have someone help.
-                </div>
-              )}
-
-              {/* Instructions Banner */}
-              <div className="w-full mt-3 flex items-center gap-2 px-4 py-3 bg-neutral-950/50 rounded-xl border border-neutral-800">
-                {modelStatus === "fallback" ? (
-                  <div className="flex-1 text-center text-xs text-neutral-400">
-                    ℹ️ Manual mode. Center yourself and press capture when ready.
-                  </div>
-                ) : (
+                {cameraStatus === "active" && (
                   <>
-                    <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${alignment === "green" ? "bg-emerald-500 animate-pulse" : "bg-red-500 animate-ping"}`} />
-                    <span className="text-xs text-neutral-300 font-semibold leading-relaxed">
-                      {guideMsg}
-                    </span>
+                    {/* Flip camera overlay button */}
+                    <button
+                      onClick={() => setFacingMode((prev) => (prev === "user" ? "environment" : "user"))}
+                      className="absolute top-4 right-4 z-10 bg-black/60 hover:bg-black/80 border border-neutral-700/50 p-2.5 rounded-full text-white active:scale-95 transition-all shadow-md cursor-pointer"
+                      title="Flip camera"
+                    >
+                      <RefreshCw className="w-4 h-4" />
+                    </button>
+
+                    {/* Canvas Overlay for tracking guides */}
+                    {modelStatus === "ready" && (
+                      <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none scale-x-[-1]" />
+                    )}
+
+                    {/* Auto Capture Indicator overlay */}
+                    {alignment === "green" && autoCaptureSecs !== null && (
+                      <div className="absolute inset-0 bg-emerald-500/10 flex items-center justify-center pointer-events-none">
+                        <div className="bg-black/80 px-4 py-2 rounded-2xl text-center border border-emerald-500/30">
+                          <span className="text-2xl font-black text-emerald-400 animate-pulse">CAPTURING</span>
+                          <p className="text-[10px] text-neutral-400 mt-0.5">Hold perfectly still</p>
+                        </div>
+                      </div>
+                    )}
                   </>
                 )}
               </div>
+
+              {cameraStatus === "active" && (
+                <>
+                  {/* Scalp scan tips overlay */}
+                  {scanType === "hair" && (
+                    <div className="w-full mt-2.5 px-3 py-2 bg-rose-950/20 border border-rose-900/30 rounded-xl text-rose-400 text-[10px] font-bold text-center">
+                      💡 Crown/Scalp scan: tilt head down with camera above, or have someone help.
+                    </div>
+                  )}
+
+                  {/* Instructions Banner */}
+                  <div className="w-full mt-3 flex items-center gap-2 px-4 py-3 bg-neutral-950/50 rounded-xl border border-neutral-800">
+                    {modelStatus === "fallback" ? (
+                      <div className="flex-1 text-center text-xs text-neutral-400">
+                        ℹ️ Manual mode. Center yourself and press capture when ready.
+                      </div>
+                    ) : (
+                      <>
+                        <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${alignment === "green" ? "bg-emerald-500 animate-pulse" : "bg-red-500 animate-ping"}`} />
+                        <span className="text-xs text-neutral-300 font-semibold leading-relaxed">
+                          {guideMsg}
+                        </span>
+                      </>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
           )}
         </div>
