@@ -131,16 +131,20 @@ function NavTabs({ mode, onModeToggle }: { mode: AppMode; onModeToggle: () => vo
       // indigo when in Wellness (inviting back to Core).
       const destLetter = isWellness ? "C" : "W";
       const destBg = isWellness
-        ? "bg-gradient-to-br from-indigo-500 to-violet-600 shadow-indigo-500/30"
-        : "bg-gradient-to-br from-rose-500 to-pink-600 shadow-rose-500/30";
+        ? "bg-gradient-to-br from-indigo-500/90 to-violet-600/90 shadow-indigo-500/40"
+        : "bg-gradient-to-br from-rose-500/90 to-pink-600/90 shadow-rose-500/40";
 
       items.push(
         <div key="mode-toggle" className="flex-1 flex flex-col items-center justify-center relative">
           <button
             onClick={onModeToggle}
-            className={`relative -mt-5 w-14 h-14 rounded-full ${destBg} text-white shadow-lg flex items-center justify-center active:scale-90 transition-all duration-200 border-4 border-white dark:border-neutral-950 z-10`}
+            className={`relative -mt-5 w-14 h-14 rounded-full ${destBg} backdrop-blur-md text-white shadow-lg flex items-center justify-center active:scale-90 transition-all duration-200 border border-white/40 dark:border-white/15 ring-4 ring-white/50 dark:ring-neutral-950/60 z-10 overflow-hidden`}
             aria-label={`Switch to ${isWellness ? "Core" : "Wellness"} mode`}
           >
+            {/* Glass highlight — a soft light sweep across the top of the button,
+                the classic glassmorphism "glare" that makes a flat gradient read
+                as an actual translucent surface instead of a solid sticker. */}
+            <span className="pointer-events-none absolute inset-0 rounded-full bg-gradient-to-b from-white/40 via-white/5 to-transparent" />
             <AnimatePresence mode="wait">
               <motion.span
                 key={mode}
@@ -148,7 +152,7 @@ function NavTabs({ mode, onModeToggle }: { mode: AppMode; onModeToggle: () => vo
                 animate={{ opacity: 1, scale: 1, rotate: 0 }}
                 exit={{ opacity: 0, scale: 0.5, rotate: 90 }}
                 transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-                className="text-xl font-black leading-none"
+                className="relative text-xl font-black leading-none drop-shadow-sm"
               >
                 {destLetter}
               </motion.span>
@@ -223,8 +227,18 @@ export function AppShell({ children }: {
   // Keep restored app mode and the visible route in sync on cold PWA launches.
   // The manifest opens "/", while localStorage may restore Wellness mode; without
   // this, Diary can render under Wellness tabs until the user changes tabs.
+  //
+  // `skipSyncRef` guards against a real race with the manual toggle button:
+  // setAppMode() updates `mode` before router.push() finishes updating
+  // `pathname`, so this effect would otherwise see a one-render mismatch
+  // (new mode, stale path) and "correct" it right back to the old mode —
+  // which made the Wellness -> Core direction of the toggle silently
+  // self-revert every time. Set right before an explicit toggle, consumed
+  // on the very next run so cold-launch/deep-link reconciliation still works.
+  const skipSyncRef = useRef(false);
   useEffect(() => {
     if (loading || !session) return;
+    if (skipSyncRef.current) { skipSyncRef.current = false; return; }
     if (pathname.startsWith("/wellness") && mode !== "wellness") {
       setAppMode("wellness");
       return;
@@ -242,6 +256,7 @@ export function AppShell({ children }: {
   // from lib/appMode.ts rather than reimplementing it.
   function handleModeToggle() {
     const next: AppMode = mode === "core" ? "wellness" : "core";
+    skipSyncRef.current = true;
     setAppMode(next);
     router.push(next === "wellness" ? "/wellness" : "/");
   }
