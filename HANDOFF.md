@@ -3,6 +3,13 @@
 Short pointer document. For the deep "why is it built this way" reference, read
 `STRUCTURE.md` - that's the source of truth and is kept in sync every session.
 
+**Mode/route startup sync (2026-07-11, Phase 47)** - Fixed a cold PWA reopen bug where
+localStorage restored Wellness Mode but the manifest launched `/`, causing Diary content to
+render under Wellness tabs until the user switched tabs. `AppShell` now reconciles restored
+mode with the current route: Wellness mode at a core-only page redirects to `/wellness`, and
+direct `/wellness` deep links restore Wellness mode. Swipe-tab indexing now compares route
+paths without query strings so `/wellness?view=reports` remains navigable.
+
 **Manual wellness capture (2026-07-11, Phase 46)** - Removed automatic MediaPipe
 tracking entirely from `WellnessCaptureSheet`: no model/WASM load, landmark loop,
 browser-specific fallback, or auto-capture remains. All scan types now use a reliable

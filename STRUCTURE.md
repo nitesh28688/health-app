@@ -1,6 +1,6 @@
 # Core AI — Structure & How It Works
 
-Last updated: 2026-07-09. Read this first if you're new to the codebase — it explains
+Last updated: 2026-07-11. Read this first if you're new to the codebase — it explains
 *why* things are built the way they are, not just what the files are. For a short
 "what's the current state, what's next" pointer, see `HANDOFF.md` — this file is the
 deep reference.
@@ -176,7 +176,7 @@ one object.
 | `/medications` | Add medications with dosage + multiple reminder times, mark "Taken", pause/resume/delete |
 | `/cycle` | Opt-in (toggle in Profile) menstrual cycle logging — period start/flow/symptoms, predicted next period from cycle history |
 | `/progress` | Before/after progress photos — grid view, tap any two to compare side by side, upload via Cloudflare R2 |
-| `/wellness` | Wellness Mode home with two real sub-views: Scan (`/wellness`) and Reports (`/wellness?view=reports`). Scan shows the aggregate Wellness Score card, shareable branded score canvas, AI/seasonal insights, and Skin/Eye/Hair capture buttons. Reports shows latest results, wellness badges, compare mode, scan history, and report detail sheets with Overview/Routine tabs. Reports and history rows have confirm-gated delete actions for `wellness_scans`. Guided capture uses MediaPipe Face Landmarker for Skin/Eye and Hair Segmenter for Hair; Skin/Eye now time out to manual fallback if the model returns no landmarks for the first ~2s on Samsung Internet. |
+| `/wellness` | Wellness Mode home with two real sub-views: Scan (`/wellness`) and Reports (`/wellness?view=reports`). Scan shows the aggregate Wellness Score card, shareable branded score canvas, AI/seasonal insights, and Skin/Eye/Hair capture buttons. Reports shows latest results, wellness badges, compare mode, scan history, and report detail sheets with Overview/Routine tabs. Reports and history rows have confirm-gated delete actions for `wellness_scans`. Capture is manual-only in `WellnessCaptureSheet`: the old MediaPipe auto-tracking path was removed after unreliable browser behavior on Samsung Internet and Chrome. The sheet now uses a camera preview, cyan scientific framing guide, manual capture button, and scan-line confirmation animation. |
 | `/friends` | Feed / Leaderboard / People (search, requests, cheers) |
 | `/profile` | **Avatar upload** (tap the photo, compressed client-side before upload), body stats, target-suggestion wizard (goal toggle has **no default selection** — forces an explicit tap and labels the result "Calculated for: X" so there's never ambiguity about which goal a suggestion used), push-notification opt-in, links to Medications/Cycle/Progress-photos, sharing toggles, sign out |
 | `/admin` | (admin only) **Overview / Users / AI Foods tabs** — Users tab lists every real account (email, phone, join date, confirmation status) tap-through to a detail sheet (food/workout/water log counts, last weight, friend count) with a delete-user action; AI Foods tab is the moderation queue |
@@ -187,7 +187,7 @@ Every signed-in page is wrapped in `<AppShell>{({ session, profile, setProfile }
 It redirects to `/login` if there's no session, renders the bottom nav, and hands down the
 current user's session + profile so pages don't each need their own auth boilerplate.
 
-**App Mode (2026-07-11, updated Phase 41)**: the bottom nav now has two tab sets - the default
+**App Mode (2026-07-11, updated Phase 47)**: the bottom nav now has two tab sets - the default
 5-tab "core" set (Diary/Workout/Trends/Friends/Profile) and a "wellness" set (`Scan`,
 `Reports`, `Profile`). `Reports` deep-links to `/wellness?view=reports`; `Scan` is
 `/wellness`. Mode is tracked in `web/lib/appMode.ts` (localStorage + pub/sub, same shape as
@@ -196,7 +196,7 @@ render-prop signature - only `AppShell` (renders the nav) and the Profile toggle
 so this avoids touching every page that calls `<AppShell>`. Toggling from Profile
 (`profile/page.tsx`) calls `setAppMode()` then navigates to `/wellness` or `/` so the mode
 switch is immediately visible. The nav's background, active-tab accent, and the floating
-Assistant button all re-theme to rose when in Wellness Mode, with a `framer-motion` crossfade on the tab row when switching.
+Assistant button all re-theme to rose when in Wellness Mode, with a `framer-motion` crossfade on the tab row when switching. `AppShell` also reconciles restored mode with the current route on cold PWA launches: if the manifest opens `/` while localStorage still says Wellness, it immediately replaces the route with `/wellness`; if a user deep-links directly to `/wellness`, it restores Wellness mode so the page and tabs do not disagree.
 
 ### `lib/` — the shared logic
 
@@ -954,4 +954,5 @@ pre-skip exercise list instead of nothing. Fixed by routing that case through `o
 - Displays an aggregate Wellness Score Card and generates a branded 1080x1080 share image that draws `/icon-192.png` into the canvas.
 - Fetches and displays a Weekly Wellness Insights Card via `/api/ai/wellness-insight`, heavily caching unchanged scan state to minimize AI cost.
 - Supports confirm-gated scan/report deletion from history rows and the report sheet footer.
-- Samsung Internet Skin/Eye FaceLandmarker issue is handled with a time-based manual fallback: after ~2s of active camera + ready model + zero successful face detections, the UI enters fallback mode and enables manual capture instead of staying red forever.
+- Capture is manual-only. `WellnessCaptureSheet` no longer imports MediaPipe or auto-detects face/hair alignment; it opens the camera, shows a scientific framing guide, lets the user capture deliberately, then plays a short scan-line confirmation before submitting the image.
+- `AppShell` keeps Wellness mode and route content aligned on app reopen: a restored Wellness mode at `/` redirects to `/wellness`, avoiding Diary content under Wellness tabs.

@@ -9,7 +9,7 @@ import { AssistantSheet } from "@/components/AssistantSheet";
 import { FormCheckSheet } from "@/components/FormCheckSheet";
 import { Bot, Book, Dumbbell, TrendingUp, Users, Smile, Salad, CloudUpload, Sparkles, FileText } from "lucide-react";
 import { subscribePendingCount } from "@/lib/offlineQueue";
-import { subscribeAppMode, type AppMode } from "@/lib/appMode";
+import { setAppMode, subscribeAppMode, type AppMode } from "@/lib/appMode";
 
 const TABS = [
   { href: "/", label: "Diary", icon: Book, type: null as string | null },
@@ -25,6 +25,7 @@ const WELLNESS_TABS = [
   { href: "/wellness?view=reports", label: "Reports", icon: FileText, type: "reports" },
   { href: "/profile", label: "Profile", icon: Smile, type: null as string | null },
 ];
+const CORE_ONLY_PATHS = new Set(["/", "/workout", "/trends", "/friends"]);
 // Reads the ?view= query param to correctly highlight the wellness sub-view.
 // `useSearchParams()` requires a Suspense boundary in the App Router (an
 // ungoverned build-time gotcha — get this wrong and it can break the
@@ -91,6 +92,20 @@ export function AppShell({ children }: {
   // render-prop signature to avoid touching every page that calls <AppShell>.
   useEffect(() => subscribeAppMode(setMode), []);
 
+  // Keep restored app mode and the visible route in sync on cold PWA launches.
+  // The manifest opens "/", while localStorage may restore Wellness mode; without
+  // this, Diary can render under Wellness tabs until the user changes tabs.
+  useEffect(() => {
+    if (loading || !session) return;
+    if (pathname.startsWith("/wellness") && mode !== "wellness") {
+      setAppMode("wellness");
+      return;
+    }
+    if (mode === "wellness" && CORE_ONLY_PATHS.has(pathname)) {
+      router.replace("/wellness");
+    }
+  }, [loading, mode, pathname, router, session]);
+
   const activeTabs = mode === "wellness" ? WELLNESS_TABS : TABS;
 
   function onTouchStart(e: React.TouchEvent) {
@@ -103,7 +118,7 @@ export function AppShell({ children }: {
     const dy = e.changedTouches[0].clientY - touchStart.current.y;
     touchStart.current = null;
     if (Math.abs(dx) > 55 && Math.abs(dx) > Math.abs(dy) * 1.5) {
-      const currIdx = activeTabs.findIndex(t => t.href === pathname);
+      const currIdx = activeTabs.findIndex(t => t.href.split("?")[0] === pathname);
       if (currIdx > -1) {
         const nextIdx = dx < 0 ? currIdx + 1 : currIdx - 1; // swipe left -> next, swipe right -> prev
         if (nextIdx >= 0 && nextIdx < activeTabs.length) router.replace(activeTabs[nextIdx].href);
