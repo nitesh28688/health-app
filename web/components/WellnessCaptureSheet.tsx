@@ -179,13 +179,23 @@ export function WellnessCaptureSheet({ scanType, onClose, onCapture }: WellnessC
         stream.getTracks().forEach((track) => track.stop());
         return;
       }
-      clearTimeout(openTimeout);
+      // Deliberately NOT clearing openTimeout here. Obtaining the stream is
+      // only half the job — the UI stays on "Opening camera..." until
+      // `onloadedmetadata` fires below and flips cameraStatus to "active".
+      // That event not firing (video element not ready right after the
+      // sheet's mount animation, some mobile browser quirks) is a real,
+      // separate failure mode from getUserMedia() itself never resolving —
+      // clearing the timeout too early here was the actual bug: it left
+      // nothing to catch a hang in this second stage, since "settled" also
+      // guards the setTimeout callback but nothing was left running.
       streamRef.current = stream;
 
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         videoRef.current.onloadedmetadata = () => {
-          if (videoRef.current) {
+          if (videoRef.current && !settled) {
+            settled = true;
+            clearTimeout(openTimeout);
             videoRef.current.play().catch(() => {});
             setCameraStatus("active");
             const loaded = scanType === "hair" ? cachedSegmenter : cachedLandmarker;
@@ -194,6 +204,9 @@ export function WellnessCaptureSheet({ scanType, onClose, onCapture }: WellnessC
             }
           }
         };
+      } else {
+        // No video element to attach to (shouldn't normally happen) — let
+        // the fail-safe timeout below catch this rather than hanging silently.
       }
     } catch (err) {
       if (settled) return;

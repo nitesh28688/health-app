@@ -1856,3 +1856,28 @@ change) and confirmed all 44 routes compile and prerender successfully with zero
 specifically checking for the Suspense-boundary build failure this exact hook is known to
 cause. This is the kind of check that matters more than usual here — a subtle mistake would
 not have shown up in `tsc --noEmit` at all, only in an actual build attempt.
+
+## Phase 40 (Fable, 2026-07-11) — Camera-open hang: the Phase 37 fix was incomplete
+
+**User report**: "New Scan still stuck on Opening camera" — after Phase 37's timeout fix
+had already shipped.
+
+**Real root cause of the persisting bug**: Phase 37's fail-safe timeout was cleared as soon
+as `getUserMedia()` *resolved* (a stream was obtained), not when the camera actually became
+usable. But obtaining the stream is only half the job — the UI stays on "Opening camera..."
+until the `<video>` element's `onloadedmetadata` event fires and flips `cameraStatus` to
+`"active"`. That event not firing — a real, separate failure mode from `getUserMedia()`
+itself hanging (video element not fully ready right after the capture sheet's mount
+animation, various mobile browser quirks) — left nothing to catch the hang, since the
+timeout had already been cancelled the moment the stream came back.
+
+**Fixed**: stopped clearing the timeout when the stream resolves — it now only clears
+inside `onloadedmetadata` itself, alongside the `setCameraStatus("active")` call that
+actually ends the "Opening camera..." state. The 10s fail-safe now genuinely covers the
+entire open sequence, not just the first half of it.
+
+**Verified**: `npx tsc --noEmit` clean. Traced the exact sequencing bug by reading the
+Phase 37 code line-by-line against what actually ends the loading UI state
+(`cameraStatus === "active"`), not just whether `getUserMedia()` itself returns — this is
+the kind of gap that only surfaces from a real user hitting it, since the original fix
+looked correct in isolation but addressed the less common of the two hang points.
