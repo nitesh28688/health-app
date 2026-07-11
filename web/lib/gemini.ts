@@ -126,7 +126,7 @@ export async function generateWithFallback(parts: object[], responseSchema?: obj
   return new Response(JSON.stringify({ error: `all models unavailable (last: ${lastStatus})` }), { status: 503 });
 }
 
-async function callVertexChat(model: string, contents: object[], tools: object[] | undefined, signal: AbortSignal) {
+async function callVertexChat(model: string, contents: object[], tools: object[] | undefined, systemInstruction: string | undefined, signal: AbortSignal) {
   const client = await getVertexAuth().getClient();
   const { token } = await client.getAccessToken();
   const url = `https://${GOOGLE_CLOUD_LOCATION}-aiplatform.googleapis.com/v1/projects/${GOOGLE_CLOUD_PROJECT}/locations/${GOOGLE_CLOUD_LOCATION}/publishers/google/models/${model}:generateContent`;
@@ -137,12 +137,13 @@ async function callVertexChat(model: string, contents: object[], tools: object[]
       contents,
       generationConfig: NO_THINKING,
       ...(tools ? { tools } : {}),
+      ...(systemInstruction ? { systemInstruction: { parts: [{ text: systemInstruction }] } } : {}),
     }),
     signal,
   });
 }
 
-async function callAiStudioChat(model: string, contents: object[], tools: object[] | undefined, signal: AbortSignal) {
+async function callAiStudioChat(model: string, contents: object[], tools: object[] | undefined, systemInstruction: string | undefined, signal: AbortSignal) {
   return fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${process.env.GEMINI_API_KEY}`,
     {
@@ -152,22 +153,23 @@ async function callAiStudioChat(model: string, contents: object[], tools: object
         contents,
         generationConfig: NO_THINKING,
         ...(tools ? { tools } : {}),
+        ...(systemInstruction ? { systemInstruction: { parts: [{ text: systemInstruction }] } } : {}),
       }),
       signal,
     }
   );
 }
 
-export async function generateChatWithTools(contents: object[], tools?: object[]) {
+export async function generateChatWithTools(contents: object[], tools?: object[], systemInstruction?: string) {
   const useVertex = !!process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
   const attempts: { model: string; call: (signal: AbortSignal) => Promise<Response> }[] = [];
   if (useVertex) {
     for (const model of VERTEX_MODEL_CHAIN) {
-      attempts.push({ model, call: (signal) => callVertexChat(model, contents, tools, signal) });
+      attempts.push({ model, call: (signal) => callVertexChat(model, contents, tools, systemInstruction, signal) });
     }
   }
   for (const model of AI_STUDIO_FALLBACK_CHAIN) {
-    attempts.push({ model, call: (signal) => callAiStudioChat(model, contents, tools, signal) });
+    attempts.push({ model, call: (signal) => callAiStudioChat(model, contents, tools, systemInstruction, signal) });
   }
 
   let lastStatus = 0;

@@ -89,6 +89,28 @@ export const toolDeclarations = [
         exercise_hint: { type: "STRING", description: "The exercise name the user mentioned, if any (e.g. 'squat', 'deadlift')" }
       }
     }
+  },
+  {
+    name: "get_wellness_scans",
+    description: "Get the user's past Skin, Eye, or Hair AI wellness scans, including overall score, classification, sub-scores, observations, and ingredient recommendations. Use this to answer questions about their scan results, explain their report, or give more detailed analysis than what's shown on screen.",
+    parameters: {
+      type: "OBJECT",
+      properties: {
+        scan_type: { type: "STRING", description: "Filter to one type: 'skin', 'eye', or 'hair'. Omit to get the latest of each type." },
+        limit: { type: "NUMBER", description: "How many scans to return, most recent first. Default 5." }
+      }
+    }
+  },
+  {
+    name: "get_wellness_trend",
+    description: "Get the score history over time for a specific wellness scan type, to describe whether the user's skin, eye, or hair score is improving, worsening, or stable.",
+    parameters: {
+      type: "OBJECT",
+      properties: {
+        scan_type: { type: "STRING", description: "'skin', 'eye', or 'hair'" }
+      },
+      required: ["scan_type"]
+    }
   }
 ];
 
@@ -215,6 +237,32 @@ Return a strict JSON object containing:
           message: "Opening the form check camera for you.",
           proposalData: { exercise_hint: args.exercise_hint || "" }
         };
+      }
+      case "get_wellness_scans": {
+        let query = db
+          .from("wellness_scans")
+          .select("scan_type, taken_at, is_usable, overall_score, classification, sub_scores, observations, recommendations")
+          .eq("is_usable", true)
+          .order("taken_at", { ascending: false })
+          .limit(args.limit || 5);
+        if (args.scan_type) query = query.eq("scan_type", args.scan_type);
+        const { data, error } = await query;
+        if (error) throw error;
+        if (!data?.length) return { message: "No usable wellness scans found yet." };
+        return data;
+      }
+      case "get_wellness_trend": {
+        if (!args.scan_type) return { error: "scan_type is required" };
+        const { data, error } = await db
+          .from("wellness_scans")
+          .select("taken_at, overall_score")
+          .eq("scan_type", args.scan_type)
+          .eq("is_usable", true)
+          .not("overall_score", "is", null)
+          .order("taken_at", { ascending: true });
+        if (error) throw error;
+        if (!data?.length) return { message: `No usable ${args.scan_type} scans found yet.` };
+        return data;
       }
       default:
         return { error: `Unknown tool: ${name}` };

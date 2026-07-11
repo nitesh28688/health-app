@@ -194,13 +194,14 @@ export function AppShell({ children }: {
         </button>
       </div>
       
-      <AssistantSheet 
-        isOpen={assistantOpen} 
-        onClose={() => setAssistantOpen(false)} 
+      <AssistantSheet
+        isOpen={assistantOpen}
+        onClose={() => setAssistantOpen(false)}
         onOpenFormCheck={(exerciseHint) => {
           setFormCheckExercise(exerciseHint);
           setFormCheckOpen(true);
         }}
+        mode={mode}
       />
 
       {formCheckOpen && (

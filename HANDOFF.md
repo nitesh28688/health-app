@@ -3,6 +3,33 @@
 Short pointer document. For the deep "why is it built this way" reference, read
 `STRUCTURE.md` - that's the source of truth and is kept in sync every session.
 
+**Mode-aware Core Assistant (2026-07-11, Phase 50)** - The floating AI assistant
+(`AssistantSheet.tsx`) now knows which app mode it's being opened from. `AppShell` passes
+`mode` through; the sheet shows a different welcome message per mode and resets its
+conversation on a mode switch mid-chat. `/api/ai/assistant/route.ts` builds a mode-specific
+`systemInstruction` (new capability added to `generateChatWithTools` in `lib/gemini.ts`,
+which previously had no system-prompt support at all) — Wellness mode is told to always call
+the two new tools rather than guess at scores; Core mode keeps its existing diet/fitness
+framing. Both toolsets stay available regardless of mode. New tools in `aiTools.ts`:
+`get_wellness_scans` (real scores/sub-scores/observations/ingredient recommendations) and
+`get_wellness_trend` (score history over time), so the assistant can give real analysis
+instead of chatting blind about a report it's never seen.
+
+Verified live, not just compiled: the `systemInstruction` + `tools` request shape was tested
+directly against Vertex (200, correctly triggered a tool call instead of guessing) before
+being wired in. Testing the DB query directly against production also caught a real bug —
+`skin_age_estimate` doesn't actually exist in the live `wellness_scans` table even though the
+migration file (`0030_wellness_skin_age.sql`) is in the repo; it was apparently never run
+against production. Dropped that column from the new tool's query (moot anyway since skin age
+was removed from the UI in Phase 49). `tsc --noEmit` and `npx next build` both clean.
+
+**Planned, not yet built: wellness data aggregation/reporting.** `wellness_scans.recommendations`
+already stores structured `{ingredient, why, how_to_use}` tags (not free text) specifically so
+this data can later be aggregated for product decisions — e.g. "top 5 recommended ingredients
+across all users this month" to inform real Nanoliss ingredient/product targeting. No
+aggregation view or admin reporting exists yet; this is a deliberately separate, scoped-later
+task, not folded into the assistant work above.
+
 **Wellness UI hardening + Apple-style polish (2026-07-11, Phase 49)** - Fixed real defects
 found by live review of Antigravity's Phase 48 work: PDF export was blank-photo/clipped
 because `html2canvas` fired before the R2-hosted scan image finished loading and the whole

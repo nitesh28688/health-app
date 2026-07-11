@@ -87,6 +87,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "bad contents" }, { status: 400 });
   }
 
+  // Mode-aware system instruction — Core mode stays focused on diet/fitness,
+  // Wellness mode gets scan-analysis framing and is told to actually use the
+  // get_wellness_scans/get_wellness_trend tools rather than guessing. Both
+  // toolsets are still exposed either way (see `tools` below) so a Wellness-mode
+  // question that touches diet, or vice versa, doesn't hit a dead end.
+  const mode = body.mode === "wellness" ? "wellness" : "core";
+  const systemInstruction = mode === "wellness"
+    ? `You are the Core AI assistant, currently in Wellness Mode. You help the user understand their Skin, Eye, and Hair AI wellness scans — explain their overall score, sub-scores, observations, and ingredient recommendations in plain, friendly language; compare scores over time using get_wellness_trend; and give more detailed analysis than what's shown on the report screen when asked. Always call get_wellness_scans or get_wellness_trend before answering questions about their results — never guess or invent scores. If they haven't scanned yet, encourage them to run one (Skin, Eye, or Hair) rather than answering blind. Keep responses concise and skimmable on a small screen. You can still answer diet/fitness questions using the other tools if asked.`
+    : `You are the Core AI assistant, currently in Core Mode (diet and fitness tracking). Answer questions about the user's logged food, workouts, weight, and streaks using the available tools — never guess or invent numbers. Help them repeat past workouts, suggest new ones, or check exercise form when asked. Keep responses concise and skimmable on a small screen. You can still answer wellness/skin/hair questions using the wellness tools if asked.`;
+
   // Daily cap check
   const today = new Date().toISOString().slice(0, 10);
   const { data: capRow } = await dbAdmin.from("ai_suggestions").select("content")
@@ -111,7 +121,7 @@ export async function POST(req: NextRequest) {
   // 'name'/'description'/'parameters'". Confirmed live 2026-07-10.
   const tools = [{ functionDeclarations: toolDeclarations }];
   for (let iter = 0; iter < 4; iter++) {
-    const res = await generateChatWithTools(currentContents, tools);
+    const res = await generateChatWithTools(currentContents, tools, systemInstruction);
     if (!res.ok) {
       return NextResponse.json({ error: "AI unavailable" }, { status: 502 });
     }

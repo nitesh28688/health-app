@@ -15,10 +15,12 @@ export function AssistantSheet({
   isOpen,
   onClose,
   onOpenFormCheck,
+  mode = "core",
 }: {
   isOpen: boolean;
   onClose: () => void;
   onOpenFormCheck: (hint: string) => void;
+  mode?: "core" | "wellness";
 }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -38,11 +40,24 @@ export function AssistantSheet({
         setMessages([{
           id: "welcome",
           role: "model",
-          text: "Hi! I can answer questions about your logged history (like streaks, workouts, or daily totals). I can also help you repeat a past workout. What would you like to know?"
+          text: mode === "wellness"
+            ? "Hi! I can walk you through your Skin, Eye, and Hair scan results — scores, what your observations mean, and your ingredient recommendations. I can also tell you how your scores are trending over time. What would you like to know?"
+            : "Hi! I can answer questions about your logged history (like streaks, workouts, or daily totals). I can also help you repeat a past workout. What would you like to know?"
         }]);
       }
     }
-  }, [isOpen, messages.length]);
+  }, [isOpen, messages.length, mode]);
+
+  // Fresh context when switching Core <-> Wellness mode while the sheet has
+  // history — otherwise a Wellness question could land in a stale Core-mode
+  // conversation with the wrong framing.
+  const lastMode = useRef(mode);
+  useEffect(() => {
+    if (lastMode.current !== mode) {
+      lastMode.current = mode;
+      setMessages([]);
+    }
+  }, [mode]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -73,7 +88,7 @@ export function AssistantSheet({
       const res = await fetch("/api/ai/assistant", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token}` },
-        body: JSON.stringify({ contents }),
+        body: JSON.stringify({ contents, mode }),
       });
 
       const body = await res.json();
