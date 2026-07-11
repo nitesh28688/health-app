@@ -1821,3 +1821,38 @@ than a guess — a 10s ceiling replaces "forever" regardless of the underlying r
 **Verified**: `npx tsc --noEmit` clean. Confirmed the `user_badges` RLS select policy
 (`0009_fun.sql`, `user_id = auth.uid() or are_friends(...)`) permits the new query as
 written (filtered by `.eq("user_id", userId)` for the logged-in user).
+
+## Phase 39 (Fable, 2026-07-11) — Wellness Mode nav: 5 tabs matching Core mode's weight
+
+**User feedback**: pointed out the Wellness Mode nav (Scan/Profile, 2 tabs) looked sparse
+next to Core mode's 5-tab bar (Diary/Workout/Trends/Friends/Profile).
+
+**Fixed**: expanded `WELLNESS_TABS` in `AppShell.tsx` to 5 tabs — Scan, Skin, Eye, Hair,
+Profile. Skin/Eye/Hair deep-link into `/wellness?type=skin` etc rather than being separate
+routes (no new pages needed — `/wellness` already has its own internal Skin/Eye/Hair
+switcher from Phase 30-31), so each is a real distinct destination, not a hollow duplicate
+tab pointing at generic content.
+
+**Real risk found and handled carefully**: correctly highlighting Skin/Eye/Hair as distinct
+active tabs (they all share the `/wellness` pathname, differing only by `?type=`) requires
+`useSearchParams()`, which has a well-known Next.js App Router gotcha — used outside a
+`<Suspense>` boundary, it can break the *production build* entirely. Since `AppShell` wraps
+every single page in this app, getting this wrong would have been a total-outage-class bug,
+not a cosmetic one. Isolated the search-param-dependent logic into a small `NavTabs`
+sub-component wrapped in its own `<Suspense>` (the officially recommended pattern), rather
+than calling the hook at the top of `AppShell` itself. Same fix applied to `wellness/page.tsx`
+itself (needed `useSearchParams()` to sync the ?type= param into its internal tab state) —
+wrapped its default export in `<Suspense>` too.
+
+**Also fixed a two-sources-of-truth bug this surfaced**: the in-page Skin/Eye/Hair tab
+switcher only updated local React state, never the URL — so tapping it (instead of the nav)
+would leave the bottom nav's active-tab highlight showing the wrong tab. Added a shared
+`selectTab()` helper that updates both local state and the URL (`router.replace`), used by
+both the in-page switcher and the query-param sync effect.
+
+**Verified — not just `tsc`, but a real production build, given the blast radius**: ran
+`npx next build` twice (once after the AppShell change, again after the wellness page
+change) and confirmed all 44 routes compile and prerender successfully with zero errors,
+specifically checking for the Suspense-boundary build failure this exact hook is known to
+cause. This is the kind of check that matters more than usual here — a subtle mistake would
+not have shown up in `tsc --noEmit` at all, only in an actual build attempt.

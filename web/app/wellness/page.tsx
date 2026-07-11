@@ -1,6 +1,6 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useCallback, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { AppShell } from "../AppShell";
 import { supabase } from "@/lib/supabase";
 import { WellnessCaptureSheet } from "@/components/WellnessCaptureSheet";
@@ -56,7 +56,25 @@ function monthLabel(dateStr: string) {
 
 function WellnessMain({ userId }: { userId: string }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [tab, setTab] = useState<"skin" | "eye" | "hair">("skin");
+
+  // Sync the active tab with ?type= so the bottom nav's Skin/Eye/Hair deep
+  // links (AppShell.tsx) actually land on the right sub-tab, and stay in
+  // sync if the user taps between them from the nav while already here.
+  useEffect(() => {
+    const t = searchParams.get("type");
+    if (t === "skin" || t === "eye" || t === "hair") setTab(t);
+  }, [searchParams]);
+
+  // Also used by the in-page tab switcher below, so tapping it (not just the
+  // bottom nav's Skin/Eye/Hair links) keeps the URL's ?type= in sync — two
+  // sources of truth for "current tab" would otherwise let the nav's active
+  // highlight drift out of sync with what's actually showing.
+  function selectTab(t: "skin" | "eye" | "hair") {
+    setTab(t);
+    router.replace(`/wellness?type=${t}`);
+  }
   const [scans, setScans] = useState<Scan[] | null>(null);
   const [selectedScan, setSelectedScan] = useState<Scan | null>(null);
   const [compareA, setCompareA] = useState<Scan | null>(null);
@@ -539,7 +557,7 @@ function WellnessMain({ userId }: { userId: string }) {
       <div className="flex gap-2 p-1 bg-neutral-100 dark:bg-neutral-900/60 rounded-2xl mb-6 border border-neutral-200/20 dark:border-neutral-800/10">
         <button
           onClick={() => {
-            setTab("skin");
+            selectTab("skin");
             setCompareA(null);
             setCompareB(null);
           }}
@@ -554,7 +572,7 @@ function WellnessMain({ userId }: { userId: string }) {
         </button>
         <button
           onClick={() => {
-            setTab("eye");
+            selectTab("eye");
             setCompareA(null);
             setCompareB(null);
           }}
@@ -569,7 +587,7 @@ function WellnessMain({ userId }: { userId: string }) {
         </button>
         <button
           onClick={() => {
-            setTab("hair");
+            selectTab("hair");
             setCompareA(null);
             setCompareB(null);
           }}
@@ -889,8 +907,10 @@ function WellnessMain({ userId }: { userId: string }) {
 
 export default function WellnessPage() {
   return (
-    <AppShell>
-      {({ session }) => <WellnessMain userId={session.user.id} />}
-    </AppShell>
+    <Suspense fallback={<PageSkeleton />}>
+      <AppShell>
+        {({ session }) => <WellnessMain userId={session.user.id} />}
+      </AppShell>
+    </Suspense>
   );
 }

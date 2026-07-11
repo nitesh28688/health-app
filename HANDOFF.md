@@ -3,6 +3,12 @@
 Short pointer document. For the deep "why is it built this way" reference, read
 `STRUCTURE.md` — that's the source of truth and is kept in sync every session.
 
+**Wellness Mode nav expanded to 5 tabs (2026-07-11, Phase 39)** — Scan/Skin/Eye/Hair/Profile,
+matching Core mode's nav weight (was 2 tabs, looked sparse). Skin/Eye/Hair deep-link into
+`/wellness?type=...`. Required careful Suspense-boundary handling for `useSearchParams()`
+since `AppShell` wraps every page — verified with real `next build` runs, not just `tsc`.
+See UPGRADE.md Phase 39.
+
 **Wellness camera-open bug fix + Wellness Mode toggle (2026-07-11, Phase 37)** — fixed a
 real "stuck on opening camera" bug (`getUserMedia()` had no timeout, could hang forever).
 Also: Wellness is now a real app-mode toggle from Profile (`web/lib/appMode.ts`), swapping
