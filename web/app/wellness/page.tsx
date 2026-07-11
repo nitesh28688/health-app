@@ -489,6 +489,10 @@ function WellnessMain({ userId }: { userId: string }) {
       let renderedHeightPx = 0;
       let pageIndex = 0;
 
+      // Guard against a zero/degenerate pageHeightPx (e.g. an unexpectedly
+      // empty capture) looping forever instead of ever finishing.
+      if (pageHeightPx < 1) throw new Error("Report failed to render — please try again.");
+
       while (renderedHeightPx < canvas.height) {
         const sliceHeightPx = Math.min(pageHeightPx, canvas.height - renderedHeightPx);
         const pageCanvas = document.createElement("canvas");

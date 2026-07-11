@@ -3,6 +3,21 @@
 Short pointer document. For the deep "why is it built this way" reference, read
 `STRUCTURE.md` - that's the source of truth and is kept in sync every session.
 
+**Camera mirror + PDF CORS fix (2026-07-11, Phase 51)** - Fixed a real bug where the back
+camera in `WellnessCaptureSheet.tsx` was mirrored (`scale-x-[-1]` on the preview, a matching
+`translate`/`scale(-1,1)` on the captured canvas frame) — correct for the front/selfie camera
+but wrong for the back camera, inverting left/right on both the live preview and the saved
+photo. Now only mirrors when `facingMode === "user"`. Also found the real root cause of the
+PDF export failing repeatedly ("keeps going in circles"): confirmed via a direct fetch that
+Cloudflare R2 sends no `Access-Control-Allow-Origin` header at all, so the browser was
+blocking canvas access to the scan photo every time — a permanent `SecurityError`, not a
+transient failure, so retrying could never have worked. Fixed with a same-origin proxy route
+(`/api/wellness/photo-proxy`) that fetches the R2 image server-side and streams it back from
+our own origin, since same-origin images are always canvas-readable — no R2 bucket CORS
+config needed. Also added a guard against a possible infinite loop in the PDF page-slicing
+logic if a capture ever comes back empty. `tsc --noEmit` and `npx next build` both clean;
+the proxy's fetch behavior was verified directly against a real R2 photo URL.
+
 **Mode-aware Core Assistant (2026-07-11, Phase 50)** - The floating AI assistant
 (`AssistantSheet.tsx`) now knows which app mode it's being opened from. `AppShell` passes
 `mode` through; the sheet shows a different welcome message per mode and resets its

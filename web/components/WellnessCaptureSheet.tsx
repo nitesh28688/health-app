@@ -102,8 +102,13 @@ export function WellnessCaptureSheet({ scanType, onClose, onCapture }: WellnessC
     const ctx = captureCanvas.getContext("2d");
     if (!ctx) return;
 
-    ctx.translate(captureCanvas.width, 0);
-    ctx.scale(-1, 1);
+    // Only mirror the captured frame for the front (selfie) camera, matching the
+    // preview. The back camera must never be mirrored — flipping it inverts
+    // left/right and up/down relative to what the camera actually sees.
+    if (facingMode === "user") {
+      ctx.translate(captureCanvas.width, 0);
+      ctx.scale(-1, 1);
+    }
     ctx.drawImage(video, 0, 0, captureCanvas.width, captureCanvas.height);
     const base64Data = captureCanvas.toDataURL("image/jpeg", 0.85);
     video.pause();
@@ -139,7 +144,7 @@ export function WellnessCaptureSheet({ scanType, onClose, onCapture }: WellnessC
           ) : (
             <div className="w-full flex flex-col items-center">
               <div className="relative w-full aspect-[4/3] bg-black rounded-2xl overflow-hidden border-2 border-cyan-400/70 shadow-[0_0_32px_rgba(34,211,238,0.12)]">
-                <video ref={videoRef} muted playsInline className="w-full h-full object-cover scale-x-[-1]" />
+                <video ref={videoRef} muted playsInline className={"w-full h-full object-cover" + (facingMode === "user" ? " scale-x-[-1]" : "")} />
                 <div className="absolute inset-0 pointer-events-none bg-[linear-gradient(rgba(34,211,238,0.12)_1px,transparent_1px),linear-gradient(90deg,rgba(34,211,238,0.12)_1px,transparent_1px)] bg-[size:28px_28px] opacity-40" />
                 <div className={"absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 border-2 border-cyan-300/80 shadow-[0_0_24px_rgba(34,211,238,0.38)] " + (scanType === "hair" ? "w-[76%] h-[66%] rounded-[38%]" : scanType === "eye" ? "w-[76%] h-[34%] rounded-[42%]" : "w-[56%] h-[74%] rounded-[48%]")} />
                 <div className="absolute left-4 top-4 rounded-full border border-cyan-300/40 bg-black/55 px-2.5 py-1 text-[9px] font-bold tracking-[0.14em] text-cyan-200">MANUAL SCAN</div>

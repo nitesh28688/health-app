@@ -50,7 +50,7 @@ export const PDFReportTemplate = React.forwardRef<HTMLDivElement, PDFReportTempl
             <div className="w-[300px] shrink-0 flex flex-col gap-8">
               <div className="rounded-2xl overflow-hidden border-4 shadow-sm" style={{ borderColor: "#f1f5f9" }}>
                 {scan.photo_url ? (
-                  <img src={scan.photo_url} alt="Scan" className="w-full h-auto aspect-square object-cover" crossOrigin="anonymous" />
+                  <img src={`/api/wellness/photo-proxy?url=${encodeURIComponent(scan.photo_url)}`} alt="Scan" className="w-full h-auto aspect-square object-cover" />
                 ) : (
                   <div className="w-full aspect-square flex items-center justify-center" style={{ backgroundColor: "#f1f5f9" }}>
                     <span style={{ color: "#94a3b8" }}>No Image</span>
