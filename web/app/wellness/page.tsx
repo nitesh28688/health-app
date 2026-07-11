@@ -6,8 +6,16 @@ import { supabase } from "@/lib/supabase";
 import { WellnessCaptureSheet } from "@/components/WellnessCaptureSheet";
 import { compressImage } from "@/lib/imageCompress";
 import { PageSkeleton } from "@/lib/Skeleton";
-import { awardBadge } from "@/lib/badges";
-import { Sparkles, Camera, Eye, RefreshCw, X, AlertTriangle, CheckCircle, Info, Calendar, Loader2, Share2 } from "lucide-react";
+import { awardBadge, BADGES } from "@/lib/badges";
+import { Sparkles, Camera, Eye, RefreshCw, X, AlertTriangle, CheckCircle, Info, Calendar, Loader2, Share2, Lock } from "lucide-react";
+
+const TAB_INFO: Record<"skin" | "eye" | "hair", { label: string; blurb: string }> = {
+  skin: { label: "Skin Analysis", blurb: "Texture, tone, hydration & pores — get a score plus unbranded active-ingredient recommendations." },
+  eye: { label: "Eye Analysis", blurb: "Dark circles, puffiness & fine lines — get a score plus unbranded active-ingredient recommendations." },
+  hair: { label: "Hair Analysis", blurb: "Scalp health, thickness, dryness & frizz — get a score plus unbranded active-ingredient recommendations." },
+};
+
+const WELLNESS_BADGE_CODES = ["wellness_first_scan", "wellness_full_spectrum", "wellness_glow_up"];
 
 interface Scan {
   id: string;
@@ -59,6 +67,7 @@ function WellnessMain({ userId }: { userId: string }) {
   const [sharing, setSharing] = useState(false);
   const [insight, setInsight] = useState<string | null>(null);
   const [showInsight, setShowInsight] = useState(true);
+  const [earnedBadges, setEarnedBadges] = useState<Set<string>>(new Set());
 
   const latestScansByType: Record<"skin" | "eye" | "hair", Scan | null> = {
     skin: null,
@@ -271,7 +280,13 @@ function WellnessMain({ userId }: { userId: string }) {
       return;
     }
     setScans((data as Scan[]) ?? []);
-    
+
+    supabase.from("user_badges").select("badge_code").eq("user_id", userId)
+      .in("badge_code", WELLNESS_BADGE_CODES)
+      .then(({ data: badgeRows }) => {
+        setEarnedBadges(new Set((badgeRows ?? []).map((b) => b.badge_code)));
+      });
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
         fetch("/api/ai/wellness-insight", {
@@ -567,6 +582,32 @@ function WellnessMain({ userId }: { userId: string }) {
           <Sparkles className="w-4 h-4 text-violet-500" />
           Hair Analysis
         </button>
+      </div>
+
+      <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-6 -mt-3 leading-relaxed px-1">
+        {TAB_INFO[tab].blurb}
+      </p>
+
+      {/* Badges preview — earned ones highlighted, rest shown locked as a goal to work toward */}
+      <div className="mb-6 flex items-center gap-2.5">
+        {WELLNESS_BADGE_CODES.map((code) => {
+          const def = BADGES.find((b) => b.code === code)!;
+          const earned = earnedBadges.has(code);
+          return (
+            <div
+              key={code}
+              title={`${def.name} — ${def.description}`}
+              className={`flex-1 flex flex-col items-center gap-1 py-3 rounded-2xl border text-center transition-all ${
+                earned
+                  ? "border-rose-200/60 dark:border-rose-900/40 bg-gradient-to-b from-rose-50 to-violet-50 dark:from-rose-950/20 dark:to-violet-950/20"
+                  : "border-dashed border-neutral-200 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-900/20 opacity-60"
+              }`}
+            >
+              <span className="text-xl leading-none">{earned ? def.icon : <Lock className="w-4 h-4 text-neutral-400" />}</span>
+              <span className="text-[9px] font-bold uppercase tracking-wide text-neutral-500 dark:text-neutral-400 px-1">{def.name}</span>
+            </div>
+          );
+        })}
       </div>
 
       {error && (

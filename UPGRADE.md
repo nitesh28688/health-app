@@ -1801,3 +1801,23 @@ localStorage on mount (`cb(getAppMode())`), so it self-corrects regardless of re
 timing. Camera timeout logic couldn't be live-tested in this environment (no real
 device/camera), but the fix directly targets the described symptom (indefinite hang) rather
 than a guess — a 10s ceiling replaces "forever" regardless of the underlying root cause.
+
+## Phase 38 (Fable, 2026-07-11) — Wellness page: fill empty space with real content
+
+**User asked**: what's quick and important to add so the Wellness page doesn't look empty
+(especially for a new user with zero/few scans).
+
+**Added, both reusing data that already existed — no new backend:**
+1. **A one-line "what this checks" blurb under the tab switcher**, changing per selected
+   tab (Skin/Eye/Hair) — tells a first-time user what they're about to scan and what
+   they'll get (score + ingredient recs) before they commit to opening the camera.
+2. **A badges preview strip** — the three Wellness badges (`wellness_first_scan`,
+   `wellness_full_spectrum`, `wellness_glow_up`, added in Phase 32) previously only ever
+   surfaced buried on Profile once earned. Now shown directly on `/wellness`: earned badges
+   highlighted in the rose/violet gradient, unearned ones shown locked/greyed with a lock
+   icon — gives a new user a visible goal instead of the page just repeating "no scans yet"
+   in four different card shapes.
+
+**Verified**: `npx tsc --noEmit` clean. Confirmed the `user_badges` RLS select policy
+(`0009_fun.sql`, `user_id = auth.uid() or are_friends(...)`) permits the new query as
+written (filtered by `.eq("user_id", userId)` for the logged-in user).
