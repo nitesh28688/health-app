@@ -3,6 +3,12 @@
 Short pointer document. For the deep "why is it built this way" reference, read
 `STRUCTURE.md` - that's the source of truth and is kept in sync every session.
 
+**MediaPipe runtime alignment (2026-07-11, Phase 45)** - Fixed the actual cause of
+Chrome's empty landmark stream: `@mediapipe/tasks-vision` was installed at `0.10.35`,
+but the component fetched a `0.10.8` WASM engine. The WASM URL and pinned npm dependency
+now both use `0.10.35`; FaceLandmarker confidence thresholds were also tuned for normal
+mobile camera lighting. TypeScript verified clean with `npx.cmd tsc --noEmit`.
+
 **Chrome tracking correction (2026-07-11, Phase 44)** - The two-second empty-frame
 fallback is now explicitly limited to Samsung Internet (`SamsungBrowser` user agent).
 Chrome keeps MediaPipe face tracking active while camera frames warm up, restoring the

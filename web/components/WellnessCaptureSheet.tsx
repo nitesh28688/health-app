@@ -80,7 +80,10 @@ export function WellnessCaptureSheet({ scanType, onClose, onCapture }: WellnessC
         const { FilesetResolver, FaceLandmarker, ImageSegmenter } = await import("@mediapipe/tasks-vision");
         
         cachedVision = await FilesetResolver.forVisionTasks(
-          "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.8/wasm"
+          // The WASM engine must match the installed JS package. Mixing the
+          // old 0.10.8 runtime with the bundled 0.10.35 API let the model load
+          // but produced empty landmark results in Chromium.
+          "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.35/wasm"
         );
         
         // "CPU" delegate, not "GPU" — GPU delegate support for MediaPipe
@@ -108,7 +111,10 @@ export function WellnessCaptureSheet({ scanType, onClose, onCapture }: WellnessC
               delegate: "CPU"
             },
             runningMode: "VIDEO",
-            numFaces: 1
+            numFaces: 1,
+            minFaceDetectionConfidence: 0.35,
+            minFacePresenceConfidence: 0.35,
+            minTrackingConfidence: 0.35
           });
         }
 
