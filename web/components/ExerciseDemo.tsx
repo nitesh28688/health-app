@@ -46,8 +46,15 @@ export function ExerciseDemo({ urls, size = 56 }: { urls: string[] | null | unde
 
       {fullscreen && (
         <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4" onClick={(e) => { e.stopPropagation(); setFullscreen(false); }}>
-          <button className="absolute top-4 right-4 w-12 h-12 flex items-center justify-center text-white/50 hover:text-white rounded-full bg-black/50 text-2xl">✕</button>
-          <div className="relative w-full max-w-2xl aspect-square bg-neutral-900 rounded-2xl overflow-hidden shadow-2xl" onClick={(e) => e.stopPropagation()}>
+          {/* Explicit z-20 — without it, this button and the image container
+              below both sit in the "positioned, z-index:auto" paint layer and
+              stack purely by DOM order, so the (later) image container was
+              rendering on top of and hiding this button entirely. Also given
+              its own onClick instead of relying on bubbling to the backdrop,
+              which was the button's only way of actually closing before. */}
+          <button onClick={(e) => { e.stopPropagation(); setFullscreen(false); }} aria-label="Close"
+            className="absolute top-4 right-4 z-20 w-12 h-12 flex items-center justify-center text-white/70 hover:text-white rounded-full bg-black/60 hover:bg-black/80 text-2xl transition-colors cursor-pointer">✕</button>
+          <div className="relative z-10 w-full max-w-2xl aspect-square bg-neutral-900 rounded-2xl overflow-hidden shadow-2xl" onClick={(e) => e.stopPropagation()}>
             {urls.slice(0, 2).map((url, i) => (
               // eslint-disable-next-line @next/next/no-img-element
               <img
