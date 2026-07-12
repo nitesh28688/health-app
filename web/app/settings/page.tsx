@@ -248,6 +248,12 @@ function SettingsForm({ profile, setProfile, userId, email }: {
         className="mt-3 mb-4 w-full rounded-xl border border-red-300 dark:border-red-900/50 text-red-600 dark:text-red-400 py-3 font-semibold active:scale-[0.98] flex items-center justify-center gap-2">
         <LogOut className="w-4 h-4" /> Sign out
       </button>
+
+      <p className="text-center text-xs text-neutral-400 mb-6">
+        <Link href="/terms" className="underline">Terms of Service</Link>
+        {" · "}
+        <Link href="/privacy" className="underline">Privacy Policy</Link>
+      </p>
     </main>
   );
 }

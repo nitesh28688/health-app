@@ -7,9 +7,11 @@ import type { Session } from "@supabase/supabase-js";
 import { AnimatePresence, motion } from "framer-motion";
 import { AssistantSheet } from "@/components/AssistantSheet";
 import { FormCheckSheet } from "@/components/FormCheckSheet";
+import { TermsGate } from "@/components/TermsGate";
 import { Wand2, Book, Dumbbell, TrendingUp, Users, CloudUpload, Sparkles, FileText } from "lucide-react";
 import { subscribePendingCount } from "@/lib/offlineQueue";
 import { setAppMode, subscribeAppMode, type AppMode } from "@/lib/appMode";
+import { CURRENT_TERMS_VERSION } from "@/lib/legal";
 
 // ── Tab definitions (Profile removed — it now lives behind the header avatar) ──
 
@@ -288,6 +290,14 @@ export function AppShell({ children }: {
         </div>
       </main>
     );
+  }
+
+  // Blocks the whole app — new signups and existing users alike — until the
+  // current Terms/Privacy version is accepted. `profile` can briefly be null
+  // right after signup while the row is still being created; only gate once
+  // it's actually loaded, not during that transient null.
+  if (profile && (!profile.terms_accepted_at || profile.terms_version !== CURRENT_TERMS_VERSION)) {
+    return <TermsGate userId={session.user.id} setProfile={setProfile} />;
   }
 
   return (

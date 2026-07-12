@@ -3,6 +3,25 @@
 Short pointer document. For the deep "why is it built this way" reference, read
 `STRUCTURE.md` - that's the source of truth and is kept in sync every session.
 
+**Terms of Service + Privacy Policy gate (2026-07-12)** - App is now spreading beyond the
+builder to friends/family, so added real (though not yet lawyer-reviewed) legal coverage.
+New `supabase/migrations/0031_terms_acceptance.sql` adds `terms_accepted_at`/`terms_version`
+to `profiles`. New standalone pages `app/terms/page.tsx` and `app/privacy/page.tsx` (public,
+no `<AppShell>` wrapper) cover: not-medical-advice disclaimer, AI processing disclosure
+(Gemini/Vertex), what health data is collected and where it's stored (Supabase + Cloudflare
+R2), friend-sharing scope, account deletion, liability limitation, and a 16+ age requirement.
+New `components/TermsGate.tsx` blocks the entire app (rendered in place of `AppShell`'s
+children) for any signed-in user whose `profile.terms_version` doesn't match
+`lib/legal.ts`'s `CURRENT_TERMS_VERSION` — covers both brand-new signups and existing
+pre-existing users uniformly on their next login, rather than trying to gate at signup time
+(which would race with email-confirmation flows that don't return a session immediately).
+Bumping `CURRENT_TERMS_VERSION` re-gates everyone next time Terms/Privacy content changes
+materially. Signup page and Settings both link to `/terms`/`/privacy`. `tsc --noEmit` and
+`npx next build` both clean, including the two new static pages. **Not yet applied to
+production** — migration `0031` needs to be run via Supabase SQL Editor (no direct DB
+write access in this environment) and verified afterward. **This content is a solid
+starting draft, not lawyer-reviewed — flagged to the user as such.**
+
 **Nav/Header Redesign, Profile→Settings Split & Assistant Input Fix (2026-07-12, Phase 58)** — Major UI restructure of AppShell.tsx. Added a new persistent per-mode sticky header bar: indigo identity with "Core AI" wordmark in Core mode, rose identity with "Wellness" wordmark in Wellness mode, user avatar on the right (from `profile.avatar_url`, falls back to initial-letter circle) that navigates to `/profile`. Trimmed the bottom nav from 5+3 tabs (with Profile) to 5+3 tabs with a center mode-toggle button replacing the Profile tab. The mode-toggle is a circular, elevated button showing the destination mode's letter ("W" in Core, "C" in Wellness) in the destination's color (rose in Core, indigo in Wellness), using the same `AnimatePresence` + `wash-${mode}` transition system already in AppShell. Reuses the exact `setAppMode()` + `router.push()` logic from the now-deleted `toggleWellnessMode()` in profile/page.tsx. Split Profile into Profile (`/profile`) and Account Settings (`/settings`): Profile keeps avatar/name/stats/targets/badges; Settings gets reminders, health tracking, appearance, sharing, sign out, plus new Change Email (Supabase `auth.updateUser`), Change Password (link to existing `/reset`), and Delete Account placeholder (mailto link — not a real self-serve delete). The Wellness Mode toggle switch was removed from Profile entirely. Also fixed AssistantSheet.tsx: replaced the single-line `<input type="text">` with an auto-growing `<textarea>` (starts 1 line, grows to ~6, then scrolls internally; Enter submits, Shift+Enter inserts newline; send button anchored to bottom-right).
 
 **Smart Fasting Integration & IF Toggles (2026-07-12, Phase 57)** - Upgraded the fasting module to support structured Intermittent Fasting (12/14/16 hour toggles) with progress bars. Integrated "Smart Fasting" to seamlessly connect the food diary with the fasting timer: if a user logs food while a fast is active, a custom `SmartFastingModal` intercepts the save to warn them and automatically ends the fast if confirmed. Conversely, if a user logs a "Dinner" meal and no fast is active, the app automatically suggests starting a 16-hour fast. This logic works for both manual `add/page.tsx` searches and the AI Quick Log (`SmartLogSheet.tsx`).
