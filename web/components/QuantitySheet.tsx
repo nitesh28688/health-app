@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import { Bot } from "lucide-react";
+import { Bot, Pencil } from "lucide-react";
 
 interface Serving {
   id: number;
@@ -24,17 +24,28 @@ export function QuantitySheet({
   initialQtyGrams = 100,
   onClose,
   onSave,
+  onNutritionEdited,
 }: {
   food: {
     id: number;
     name: string;
     brand?: string | null;
     kcal: number;
+    protein_g?: number;
+    carbs_g?: number;
+    fat_g?: number;
+    fiber_g?: number;
     is_liquid?: boolean;
   };
   initialQtyGrams?: number;
   onClose: () => void;
   onSave: (totalGrams: number, unitLabel: string | null) => void;
+  // Fired when the user corrects the per-100g nutrition facts (e.g. reading
+  // the real label off a packet in hand) — lets the caller update its own
+  // food state so the log entry uses the corrected numbers, independent of
+  // whether the underlying `foods` row could be updated (only AI/custom
+  // foods owned by this user can be; shared seed foods can't via RLS).
+  onNutritionEdited?: (updated: { kcal: number; protein_g: number; carbs_g: number; fat_g: number }) => void;
 }) {
   const [servings, setServings] = useState<Serving[]>([]);
   const [unit, setUnit] = useState<"grams" | number>("grams");
@@ -47,6 +58,17 @@ export function QuantitySheet({
   const [aiBusy, setAiBusy] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
   const gramsEachRef = useRef<HTMLInputElement>(null);
+
+  // Editable per-100g nutrition facts — AI estimates can be off by a bit, and
+  // when the user has the actual packet in hand they should be able to just
+  // type the real numbers rather than being stuck with the estimate.
+  const [showEditNutrition, setShowEditNutrition] = useState(false);
+  const [editKcal, setEditKcal] = useState(String(Math.round(Number(food.kcal))));
+  const [editProtein, setEditProtein] = useState(String(food.protein_g ?? 0));
+  const [editCarbs, setEditCarbs] = useState(String(food.carbs_g ?? 0));
+  const [editFat, setEditFat] = useState(String(food.fat_g ?? 0));
+  const [savingNutrition, setSavingNutrition] = useState(false);
+  const liveKcal = parseFloat(editKcal) || 0;
   const baseUnitLabel = food.is_liquid ? "ml" : "grams";
 
   useEffect(() => {
@@ -154,7 +176,24 @@ export function QuantitySheet({
     }
   }
 
-  const kcalPreview = g > 0 ? Math.round((Number(food.kcal) * g) / 100) : null;
+  const kcalPreview = g > 0 ? Math.round((liveKcal * g) / 100) : null;
+
+  async function saveNutritionEdit() {
+    const updated = {
+      kcal: parseFloat(editKcal) || 0,
+      protein_g: parseFloat(editProtein) || 0,
+      carbs_g: parseFloat(editCarbs) || 0,
+      fat_g: parseFloat(editFat) || 0,
+    };
+    setSavingNutrition(true);
+    // Best-effort: only AI/custom foods owned by this user can actually be
+    // updated (RLS blocks shared seed foods) — but the corrected values
+    // should still apply to *this* log entry either way, via onNutritionEdited.
+    await supabase.from("foods").update(updated).eq("id", food.id).then(() => {}, () => {});
+    setSavingNutrition(false);
+    setShowEditNutrition(false);
+    onNutritionEdited?.(updated);
+  }
 
   return (
     <div className="fixed inset-0 z-[60] flex flex-col justify-end bg-black/40" onClick={onClose}>
@@ -165,14 +204,50 @@ export function QuantitySheet({
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
             <p className="font-bold">{food.name}</p>
-            <p className="text-xs text-neutral-500 mb-4">
+            <p className="text-xs text-neutral-500 mb-4 flex items-center gap-1.5">
               {food.brand && `${food.brand} · `}
-              {Math.round(Number(food.kcal))} kcal /100g
+              {Math.round(liveKcal)} kcal /100g
+              <button onClick={() => setShowEditNutrition((v) => !v)}
+                className="inline-flex items-center gap-0.5 text-indigo-600 dark:text-indigo-400 font-medium underline underline-offset-2">
+                <Pencil className="w-3 h-3" /> edit
+              </button>
             </p>
           </div>
           <button onClick={onClose} aria-label="Close"
             className="w-11 h-11 -mt-2 -mr-2 flex items-center justify-center text-neutral-400 shrink-0">✕</button>
         </div>
+
+        {showEditNutrition && (
+          <div className="mb-4 p-3 rounded-xl border border-indigo-200 dark:border-indigo-800 bg-indigo-50/50 dark:bg-indigo-950/20 flex flex-col gap-2" onClick={(e) => e.stopPropagation()}>
+            <p className="text-xs text-neutral-500 -mt-0.5 mb-1">Per 100{food.is_liquid ? "ml" : "g"} — correct these from the packet label if the AI estimate is off.</p>
+            <div className="grid grid-cols-2 gap-2">
+              <label className="flex flex-col gap-1">
+                <span className="text-[11px] text-neutral-500 font-medium">Calories</span>
+                <input inputMode="decimal" value={editKcal} onChange={(e) => setEditKcal(e.target.value)}
+                  className="rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-2.5 py-2 text-sm" />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-[11px] text-neutral-500 font-medium">Protein (g)</span>
+                <input inputMode="decimal" value={editProtein} onChange={(e) => setEditProtein(e.target.value)}
+                  className="rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-2.5 py-2 text-sm" />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-[11px] text-neutral-500 font-medium">Carbs (g)</span>
+                <input inputMode="decimal" value={editCarbs} onChange={(e) => setEditCarbs(e.target.value)}
+                  className="rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-2.5 py-2 text-sm" />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-[11px] text-neutral-500 font-medium">Fat (g)</span>
+                <input inputMode="decimal" value={editFat} onChange={(e) => setEditFat(e.target.value)}
+                  className="rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-2.5 py-2 text-sm" />
+              </label>
+            </div>
+            <button onClick={saveNutritionEdit} disabled={savingNutrition}
+              className="mt-1 w-full rounded-lg bg-indigo-600 text-white py-2 text-sm font-semibold active:scale-[0.98] disabled:opacity-60">
+              {savingNutrition ? "Saving…" : "Use these values"}
+            </button>
+          </div>
+        )}
 
         {/* Unit picker: known servings first (with their weight visible), then a
             "piece · ?" AI option for foods nobody has measured yet, grams/ml last. */}

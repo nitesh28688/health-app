@@ -421,6 +421,7 @@ function Diary({ profile, userId }: { profile: Profile | null; userId: string })
           food={editingLog.food}
           initialQtyGrams={editingLog.log.qty_g}
           onClose={() => setEditingLog(null)}
+          onNutritionEdited={(updated) => setEditingLog((prev) => prev ? { ...prev, food: { ...prev.food, ...updated } } : prev)}
           onSave={async (grams, label) => {
             const snap = logSnapshot(editingLog.food, grams, label);
             await offlineWrite({ table: "food_logs", op: "update", payload: snap, match: { id: editingLog.log.id } });

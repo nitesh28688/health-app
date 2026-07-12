@@ -277,6 +277,7 @@ function AddFood({ userId }: { userId: string }) {
         <QuantitySheet
           food={picked}
           onClose={() => { setPicked(null); setSaveMsg(null); }}
+          onNutritionEdited={(updated) => setPicked((prev) => prev ? ({ ...prev, ...updated } as Food) : prev)}
           onSave={async (grams, label) => {
             setSaveMsg(null);
             const snap = logSnapshot(picked, grams, label);

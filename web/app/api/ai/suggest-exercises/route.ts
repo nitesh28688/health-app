@@ -82,35 +82,48 @@ Return a strict JSON object containing:
   }
 
   // 1. Create the Workout Plan
-  const { data: planRow } = await db.from("workout_plans").insert({
-    owner_id: userId, title: result.title, is_public: false,
+  // workout_plans has no `title`/`is_public` columns (confirmed live against
+  // production 2026-07-12) — the real columns are `name`, `goal`, `level`,
+  // `days_per_week`, `description`. This insert previously failed outright
+  // (unknown column), which silently produced planRow = null, meaning
+  // nothing downstream ever ran and the client got a 200 with no planId —
+  // "Create Routine" looked like it did nothing.
+  const { data: planRow, error: planErr } = await db.from("workout_plans").insert({
+    owner_id: userId, name: result.title,
     description: `AI Generated ${location} Workout - ${focus} (${time || 30}m)`
   }).select("id").single();
 
-  if (planRow) {
-    // 2. Create a single Plan Day
-    const { data: dayRow } = await db.from("workout_plan_days").insert({
-      plan_id: planRow.id, day_number: 1, title: result.title
+  if (planErr || !planRow) {
+    return NextResponse.json({ error: planErr?.message ?? "couldn't create plan" }, { status: 500 });
+  }
+
+  // 2. Create a single Plan Day
+  const { data: dayRow, error: dayErr } = await db.from("workout_plan_days").insert({
+    plan_id: planRow.id, day_number: 1, title: result.title
+  }).select("id").single();
+
+  if (dayErr || !dayRow) {
+    return NextResponse.json({ error: dayErr?.message ?? "couldn't create plan day" }, { status: 500 });
+  }
+
+  // 3. Create Exercises and Plan Items
+  for (let i = 0; i < result.exercises.length; i++) {
+    const ex = result.exercises[i];
+    const { data: exRow } = await db.from("exercises").insert({
+      // "Custom" isn't a valid category — exercises_category_check only
+      // allows strength/cardio/flexibility/core/yoga (0003_workouts.sql).
+      // Confirmed live 2026-07-10 via the same bug in AssistantSheet.tsx.
+      name: ex.name, category: "strength", owner_id: userId, met_value: ex.met_value || 5, instructions: ex.instructions
     }).select("id").single();
 
-    if (dayRow) {
-      // 3. Create Exercises and Plan Items
-      for (let i = 0; i < result.exercises.length; i++) {
-        const ex = result.exercises[i];
-        const { data: exRow } = await db.from("exercises").insert({
-          // "Custom" isn't a valid category — exercises_category_check only
-          // allows strength/cardio/flexibility/core/yoga (0003_workouts.sql).
-          // Confirmed live 2026-07-10 via the same bug in AssistantSheet.tsx.
-          name: ex.name, category: "strength", owner_id: userId, met_value: ex.met_value || 5, instructions: ex.instructions
-        }).select("id").single();
-
-        if (exRow) {
-          await db.from("workout_plan_items").insert({
-            day_id: dayRow.id, exercise_id: exRow.id, order_index: i,
-            sets: ex.sets || 3, reps: ex.reps || null, duration_min: ex.duration_min || null
-          });
-        }
-      }
+    if (exRow) {
+      // workout_plan_items' real FK column is `plan_day_id`, not `day_id`
+      // (confirmed live 2026-07-12) — also no `order_index` column, it's
+      // `sort_order`; `reps` is text, not a number.
+      await db.from("workout_plan_items").insert({
+        plan_day_id: dayRow.id, exercise_id: exRow.id, sort_order: i,
+        sets: ex.sets || 3, reps: ex.reps != null ? String(ex.reps) : null, duration_min: ex.duration_min || null
+      });
     }
   }
 
