@@ -10,7 +10,7 @@ import { FormCheckSheet } from "@/components/FormCheckSheet";
 import { TermsGate } from "@/components/TermsGate";
 import { Wand2, Book, Dumbbell, TrendingUp, Users, CloudUpload, Sparkles, FileText } from "lucide-react";
 import { subscribePendingCount } from "@/lib/offlineQueue";
-import { setAppMode, subscribeAppMode, type AppMode } from "@/lib/appMode";
+import { getAppMode, setAppMode, subscribeAppMode, type AppMode } from "@/lib/appMode";
 import { CURRENT_TERMS_VERSION } from "@/lib/legal";
 
 // ── Tab definitions (Profile removed — it now lives behind the header avatar) ──
@@ -203,7 +203,12 @@ export function AppShell({ children }: {
   const [assistantOpen, setAssistantOpen] = useState(false);
   const [formCheckOpen, setFormCheckOpen] = useState(false);
   const [formCheckExercise, setFormCheckExercise] = useState("");
-  const [mode, setMode] = useState<AppMode>("core");
+  // Lazy-initialize from localStorage synchronously on first client render
+  // instead of always defaulting to "core" and correcting a moment later in
+  // an effect — that default-then-correct pattern caused a real flash of
+  // Core's indigo styling (header, nav, toggle, assistant colors) on every
+  // load for anyone actually in Wellness mode.
+  const [mode, setMode] = useState<AppMode>(() => getAppMode());
 
   useEffect(() => {
     if (!loading && !session) router.replace("/login");
@@ -281,7 +286,12 @@ export function AppShell({ children }: {
     }
   }
 
-  if (loading || !session) {
+  // `profile` loads via a separate effect from `session`/`loading` (see
+  // useUser.ts) — waiting only on `loading` left a window where the real app
+  // (or its children, expecting a profile) rendered with profile still null,
+  // before a beat later either the profile arrived or the Terms gate below
+  // kicked in — a visible flash of the wrong screen. Wait for both.
+  if (loading || !session || !profile) {
     return (
       <main className="flex-1 flex items-center justify-center">
         <div className="relative w-16 h-16">
