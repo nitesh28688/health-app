@@ -80,7 +80,11 @@ async function handlePost(req: NextRequest) {
 
   let bodyArea: string;
   let complaint: string;
-  let programId: number;
+  // For initial mode the program row is only inserted AFTER the AI returns a
+  // usable routine — creating it up front left an orphaned zero-session
+  // program behind whenever the AI bailed (safety_note, invalid data, 502),
+  // which then showed in the user's list as a dead "Continue session" entry.
+  let programId: number | null = null;
   let sessionNumber: number;
   let historyPrompt = "";
 
@@ -112,11 +116,6 @@ async function handlePost(req: NextRequest) {
     complaint = String(body.complaint ?? "").slice(0, 500);
     if (!BODY_AREAS.includes(bodyArea as any)) return NextResponse.json({ error: "bad body_area" }, { status: 400 });
     if (!complaint.trim()) return NextResponse.json({ error: "describe the issue" }, { status: 400 });
-
-    const { data: program, error } = await db.from("physio_programs")
-      .insert({ user_id: userId, body_area: bodyArea, complaint }).select("id").single();
-    if (error || !program) return NextResponse.json({ error: error?.message ?? "couldn't create program" }, { status: 500 });
-    programId = program.id;
     sessionNumber = 1;
   }
 
@@ -133,7 +132,7 @@ ${JSON.stringify(library ?? [])}
 
 Only if the library genuinely has nothing suitable for this specific complaint, you may add ONE original bodyweight-only exercise with source:"ai" — keep it conservative, no equipment, no high-impact or advanced moves, and write clear step-by-step instructions.
 
-If the complaint text describes something beyond a home exercise routine (e.g. mentions a fracture, suspected tear, post-surgery, severe/sudden onset, numbness, or anything requiring in-person diagnosis), do NOT generate exercises — instead set safety_note to a short message telling the user to see a doctor or licensed physiotherapist, and return an empty exercises array.
+If the complaint text describes something beyond a home exercise routine (e.g. mentions a fracture, suspected tear, RECENT surgery (within the last ~6 months), severe/sudden onset, numbness, or anything requiring in-person diagnosis), do NOT generate exercises — instead set safety_note to a short message telling the user to see a doctor or licensed physiotherapist, and return an empty exercises array. A surgery years in the past with mild residual symptoms is NOT a reason to refuse — that is a normal home-physio case.
 
 Otherwise return 3-5 exercises, a short one-sentence rationale, and leave safety_note empty.`;
 
@@ -161,10 +160,18 @@ Otherwise return 3-5 exercises, a short one-sentence rationale, and leave safety
     { onConflict: "user_id,log_date,kind" });
 
   if (plan.safety_note && plan.safety_note.trim()) {
-    return NextResponse.json({ safety_note: plan.safety_note, program_id: programId });
+    return NextResponse.json({ safety_note: plan.safety_note });
   }
   if (!Array.isArray(plan.exercises) || plan.exercises.length === 0) {
     return NextResponse.json({ error: "AI couldn't generate a routine — try rephrasing" }, { status: 502 });
+  }
+
+  const isNewProgram = programId === null;
+  if (isNewProgram) {
+    const { data: program, error } = await db.from("physio_programs")
+      .insert({ user_id: userId, body_area: bodyArea, complaint }).select("id").single();
+    if (error || !program) return NextResponse.json({ error: "couldn't create program" }, { status: 500 });
+    programId = program.id;
   }
 
   const painBefore = Number.isInteger(body.pain_before) && body.pain_before >= 0 && body.pain_before <= 10
@@ -172,7 +179,11 @@ Otherwise return 3-5 exercises, a short one-sentence rationale, and leave safety
   const { data: session, error: sessErr } = await db.from("physio_program_sessions").insert({
     program_id: programId, session_number: sessionNumber, exercises: plan.exercises, pain_before: painBefore,
   }).select("id,session_number,exercises").single();
-  if (sessErr || !session) return NextResponse.json({ error: sessErr?.message ?? "couldn't save session" }, { status: 500 });
+  if (sessErr || !session) {
+    // Don't leave a zero-session program behind if the session write failed.
+    if (isNewProgram) await db.from("physio_programs").delete().eq("id", programId!);
+    return NextResponse.json({ error: "couldn't save session" }, { status: 500 });
+  }
 
   await db.from("physio_programs").update({ last_session_at: new Date().toISOString() }).eq("id", programId);
 

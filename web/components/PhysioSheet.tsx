@@ -93,16 +93,33 @@ export function PhysioSheet({ onClose, initialBodyAreaHint }: { onClose: () => v
     setScreen("intake");
   }
 
-  function continueProgram(p: Program) {
+  async function continueProgram(p: Program) {
+    setErrorMsg(null);
+    // A routine that was generated but never finished (user closed the sheet
+    // or the app mid-session) is resumed directly — no AI call, no quota
+    // burned. Only when the latest session is completed do we go through
+    // red-flags → pain check → a fresh follow-up generation.
+    const { data: open } = await supabase.from("physio_program_sessions")
+      .select("id,session_number,exercises")
+      .eq("program_id", p.id).is("completed_at", null)
+      .order("session_number", { ascending: false }).limit(1).maybeSingle();
+    if (open) {
+      setSession(open as Session);
+      setDone({});
+      setPainAfter(5);
+      setDifficulty("right");
+      setScreen("session");
+      return;
+    }
     setPendingMode("followup");
     setActiveProgram(p);
     setMedia(null);
     setRedFlags({});
-    setErrorMsg(null);
     setScreen("redflag");
   }
 
   async function resolveProgram(p: Program) {
+    if (!confirm(`Mark the ${p.body_area} program as resolved? It will disappear from this list.`)) return;
     await supabase.from("physio_programs").update({ status: "resolved" }).eq("id", p.id);
     loadPrograms();
   }
@@ -191,6 +208,8 @@ export function PhysioSheet({ onClose, initialBodyAreaHint }: { onClose: () => v
       if (b.safety_note) { setSafetyNote(b.safety_note); setScreen("safetyStop"); return; }
       setSession({ id: b.session_id, session_number: b.session_number, exercises: b.exercises, rationale: b.rationale });
       setDone({});
+      setPainAfter(5);
+      setDifficulty("right");
       setScreen("session");
     } catch {
       setErrorMsg("Couldn't reach AI — try again.");
@@ -250,6 +269,7 @@ export function PhysioSheet({ onClose, initialBodyAreaHint }: { onClose: () => v
                 </div>
               ))
             )}
+            {errorMsg && <p className="text-xs text-amber-600">{errorMsg}</p>}
             <button onClick={startNewComplaint}
               className="mt-2 w-full rounded-xl border-2 border-dashed border-teal-400 text-teal-600 dark:text-teal-400 py-3 font-semibold active:scale-[0.98]">
               + New complaint
