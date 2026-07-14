@@ -1,16 +1,16 @@
 # Handoff — pick up here next session
 
 ## Status
-Code for Physio/Rehab Mode is built and committed (this session, 2026-07-14), but
-**NOT YET LIVE**: migration `0032_physio.sql` needs to be run manually by the user via
-the Supabase SQL Editor (I don't have the DB password in any readable env file — this
-session hit that wall and asked the user to run it themselves rather than share the
-credential in chat). Confirm with the user whether they've run it before touching physio
-code further, and if unsure, check directly: `select count(*) from physio_exercises;`
-should return 34.
+Code for Physio/Rehab Mode is built, committed, and the migration is **LIVE** on
+production (2026-07-14) — confirmed directly: `physio_exercises` has 36 rows across all
+7 body areas, `physio_programs`/`physio_program_sessions` are reachable. The first
+migration attempt failed (`ai_suggestions_kind_check` was drafted off a stale
+constraint list — fixed in commit `2399f0e`, see STRUCTURE.md Phase 60 for the full
+story and the lesson about re-deriving check constraints from the LAST migration that
+touched them, not the first one found).
 
-Once the migration is applied, **full click-testing is still pending** — it needs a
-real login, which this session didn't have. Test the whole flow for real before
+**Full click-testing is still pending** — it needs a real login, which this session
+didn't have. Test the whole flow for real before
 considering this "done": Workout tab → `+ Physio` button → red-flag checklist → body
 area + complaint → optional photo/video → pain slider → AI generates a routine → do the
 exercises (SetTimer for holds, checkbox for rep-based) → finish → pain-after + difficulty
