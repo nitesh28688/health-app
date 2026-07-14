@@ -207,26 +207,31 @@ export function QuantitySheet({
     } else {
       setNutritionError("This is a shared food, so the fix only applies here — not saved as the new default.");
     }
-    // Persist an adjusted serving weight ("adjust weight" on a known serving,
-    // or a manually-typed custom-piece weight) as the food's new default too —
-    // best-effort, only takes effect for foods this user owns.
-    if (canEditFood && unit !== "grams" && gEach > 0) {
-      if (knownServing && gEach !== knownServing.grams) {
-        await supabase.from("food_servings").update({ grams: gEach }).eq("id", knownServing.id).then(() => {}, () => {});
-        setServings((prev) => prev.map((s) => (s.id === knownServing.id ? { ...s, grams: gEach } : s)));
-      } else if (unit === CUSTOM_PIECE) {
-        const { data: existing } = await supabase.from("food_servings")
-          .select("id").eq("food_id", food.id).eq("label", "piece").limit(1);
-        if (existing?.length) {
-          await supabase.from("food_servings").update({ grams: gEach }).eq("id", existing[0].id).then(() => {}, () => {});
-        } else {
-          await supabase.from("food_servings").insert({ food_id: food.id, label: "piece", grams: gEach }).then(() => {}, () => {});
-        }
-      }
-    }
     setSavingNutrition(false);
     setShowEditNutrition(false);
     onNutritionEdited?.(updated);
+  }
+
+  // Persist an adjusted serving weight ("adjust weight" on a known serving,
+  // or a manually-typed/AI custom-piece weight) as the food's new default —
+  // fired from the main Save button, since that's where the "adjust weight"
+  // flow actually ends. Best-effort, only takes effect for foods this user owns.
+  async function persistServingWeight() {
+    if (!(canEditFood && unit !== "grams" && gEach > 0)) return;
+    if (knownServing && gEach !== knownServing.grams) {
+      await supabase.from("food_servings").update({ grams: gEach }).eq("id", knownServing.id).then(() => {}, () => {});
+      setServings((prev) => prev.map((s) => (s.id === knownServing.id ? { ...s, grams: gEach } : s)));
+    } else if (unit === CUSTOM_PIECE) {
+      const { data: existing } = await supabase.from("food_servings")
+        .select("id,grams").eq("food_id", food.id).eq("label", "piece").limit(1);
+      if (existing?.length) {
+        if (existing[0].grams !== gEach) {
+          await supabase.from("food_servings").update({ grams: gEach }).eq("id", existing[0].id).then(() => {}, () => {});
+        }
+      } else {
+        await supabase.from("food_servings").insert({ food_id: food.id, label: "piece", grams: gEach }).then(() => {}, () => {});
+      }
+    }
   }
 
   return (
@@ -287,7 +292,7 @@ export function QuantitySheet({
             {nutritionError && <p className="text-xs text-amber-600">{nutritionError}</p>}
             <button onClick={saveNutritionEdit} disabled={savingNutrition}
               className="mt-1 w-full rounded-lg bg-indigo-600 text-white py-2 text-sm font-semibold active:scale-[0.98] disabled:opacity-60">
-              {savingNutrition ? "Saving…" : "Use these values"}
+              {savingNutrition ? "Saving…" : "Save"}
             </button>
           </div>
         )}
@@ -382,7 +387,7 @@ export function QuantitySheet({
         )}
 
         <button
-          onClick={() => {
+          onClick={async () => {
             let label: string | null = null;
             if (unit === "grams") {
               label = food.is_liquid ? `${amt} ml` : null;
@@ -391,6 +396,7 @@ export function QuantitySheet({
             } else if (knownServing) {
               label = labelWithCount(amt, knownServing.label);
             }
+            await persistServingWeight();
             onSave(g, label);
           }}
           disabled={!(g > 0)}
