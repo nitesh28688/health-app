@@ -22,6 +22,18 @@ const admin = () =>
     auth: { persistSession: false },
   });
 
+// Recursively remove null characters from every string in a value.
+// JSON.parse turns the AI's "\u0000" escapes into real NUL chars, which
+// PostgreSQL rejects in both jsonb and text columns.
+function stripNulls<T>(value: T): T {
+  if (typeof value === "string") return value.replaceAll("\u0000", "") as T;
+  if (Array.isArray(value)) return value.map(stripNulls) as T;
+  if (value && typeof value === "object") {
+    return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, stripNulls(v)])) as T;
+  }
+  return value;
+}
+
 const SCHEMA = {
   type: "OBJECT",
   properties: {
@@ -113,7 +125,7 @@ async function handlePost(req: NextRequest) {
       `"too_hard", ease off — reduce volume or swap to a gentler exercise for the same area. Never introduce a dramatic jump.`;
   } else {
     bodyArea = String(body.body_area ?? "");
-    complaint = String(body.complaint ?? "").slice(0, 500);
+    complaint = stripNulls(String(body.complaint ?? "").slice(0, 500));
     if (!BODY_AREAS.includes(bodyArea as any)) return NextResponse.json({ error: "bad body_area" }, { status: 400 });
     if (!complaint.trim()) return NextResponse.json({ error: "describe the issue" }, { status: 400 });
     sessionNumber = 1;
@@ -154,6 +166,12 @@ Otherwise return 3-5 exercises, a short one-sentence rationale, and leave safety
   let plan: { safety_note?: string; rationale: string; exercises: any[] };
   try { plan = JSON.parse(resBody.candidates[0].content.parts[0].text); }
   catch { return NextResponse.json({ error: "AI returned invalid data" }, { status: 502 }); }
+
+  // PostgreSQL can't store \u0000 in jsonb (or text) — an AI response
+  // containing a stray null escape made the session insert fail live on
+  // 2026-07-14 with "unsupported Unicode escape sequence". Scrub every
+  // string in the plan before anything touches the database.
+  plan = stripNulls(plan);
 
   await db.from("ai_suggestions").upsert(
     { user_id: userId, log_date: today, kind: "physio_plan", content: { count: used + 1 } },

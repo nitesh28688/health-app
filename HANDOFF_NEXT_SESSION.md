@@ -20,6 +20,25 @@ sensible follow-up (adapted from the check-in, not identical to session 1).
 STRUCTURE.md Phase 60 has full technical detail; `project_health_app` +
 `project_health_app_roadmap` memories also updated.
 
+## Post-launch fixes (same day, after the user's first real runs)
+- "unsupported Unicode escape sequence" on generate — ROOT CAUSE FOUND: that is
+  PostgreSQL's jsonb error for a NUL (backslash-u0000) character; the AI's generated
+  exercise JSON contained one and the session insert failed, with the raw DB message
+  relayed to the UI. Fixed three ways: catch-all in the route (no raw messages leak),
+  stripNulls() scrub on the parsed plan + complaint text before any DB write, and the
+  program row is now created only AFTER a usable routine exists (the failure had left
+  an orphaned zero-session program — confirmed in prod data as program 1).
+- Generated-but-unfinished sessions were unreachable ("Continue session" demanded a
+  completed session) — now resumed directly with no AI call. Confirmed in prod data
+  as program 2.
+- Rear-camera video preview was selfie-mirrored (left/right swapped) — fixed.
+- Prompt over-blocked on any "post-surgery" mention — now only recent (~6mo) surgery
+  triggers the safety refusal; years-old surgery with mild pain generates normally.
+- Editor gotcha discovered while fixing this: typing a backslash-u0000 escape in an
+  Edit tool string can insert a LITERAL NUL byte into the source file (git then treats
+  it as binary). If it happens, fix via a node script that replaces the NUL char with
+  the 6-character escape text — don't try to Edit it out directly.
+
 ## What was built (2026-07-14)
 - `supabase/migrations/0032_physio.sql` — `physio_exercises` (34 curated rehab
   exercises, knee/shoulder/back/neck/hip/ankle/wrist), `physio_programs`,
