@@ -73,7 +73,8 @@ alter table ai_suggestions
   add constraint ai_suggestions_kind_check
   check (kind in (
     'daily_tip', 'daily_tip_calls', 'meal_idea', 'workout_tip', 'food_estimate',
-    'assistant_turn', 'workout_suggest', 'form_check', 'physio_plan'
+    'assistant_turn', 'workout_suggest', 'form_check', 'skin_scan', 'eye_scan', 'hair_scan',
+    'wellness_insight', 'physio_plan'
   ));
 
 -- ============ curated exercise seed (public domain standard rehab moves) ============
