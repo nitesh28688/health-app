@@ -286,8 +286,11 @@ export function PhysioSheet({ onClose, initialBodyAreaHint }: { onClose: () => v
                 <Video className="w-4 h-4" /> {recording ? `Recording ${recSeconds}s…` : "Video"}
               </button>
             </div>
+            {/* Rear/environment camera feed, shown as-is — mirroring (scale-x-[-1]) is
+                only correct for front-facing selfie previews; mirroring a rear feed
+                makes left/right look swapped to whoever's filming. */}
             {recording && (
-              <video ref={videoRef} muted playsInline className="w-full aspect-video bg-black rounded-xl object-cover scale-x-[-1]" />
+              <video ref={videoRef} muted playsInline className="w-full aspect-video bg-black rounded-xl object-cover" />
             )}
             {media && <p className="text-xs text-emerald-600">{media.kind === "image" ? "Photo" : "Video"} attached.</p>}
 
