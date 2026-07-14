@@ -36,16 +36,17 @@ export function QuantitySheet({
     fat_g?: number;
     fiber_g?: number;
     is_liquid?: boolean;
+    source?: string | null;
   };
   initialQtyGrams?: number;
   onClose: () => void;
   onSave: (totalGrams: number, unitLabel: string | null) => void;
-  // Fired when the user corrects the per-100g nutrition facts (e.g. reading
-  // the real label off a packet in hand) — lets the caller update its own
-  // food state so the log entry uses the corrected numbers, independent of
+  // Fired when the user corrects the name or per-100g nutrition facts (e.g.
+  // reading the real label off a packet in hand) — lets the caller update its
+  // own food state so the log entry uses the corrected numbers, independent of
   // whether the underlying `foods` row could be updated (only AI/custom
   // foods owned by this user can be; shared seed foods can't via RLS).
-  onNutritionEdited?: (updated: { kcal: number; protein_g: number; carbs_g: number; fat_g: number }) => void;
+  onNutritionEdited?: (updated: { name: string; kcal: number; protein_g: number; carbs_g: number; fat_g: number }) => void;
 }) {
   const [servings, setServings] = useState<Serving[]>([]);
   const [unit, setUnit] = useState<"grams" | number>("grams");
@@ -63,11 +64,14 @@ export function QuantitySheet({
   // when the user has the actual packet in hand they should be able to just
   // type the real numbers rather than being stuck with the estimate.
   const [showEditNutrition, setShowEditNutrition] = useState(false);
+  const [editName, setEditName] = useState(food.name);
   const [editKcal, setEditKcal] = useState(String(Math.round(Number(food.kcal))));
   const [editProtein, setEditProtein] = useState(String(food.protein_g ?? 0));
   const [editCarbs, setEditCarbs] = useState(String(food.carbs_g ?? 0));
   const [editFat, setEditFat] = useState(String(food.fat_g ?? 0));
   const [savingNutrition, setSavingNutrition] = useState(false);
+  const [nutritionError, setNutritionError] = useState<string | null>(null);
+  const canEditFood = food.source === "ai" || food.source === "custom";
   const liveKcal = parseFloat(editKcal) || 0;
   const baseUnitLabel = food.is_liquid ? "ml" : "grams";
 
@@ -179,17 +183,47 @@ export function QuantitySheet({
   const kcalPreview = g > 0 ? Math.round((liveKcal * g) / 100) : null;
 
   async function saveNutritionEdit() {
+    const name = editName.trim() || food.name;
     const updated = {
+      name,
       kcal: parseFloat(editKcal) || 0,
       protein_g: parseFloat(editProtein) || 0,
       carbs_g: parseFloat(editCarbs) || 0,
       fat_g: parseFloat(editFat) || 0,
     };
     setSavingNutrition(true);
-    // Best-effort: only AI/custom foods owned by this user can actually be
-    // updated (RLS blocks shared seed foods) — but the corrected values
-    // should still apply to *this* log entry either way, via onNutritionEdited.
-    await supabase.from("foods").update(updated).eq("id", food.id).then(() => {}, () => {});
+    setNutritionError(null);
+    // Only AI/custom foods owned by this user can actually be updated (RLS
+    // blocks shared seed foods) — surface it when that happens instead of
+    // silently pretending it saved. The corrected values still apply to
+    // *this* log entry either way, via onNutritionEdited.
+    if (canEditFood) {
+      const { error } = await supabase.from("foods").update(updated).eq("id", food.id);
+      if (error) {
+        setSavingNutrition(false);
+        setNutritionError("Couldn't save — " + error.message);
+        return;
+      }
+    } else {
+      setNutritionError("This is a shared food, so the fix only applies here — not saved as the new default.");
+    }
+    // Persist an adjusted serving weight ("adjust weight" on a known serving,
+    // or a manually-typed custom-piece weight) as the food's new default too —
+    // best-effort, only takes effect for foods this user owns.
+    if (canEditFood && unit !== "grams" && gEach > 0) {
+      if (knownServing && gEach !== knownServing.grams) {
+        await supabase.from("food_servings").update({ grams: gEach }).eq("id", knownServing.id).then(() => {}, () => {});
+        setServings((prev) => prev.map((s) => (s.id === knownServing.id ? { ...s, grams: gEach } : s)));
+      } else if (unit === CUSTOM_PIECE) {
+        const { data: existing } = await supabase.from("food_servings")
+          .select("id").eq("food_id", food.id).eq("label", "piece").limit(1);
+        if (existing?.length) {
+          await supabase.from("food_servings").update({ grams: gEach }).eq("id", existing[0].id).then(() => {}, () => {});
+        } else {
+          await supabase.from("food_servings").insert({ food_id: food.id, label: "piece", grams: gEach }).then(() => {}, () => {});
+        }
+      }
+    }
     setSavingNutrition(false);
     setShowEditNutrition(false);
     onNutritionEdited?.(updated);
@@ -203,7 +237,7 @@ export function QuantitySheet({
       >
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
-            <p className="font-bold">{food.name}</p>
+            <p className="font-bold truncate">{editName || food.name}</p>
             <p className="text-xs text-neutral-500 mb-4 flex items-center gap-1.5">
               {food.brand && `${food.brand} · `}
               {Math.round(liveKcal)} kcal /100g
@@ -219,6 +253,14 @@ export function QuantitySheet({
 
         {showEditNutrition && (
           <div className="mb-4 p-3 rounded-xl border border-indigo-200 dark:border-indigo-800 bg-indigo-50/50 dark:bg-indigo-950/20 flex flex-col gap-2" onClick={(e) => e.stopPropagation()}>
+            {!canEditFood && (
+              <p className="text-xs text-amber-600">This is a shared food — your fix will apply to this entry, but won't change the default for others.</p>
+            )}
+            <label className="flex flex-col gap-1">
+              <span className="text-[11px] text-neutral-500 font-medium">Name</span>
+              <input value={editName} onChange={(e) => setEditName(e.target.value)}
+                className="rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-2.5 py-2 text-sm" />
+            </label>
             <p className="text-xs text-neutral-500 -mt-0.5 mb-1">Per 100{food.is_liquid ? "ml" : "g"} — correct these from the packet label if the AI estimate is off.</p>
             <div className="grid grid-cols-2 gap-2">
               <label className="flex flex-col gap-1">
@@ -242,6 +284,7 @@ export function QuantitySheet({
                   className="rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-2.5 py-2 text-sm" />
               </label>
             </div>
+            {nutritionError && <p className="text-xs text-amber-600">{nutritionError}</p>}
             <button onClick={saveNutritionEdit} disabled={savingNutrition}
               className="mt-1 w-full rounded-lg bg-indigo-600 text-white py-2 text-sm font-semibold active:scale-[0.98] disabled:opacity-60">
               {savingNutrition ? "Saving…" : "Use these values"}
