@@ -48,6 +48,19 @@ const SCHEMA = {
 };
 
 export async function POST(req: NextRequest) {
+  try {
+    return await handlePost(req);
+  } catch (e) {
+    // Catch-all so an unexpected exception (e.g. a malformed upstream
+    // response) never leaks a raw JS error message to the client — every
+    // other AI route in this app is narrow enough not to need this, but
+    // this one has more branching, so a blanket safety net earns its keep.
+    console.error("[physio-plan] unhandled error:", e);
+    return NextResponse.json({ error: "something went wrong — try again" }, { status: 500 });
+  }
+}
+
+async function handlePost(req: NextRequest) {
   const jwt = req.headers.get("authorization")?.replace("Bearer ", "");
   if (!jwt) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
