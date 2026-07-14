@@ -190,6 +190,11 @@ function Diary({ profile, userId }: { profile: Profile | null; userId: string })
 
   const tKcal = Number(totals?.kcal ?? 0);
   const burned = Number(totals?.kcal_burned ?? 0);
+  const kcalTarget = profile?.target_kcal ?? 2000;
+  // green under target, amber approaching it (>=90%), red once it's crossed —
+  // a hard flip right at the target reads as alarming for a 1 kcal overshoot.
+  const kcalColorClass =
+    tKcal > kcalTarget ? "text-red-500" : tKcal >= kcalTarget * 0.9 ? "text-amber-500" : "text-emerald-500";
   const microEntries = micros ? Object.entries(micros).filter(([k]) => MICRO_LABELS[k]) : [];
 
   async function submitSmartLog() {
@@ -297,7 +302,7 @@ function Diary({ profile, userId }: { profile: Profile | null; userId: string })
       ) : (
       <div className="rounded-2xl border border-neutral-200/60 dark:border-neutral-800/60 bg-white/50 dark:bg-neutral-900/50 backdrop-blur-md shadow-sm p-4">
         <div className="flex items-baseline justify-between">
-          <p className="text-3xl font-bold">{Math.round(tKcal)}<span className="text-base font-normal text-neutral-500"> / {Math.round(profile?.target_kcal ?? 2000)} kcal</span></p>
+          <p className={`text-3xl font-bold ${kcalColorClass}`}>{Math.round(tKcal)}<span className="text-base font-normal text-neutral-500"> / {Math.round(kcalTarget)} kcal</span></p>
           {burned > 0 && <p className="text-sm text-orange-500 flex items-center gap-1"><Flame className="w-3.5 h-3.5" /> {Math.round(burned)}</p>}
         </div>
         <div className="flex gap-2 mt-4 pb-2 border-b border-neutral-100 dark:border-neutral-900">
