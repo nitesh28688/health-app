@@ -53,8 +53,11 @@ export function WellnessCaptureSheet({ scanType, onClose, onCapture }: WellnessC
     }, 10000);
 
     try {
+      // Ask for a high-res feed: skin/hair texture analysis needs detail, and
+      // 640x480 was starving the AI of it. compressImage caps the upload at
+      // 1024px anyway, so a 1920-wide capture downscaled beats a 640 native.
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: { ideal: facingMode } },
+        video: { width: { ideal: 1920 }, height: { ideal: 1440 }, facingMode: { ideal: facingMode } },
         audio: false,
       });
       if (settled || !activeRef.current) {

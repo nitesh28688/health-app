@@ -20,6 +20,8 @@ import {
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
+interface Recommendation { ingredient: string; why: string; how_to_use: string; time_of_day?: "am" | "pm" | "both" }
+
 interface Scan {
   id: string;
   scan_type: "skin" | "eye" | "hair";
@@ -27,12 +29,40 @@ interface Scan {
   photo_url: string;
   is_usable: boolean;
   observations: { area: string; note: string }[];
-  recommendations: { ingredient: string; why: string; how_to_use: string }[];
+  recommendations: Recommendation[];
   created_at: string;
   overall_score?: number | null;
   sub_scores?: { category: string; score: number; note: string }[] | null;
   classification?: string | null;
   skin_age_estimate?: number | null;
+  photo_quality?: "good" | "fair" | "poor" | null;
+  ai_confidence?: "high" | "medium" | "low" | null;
+}
+
+// Severity-correct score color: green when good, amber when middling, rose
+// when genuinely low. (The old mapping had 50-79 rose and <50 amber — a 55
+// looked more alarming than a 30.)
+function scoreColorClass(c: number) {
+  return c >= 80 ? "text-emerald-500" : c >= 60 ? "text-amber-500" : "text-rose-500";
+}
+function scoreColorHex(c: number) {
+  return c >= 80 ? "#10b981" : c >= 60 ? "#f59e0b" : "#f43f5e";
+}
+function scoreBarClass(c: number) {
+  return c >= 80 ? "bg-emerald-500" : c >= 60 ? "bg-amber-500" : "bg-rose-500";
+}
+
+// Which part of the day a recommendation belongs to. New scans carry an
+// AI-set time_of_day; older rows fall back to a keyword heuristic. This
+// replaced an index-parity split (i % 2) that could put retinol in "Morning"
+// and SPF in "Evening" — actively wrong advice, not just arbitrary.
+function routineTime(rec: Recommendation): "am" | "pm" | "both" {
+  if (rec.time_of_day === "am" || rec.time_of_day === "pm" || rec.time_of_day === "both") return rec.time_of_day;
+  const n = (rec.ingredient + " " + rec.how_to_use).toLowerCase();
+  if (/\bspf\b|sunscreen|sun screen/.test(n)) return "am";
+  if (/retino|\baha\b|\bbha\b|glycolic|salicylic|lactic|exfoli/.test(n)) return "pm";
+  if (/vitamin c|ascorb/.test(n)) return "am";
+  return "both";
 }
 
 type ScanType = "skin" | "eye" | "hair";
@@ -100,6 +130,39 @@ function Sparkline({ scores, positive }: { scores: number[]; positive: boolean }
   );
 }
 
+// ─── Score History (report detail) ────────────────────────────────────────────
+function ScoreHistory({ points }: { points: { score: number; date: string }[] }) {
+  if (points.length < 2) return null;
+  const w = 320, h = 96, padX = 10, padY = 12;
+  const scores = points.map(p => p.score);
+  const min = Math.min(...scores), max = Math.max(...scores);
+  const range = Math.max(10, max - min); // don't over-zoom a near-flat series
+  const x = (i: number) => padX + (i / (points.length - 1)) * (w - padX * 2);
+  const y = (s: number) => h - padY - ((s - min) / range) * (h - padY * 2);
+  const best = max;
+  const fmt = (d: string) => new Date(d + "T12:00:00").toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+  return (
+    <div className="p-3.5 bg-neutral-50 dark:bg-neutral-900/50 rounded-2xl border border-neutral-100 dark:border-neutral-800/50">
+      <div className="flex items-center justify-between mb-2">
+        <h4 className="text-xs font-black uppercase tracking-wider text-neutral-400">Score History</h4>
+        <span className="text-[10px] font-black text-emerald-500 flex items-center gap-1"><Star className="w-3 h-3" />Best {best}</span>
+      </div>
+      <svg viewBox={`0 0 ${w} ${h}`} className="w-full">
+        <polyline fill="none" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+          className="stroke-rose-400" points={points.map((p, i) => `${x(i)},${y(p.score)}`).join(" ")} />
+        {points.map((p, i) => (
+          <circle key={i} cx={x(i)} cy={y(p.score)} r={p.score === best ? 5 : 3.5} strokeWidth="2"
+            className={p.score === best ? "fill-emerald-500 stroke-emerald-500" : "fill-white dark:fill-neutral-900 stroke-rose-400"} />
+        ))}
+      </svg>
+      <div className="flex justify-between mt-1 text-[9px] font-semibold text-neutral-400">
+        <span>{fmt(points[0].date)}</span>
+        <span>{fmt(points[points.length - 1].date)}</span>
+      </div>
+    </div>
+  );
+}
+
 // ─── Score Ring ───────────────────────────────────────────────────────────────
 function ScoreRing({ score, size = "md" }: { score: number; size?: "sm" | "md" | "lg" }) {
   const cfgs = {
@@ -111,7 +174,7 @@ function ScoreRing({ score, size = "md" }: { score: number; size?: "sm" | "md" |
   const circ = 2 * Math.PI * r;
   const c = Math.max(0, Math.min(100, score));
   const offset = circ - (c / 100) * circ;
-  const col = c >= 80 ? "text-emerald-500" : c >= 50 ? "text-rose-500" : "text-amber-500";
+  const col = scoreColorClass(c);
   return (
     <div className={`relative flex items-center justify-center ${cls} shrink-0`}>
       <svg className="w-full h-full transform -rotate-90" viewBox={vb}>
@@ -190,6 +253,17 @@ function WellnessMain({ userId, displayName }: { userId: string; displayName: st
       const grouped: Record<ScanType, Scan[]> = { skin: [], eye: [], hair: [] };
       for (const s of scans) if (s.is_usable && s.overall_score != null) grouped[s.scan_type].push(s);
       for (const t of SCAN_TYPES) r[t] = grouped[t].slice(0, 7).reverse().map(s => s.overall_score!);
+    }
+    return r;
+  }, [scans]);
+
+  // Chronological (score, date) pairs per type — the report detail's history
+  // chart needs dates, which scoresByType (numbers only, for sparklines) lacks.
+  const historyByType = useMemo(() => {
+    const r: Record<ScanType, { score: number; date: string }[]> = { skin: [], eye: [], hair: [] };
+    if (scans) {
+      for (const s of scans) if (s.is_usable && s.overall_score != null) r[s.scan_type].push({ score: s.overall_score, date: s.taken_at });
+      for (const t of SCAN_TYPES) r[t] = r[t].slice(0, 10).reverse();
     }
     return r;
   }, [scans]);
@@ -319,7 +393,7 @@ function WellnessMain({ userId, displayName }: { userId: string; displayName: st
       const score = aggregateScore;
       ctx.strokeStyle = "#f1f5f9"; ctx.lineWidth = 24; ctx.lineCap = "round";
       ctx.beginPath(); ctx.arc(540, 540, 160, 0, Math.PI * 2); ctx.stroke();
-      ctx.strokeStyle = score >= 80 ? "#10b981" : score >= 50 ? "#f43f5e" : "#f59e0b";
+      ctx.strokeStyle = scoreColorHex(score);
       ctx.beginPath(); ctx.arc(540, 540, 160, -Math.PI / 2, -Math.PI / 2 + (score / 100) * Math.PI * 2); ctx.stroke();
       ctx.fillStyle = "#0f172a"; ctx.font = "900 132px system-ui,sans-serif"; ctx.fillText(String(Math.round(score)), 540, 525);
       ctx.font = "800 28px system-ui,sans-serif"; ctx.fillStyle = "#94a3b8"; ctx.fillText("/100", 540, 615);
@@ -383,7 +457,7 @@ function WellnessMain({ userId, displayName }: { userId: string; displayName: st
       const s = scan.overall_score;
       ctx.strokeStyle = "rgba(255,255,255,0.06)"; ctx.lineWidth = 24; ctx.lineCap = "round";
       ctx.beginPath(); ctx.arc(W / 2, 510, 140, 0, Math.PI * 2); ctx.stroke();
-      const scoreColor = s >= 80 ? "#10b981" : s >= 50 ? "#f43f5e" : "#f59e0b";
+      const scoreColor = scoreColorHex(s);
       ctx.strokeStyle = scoreColor;
       ctx.save();
       ctx.shadowColor = scoreColor; ctx.shadowBlur = 20;
@@ -401,6 +475,14 @@ function WellnessMain({ userId, displayName }: { userId: string; displayName: st
         ctx.fillStyle = "#c4b5fd"; ctx.font = "bold 22px system-ui,sans-serif";
         const cl = scan.classification.charAt(0).toUpperCase() + scan.classification.slice(1);
         ctx.fillText((scan.scan_type === "skin" ? "Skin Type: " : "Hair Type: ") + cl, W / 2, chipY + 24);
+        chipY += 64;
+      }
+      if (scan.scan_type === "skin" && scan.skin_age_estimate != null) {
+        ctx.fillStyle = "rgba(16,185,129,0.15)"; ctx.strokeStyle = "#10b981"; ctx.lineWidth = 1;
+        ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(W / 2 - 140, chipY, 280, 48, 24); else ctx.rect(W / 2 - 140, chipY, 280, 48);
+        ctx.fill(); ctx.stroke();
+        ctx.fillStyle = "#6ee7b7"; ctx.font = "bold 22px system-ui,sans-serif";
+        ctx.fillText("Visible Skin Age: " + scan.skin_age_estimate, W / 2, chipY + 24);
         chipY += 64;
       }
       
@@ -822,6 +904,38 @@ function WellnessMain({ userId, displayName }: { userId: string; displayName: st
                   </div>
                 ))}
               </div>
+              {/* Category-level deltas — only meaningful when both scans are the
+                  same type; A is treated as "before" and B as "after". */}
+              {compareA.scan_type === compareB.scan_type && compareA.sub_scores?.length && compareB.sub_scores?.length ? (
+                <div className="px-4 py-3 border-t border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950">
+                  <h4 className="text-[10px] font-black uppercase tracking-wider text-neutral-400 mb-2">Sub-score change (A → B)</h4>
+                  <div className="flex flex-col gap-1.5">
+                    {compareA.sub_scores.map(subA => {
+                      const subB = compareB.sub_scores!.find(s => s.category === subA.category);
+                      if (!subB) return null;
+                      const d = subB.score - subA.score;
+                      return (
+                        <div key={subA.category} className="flex items-center justify-between text-xs">
+                          <span className="font-semibold text-neutral-600 dark:text-neutral-400">{subA.category}</span>
+                          <span className="flex items-center gap-2 font-bold">
+                            <span className="text-neutral-400">{subA.score}</span>
+                            <span className="text-neutral-300">→</span>
+                            <span className="text-neutral-700 dark:text-neutral-300">{subB.score}</span>
+                            <span className={"flex items-center gap-0.5 w-12 justify-end " + (d > 0 ? "text-emerald-500" : d < 0 ? "text-rose-500" : "text-neutral-400")}>
+                              {d > 0 ? <TrendingUp className="w-3 h-3" /> : d < 0 ? <TrendingDown className="w-3 h-3" /> : <Minus className="w-3 h-3" />}
+                              {d > 0 ? "+" + d : d}
+                            </span>
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : compareA.scan_type !== compareB.scan_type ? (
+                <p className="px-4 py-2.5 border-t border-neutral-200 dark:border-neutral-800 text-[10px] text-neutral-400 bg-white dark:bg-neutral-950">
+                  Different scan types — pick two {SCAN_META[compareA.scan_type].label} scans to see sub-score changes.
+                </p>
+              ) : null}
             </div>
           )}
 
@@ -945,6 +1059,16 @@ function WellnessMain({ userId, displayName }: { userId: string; displayName: st
                           {selectedScan.scan_type === "skin" ? "Skin" : "Hair"}: {selectedScan.classification.charAt(0).toUpperCase() + selectedScan.classification.slice(1)}
                         </span>
                       )}
+                      {selectedScan.scan_type === "skin" && selectedScan.skin_age_estimate != null && (
+                        <span className="inline-block bg-emerald-400/25 text-white text-[11px] font-bold px-3 py-1 rounded-full">
+                          Visible skin age: {selectedScan.skin_age_estimate}
+                        </span>
+                      )}
+                      {selectedScan.photo_quality && selectedScan.photo_quality !== "good" && (
+                        <span className="inline-block bg-amber-400/25 text-white text-[11px] font-bold px-3 py-1 rounded-full" title="Scores are conservative when the photo is less than ideal">
+                          {selectedScan.photo_quality === "fair" ? "Fair photo" : "Poor photo"}{selectedScan.ai_confidence ? " · " + selectedScan.ai_confidence + " confidence" : ""}
+                        </span>
+                      )}
                     </div>
                     {(() => {
                       const t = getScanTrend(selectedScan);
@@ -985,6 +1109,9 @@ function WellnessMain({ userId, displayName }: { userId: string; displayName: st
                   <div className="w-full aspect-video rounded-2xl overflow-hidden border border-neutral-100 dark:border-neutral-800">
                     <img src={selectedScan.photo_url} alt="Scan" className="w-full h-full object-cover" />
                   </div>
+                  {selectedScan.is_usable && historyByType[selectedScan.scan_type].length >= 2 && (
+                    <ScoreHistory points={historyByType[selectedScan.scan_type]} />
+                  )}
                   {selectedScan.is_usable && selectedScan.sub_scores?.length ? (
                     <div className="space-y-2.5">
                       <h4 className="text-xs font-black uppercase tracking-wider text-neutral-400">Sub-Scores</h4>
@@ -992,14 +1119,14 @@ function WellnessMain({ userId, displayName }: { userId: string; displayName: st
                         <div key={idx} className="p-3.5 bg-neutral-50 dark:bg-neutral-900/50 rounded-2xl border border-neutral-100 dark:border-neutral-800/50">
                           <div className="flex items-center justify-between mb-2">
                             <span className="text-xs font-bold text-neutral-700 dark:text-neutral-300">{sub.category}</span>
-                            <span className="text-xs font-black text-rose-600 dark:text-rose-400">{sub.score}/100</span>
+                            <span className={"text-xs font-black " + scoreColorClass(sub.score)}>{sub.score}/100</span>
                           </div>
                           <div className="w-full bg-neutral-200 dark:bg-neutral-800 rounded-full h-1.5 overflow-hidden mb-1.5">
-                            <motion.div 
+                            <motion.div
                               initial={{ width: 0 }}
                               animate={{ width: `${sub.score}%` }}
                               transition={{ duration: 1, ease: "easeOut", delay: idx * 0.1 }}
-                              className="bg-gradient-to-r from-rose-500 to-violet-600 h-1.5 rounded-full" 
+                              className={scoreBarClass(sub.score) + " h-1.5 rounded-full"}
                             />
                           </div>
                           <p className="text-[11px] text-neutral-500 dark:text-neutral-400 leading-relaxed">{sub.note}</p>
@@ -1033,13 +1160,17 @@ function WellnessMain({ userId, displayName }: { userId: string; displayName: st
                           <h4 className="text-sm font-black text-neutral-800 dark:text-neutral-200">Morning Routine</h4>
                         </div>
                         <div className="space-y-2.5">
-                          {selectedScan.recommendations.filter((_, i) => i % 2 === 0).map((rec, idx) => (
+                          {selectedScan.recommendations.filter(rec => routineTime(rec) !== "pm").map((rec, idx) => (
                             <div key={idx} className="p-4 bg-amber-50/40 dark:bg-amber-950/5 rounded-2xl border border-amber-100/50 dark:border-amber-900/20">
-                              <div className="flex items-center gap-2 mb-1.5"><CheckCircle className="w-4 h-4 text-amber-500 shrink-0" /><span className="font-black text-sm text-amber-800 dark:text-amber-300">{rec.ingredient}</span></div>
+                              <div className="flex items-center gap-2 mb-1.5"><CheckCircle className="w-4 h-4 text-amber-500 shrink-0" /><span className="font-black text-sm text-amber-800 dark:text-amber-300">{rec.ingredient}</span>
+                                {routineTime(rec) === "both" && <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-400 uppercase">AM + PM</span>}</div>
                               <p className="text-xs text-neutral-600 dark:text-neutral-400 mb-2 leading-relaxed"><b>Why:</b> {rec.why}</p>
                               <p className="text-xs text-neutral-600 dark:text-neutral-400 p-2.5 bg-white dark:bg-neutral-900 rounded-xl border border-neutral-100 dark:border-neutral-800 leading-relaxed"><b>How:</b> {rec.how_to_use}</p>
                             </div>
                           ))}
+                          {selectedScan.recommendations.every(rec => routineTime(rec) === "pm") && (
+                            <p className="text-xs text-neutral-400 px-1">Nothing morning-specific — see the evening routine below.</p>
+                          )}
                         </div>
                       </div>
                       <div>
@@ -1048,13 +1179,17 @@ function WellnessMain({ userId, displayName }: { userId: string; displayName: st
                           <h4 className="text-sm font-black text-neutral-800 dark:text-neutral-200">Evening Routine</h4>
                         </div>
                         <div className="space-y-2.5">
-                          {selectedScan.recommendations.filter((_, i) => i % 2 !== 0).map((rec, idx) => (
+                          {selectedScan.recommendations.filter(rec => routineTime(rec) !== "am").map((rec, idx) => (
                             <div key={idx} className="p-4 bg-indigo-50/40 dark:bg-indigo-950/5 rounded-2xl border border-indigo-100/50 dark:border-indigo-900/20">
-                              <div className="flex items-center gap-2 mb-1.5"><CheckCircle className="w-4 h-4 text-indigo-500 shrink-0" /><span className="font-black text-sm text-indigo-800 dark:text-indigo-300">{rec.ingredient}</span></div>
+                              <div className="flex items-center gap-2 mb-1.5"><CheckCircle className="w-4 h-4 text-indigo-500 shrink-0" /><span className="font-black text-sm text-indigo-800 dark:text-indigo-300">{rec.ingredient}</span>
+                                {routineTime(rec) === "both" && <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-400 uppercase">AM + PM</span>}</div>
                               <p className="text-xs text-neutral-600 dark:text-neutral-400 mb-2 leading-relaxed"><b>Why:</b> {rec.why}</p>
                               <p className="text-xs text-neutral-600 dark:text-neutral-400 p-2.5 bg-white dark:bg-neutral-900 rounded-xl border border-neutral-100 dark:border-neutral-800 leading-relaxed"><b>How:</b> {rec.how_to_use}</p>
                             </div>
                           ))}
+                          {selectedScan.recommendations.every(rec => routineTime(rec) === "am") && (
+                            <p className="text-xs text-neutral-400 px-1">Nothing evening-specific — see the morning routine above.</p>
+                          )}
                         </div>
                       </div>
                       <div className="p-3.5 bg-neutral-50 dark:bg-neutral-900/50 rounded-2xl border border-neutral-100 dark:border-neutral-800 text-center">

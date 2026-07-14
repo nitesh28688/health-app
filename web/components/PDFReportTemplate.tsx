@@ -55,6 +55,16 @@ export const PDFReportTemplate = React.forwardRef<HTMLDivElement, PDFReportTempl
                   {scan.classification.toUpperCase()}
                 </div>
               )}
+              {scan.scan_type === "skin" && scan.skin_age_estimate != null && (
+                <div className="py-1.5 px-3 rounded-full text-sm font-bold inline-block" style={{ backgroundColor: "#d1fae5", color: "#065f46" }}>
+                  VISIBLE SKIN AGE: {scan.skin_age_estimate}
+                </div>
+              )}
+              {scan.photo_quality && scan.photo_quality !== "good" && (
+                <div className="py-1.5 px-3 rounded-full text-sm font-bold inline-block" style={{ backgroundColor: "#fef3c7", color: "#92400e" }}>
+                  {String(scan.photo_quality).toUpperCase()} PHOTO{scan.ai_confidence ? ` · ${String(scan.ai_confidence).toUpperCase()} CONFIDENCE` : ""}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -138,14 +148,16 @@ export const PDFReportTemplate = React.forwardRef<HTMLDivElement, PDFReportTempl
 PDFReportTemplate.displayName = "PDFReportTemplate";
 
 function SubScoreRow({ sub }: { sub: any }) {
+  // Severity-mapped bar color, matching the in-app report (green/amber/rose).
+  const barColor = sub.score >= 80 ? "#10b981" : sub.score >= 60 ? "#f59e0b" : "#f43f5e";
   return (
     <div>
       <div className="flex justify-between font-bold mb-1">
         <span style={{ color: "#334155" }}>{sub.category}</span>
-        <span style={{ color: "#64748b" }}>{sub.score}/100</span>
+        <span style={{ color: barColor }}>{sub.score}/100</span>
       </div>
       <div className="w-full h-2.5 rounded-full overflow-hidden" style={{ backgroundColor: "#f1f5f9" }}>
-        <div className="h-full rounded-full" style={{ width: `${sub.score}%`, background: "linear-gradient(to right, #fb7185, #a855f7)" }} />
+        <div className="h-full rounded-full" style={{ width: `${sub.score}%`, backgroundColor: barColor }} />
       </div>
     </div>
   );
@@ -163,7 +175,14 @@ function ObservationCard({ obs }: { obs: any }) {
 function RecommendationCard({ rec }: { rec: any }) {
   return (
     <div className="p-4 rounded-xl border" style={{ backgroundColor: "#ecfdf5", borderColor: "#d1fae5" }}>
-      <span className="font-bold block mb-1" style={{ color: "#065f46" }}>✓ {rec.ingredient}</span>
+      <span className="font-bold block mb-1" style={{ color: "#065f46" }}>
+        ✓ {rec.ingredient}
+        {rec.time_of_day && (
+          <span className="ml-2 py-0.5 px-2 rounded-full text-xs font-bold" style={{ backgroundColor: "#ffffff", color: "#64748b", border: "1px solid #d1fae5" }}>
+            {rec.time_of_day === "both" ? "AM + PM" : String(rec.time_of_day).toUpperCase()}
+          </span>
+        )}
+      </span>
       <span className="text-sm leading-relaxed block mb-1" style={{ color: "#475569" }}>{rec.why}</span>
       <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "#059669" }}>{rec.how_to_use}</span>
     </div>

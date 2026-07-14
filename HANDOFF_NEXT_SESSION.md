@@ -1,5 +1,17 @@
 # Handoff — pick up here next session
 
+## NEWEST: Wellness overhaul (Phase 61, 2026-07-14, later same session)
+Wellness mode got a scoring/UX overhaul — full detail in STRUCTURE.md Phase 61. The
+critical operational bit: **migration `0033_wellness_quality.sql` must be run manually
+in the Supabase SQL Editor** (it also finally applies 0030's `skin_age_estimate`,
+which was confirmed STILL missing in production — every skin-age estimate to date was
+silently dropped). Until it's run, the scan route's fallback keeps stripping the new
+columns (photo_quality, ai_confidence, skin_age_estimate) — scans still work, the new
+fields just don't persist. Verify with:
+`select skin_age_estimate, photo_quality, ai_confidence from wellness_scans limit 1;`
+Also pending: a real logged-in scan to confirm the new rubric produces sane calibrated
+scores and time_of_day lands on recommendations.
+
 ## Status
 Code for Physio/Rehab Mode is built, committed, and the migration is **LIVE** on
 production (2026-07-14) — confirmed directly: `physio_exercises` has 36 rows across all
