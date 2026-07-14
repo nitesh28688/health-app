@@ -154,6 +154,9 @@ export async function POST(req: NextRequest) {
         if (name === "check_form" && result.success && result.proposalData) {
           proposals.push({ type: "check_form", ...result.proposalData });
         }
+        if (name === "open_physio" && result.success && result.proposalData) {
+          proposals.push({ type: "open_physio", ...result.proposalData });
+        }
         
         functionResponses.push({
           functionResponse: {

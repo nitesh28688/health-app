@@ -7,6 +7,7 @@ import type { Session } from "@supabase/supabase-js";
 import { AnimatePresence, motion } from "framer-motion";
 import { AssistantSheet } from "@/components/AssistantSheet";
 import { FormCheckSheet } from "@/components/FormCheckSheet";
+import { PhysioSheet } from "@/components/PhysioSheet";
 import { TermsGate } from "@/components/TermsGate";
 import { Wand2, Book, Dumbbell, TrendingUp, Users, CloudUpload, Sparkles, FileText } from "lucide-react";
 import { subscribePendingCount } from "@/lib/offlineQueue";
@@ -203,6 +204,8 @@ export function AppShell({ children }: {
   const [assistantOpen, setAssistantOpen] = useState(false);
   const [formCheckOpen, setFormCheckOpen] = useState(false);
   const [formCheckExercise, setFormCheckExercise] = useState("");
+  const [physioOpen, setPhysioOpen] = useState(false);
+  const [physioHint, setPhysioHint] = useState("");
   // Lazy-initialize from localStorage synchronously on first client render
   // instead of always defaulting to "core" and correcting a moment later in
   // an effect — that default-then-correct pattern caused a real flash of
@@ -381,13 +384,24 @@ export function AppShell({ children }: {
           setFormCheckExercise(exerciseHint);
           setFormCheckOpen(true);
         }}
+        onOpenPhysio={(bodyAreaHint) => {
+          setPhysioHint(bodyAreaHint);
+          setPhysioOpen(true);
+        }}
         mode={mode}
       />
 
       {formCheckOpen && (
-        <FormCheckSheet 
-          exerciseName={formCheckExercise} 
-          onClose={() => setFormCheckOpen(false)} 
+        <FormCheckSheet
+          exerciseName={formCheckExercise}
+          onClose={() => setFormCheckOpen(false)}
+        />
+      )}
+
+      {physioOpen && (
+        <PhysioSheet
+          initialBodyAreaHint={physioHint}
+          onClose={() => setPhysioOpen(false)}
         />
       )}
 

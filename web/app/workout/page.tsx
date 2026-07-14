@@ -9,8 +9,9 @@ import { SetTimer } from "@/components/SetTimer";
 import { AiRoutineGenerator } from "@/components/AiRoutineGenerator";
 import { ExerciseDemo } from "@/components/ExerciseDemo";
 import { LiveWorkout, ActiveEx } from "@/components/LiveWorkout";
+import { PhysioSheet } from "@/components/PhysioSheet";
 import { offlineWrite } from "@/lib/offlineWrite";
-import { Dumbbell, Flame, Bot } from "lucide-react";
+import { Dumbbell, Flame, Bot, Stethoscope } from "lucide-react";
 
 interface Plan { id: number; name: string; goal: string | null; level: string | null; days_per_week: number | null; description: string | null; owner_id: string | null; }
 interface PlanDay { id: number; day_number: number; title: string; }
@@ -38,6 +39,8 @@ function Workout({ profile, setProfile, userId }: {
   const [weightKg, setWeightKg] = useState(70);
   const [logging, setLogging] = useState(false);
   
+  const [physioOpen, setPhysioOpen] = useState(false);
+
   // Custom Freeform State
   const [customOpen, setCustomOpen] = useState(false);
   const [customTitle, setCustomTitle] = useState("");
@@ -392,6 +395,11 @@ function Workout({ profile, setProfile, userId }: {
         </button>
       </div>
 
+      <button onClick={() => setPhysioOpen(true)}
+        className="mt-3 w-full flex items-center justify-center gap-1.5 rounded-xl border border-teal-200 dark:border-teal-900/50 bg-teal-50 dark:bg-teal-900/10 text-sm text-teal-600 font-semibold py-2.5 active:scale-[0.98]">
+        <Stethoscope className="w-4 h-4" /> Physio — AI home routine for an ache/pain
+      </button>
+
       {/* recent logs */}
       <section className="mt-6">
         <h2 className="font-bold mb-2">Recent workouts</h2>
@@ -422,6 +430,8 @@ function Workout({ profile, setProfile, userId }: {
           </div>
         )}
       </section>
+
+      {physioOpen && <PhysioSheet onClose={() => setPhysioOpen(false)} />}
 
       {/* Structured Workout Session Sheet */}
       {sessionOpen && (

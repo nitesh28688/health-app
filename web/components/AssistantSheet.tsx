@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import { Bot, Send, Dumbbell, AlertTriangle, Video } from "lucide-react";
+import { Bot, Send, Dumbbell, AlertTriangle, Video, Stethoscope } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 interface Message {
@@ -15,11 +15,13 @@ export function AssistantSheet({
   isOpen,
   onClose,
   onOpenFormCheck,
+  onOpenPhysio,
   mode = "core",
 }: {
   isOpen: boolean;
   onClose: () => void;
   onOpenFormCheck: (hint: string) => void;
+  onOpenPhysio: (hint: string) => void;
   mode?: "core" | "wellness";
 }) {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -342,6 +344,35 @@ export function AssistantSheet({
                               className={`w-full ${accent.button} text-white py-2 rounded-lg text-sm font-medium active:scale-95 transition-all cursor-pointer`}
                             >
                               Open Form Check
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    }
+                    if (p.type === "open_physio") {
+                      return (
+                        <div key={i} className={`bg-white dark:bg-neutral-900 border ${accent.cardBorder} rounded-xl overflow-hidden shadow-sm mt-2 first:mt-0`}>
+                          <div className={`${accent.cardHeaderBg} px-3 py-2 border-b ${accent.cardHeaderBorder} flex items-center gap-2`}>
+                            <Stethoscope className={`w-4 h-4 ${accent.cardIconText}`} />
+                            <span className={`text-sm font-semibold ${accent.cardTitleText}`}>
+                              Physio
+                            </span>
+                          </div>
+                          <div className="p-3">
+                            <p className="text-sm font-medium mb-1">
+                              {p.body_area_hint ? `Build a routine for your ${p.body_area_hint}` : "Build a home exercise routine"}
+                            </p>
+                            <p className="text-xs text-neutral-500 mb-3">
+                              AI-guided, not a substitute for a licensed physiotherapist.
+                            </p>
+                            <button
+                              onClick={() => {
+                                onOpenPhysio(p.body_area_hint || "");
+                                onClose();
+                              }}
+                              className={`w-full ${accent.button} text-white py-2 rounded-lg text-sm font-medium active:scale-95 transition-all cursor-pointer`}
+                            >
+                              Open Physio
                             </button>
                           </div>
                         </div>

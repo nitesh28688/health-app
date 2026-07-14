@@ -91,6 +91,21 @@ export const toolDeclarations = [
     }
   },
   {
+    name: "open_physio",
+    description: "When the user describes a physical ache/pain and wants exercises or a routine to help (e.g. 'my knee hurts, what exercises can I do', 'help me with physio for my shoulder'), propose opening Physio Mode, which builds an AI-guided home exercise routine for the affected body area. This does not call any AI itself — it proposes a UI action.",
+    parameters: {
+      type: "OBJECT",
+      properties: {
+        body_area_hint: { type: "STRING", description: "The body area the user mentioned, if any (e.g. 'knee', 'shoulder')" }
+      }
+    }
+  },
+  {
+    name: "get_physio_programs",
+    description: "Get the user's physio/rehab programs (active and resolved), including body area, complaint, and session history with pain/difficulty trends. Use this to answer questions about their physio progress.",
+    parameters: { type: "OBJECT", properties: {} }
+  },
+  {
     name: "get_wellness_scans",
     description: "Get the user's past Skin, Eye, or Hair AI wellness scans, including overall score, classification, sub-scores, observations, and ingredient recommendations. Use this to answer questions about their scan results, explain their report, or give more detailed analysis than what's shown on screen.",
     parameters: {
@@ -237,6 +252,22 @@ Return a strict JSON object containing:
           message: "Opening the form check camera for you.",
           proposalData: { exercise_hint: args.exercise_hint || "" }
         };
+      }
+      case "open_physio": {
+        return {
+          success: true,
+          message: "Opening Physio for you.",
+          proposalData: { body_area_hint: args.body_area_hint || "" }
+        };
+      }
+      case "get_physio_programs": {
+        const { data, error } = await db
+          .from("physio_programs")
+          .select("id, body_area, complaint, status, created_at, last_session_at, physio_program_sessions(session_number, pain_before, pain_after, difficulty, completed_at)")
+          .order("last_session_at", { ascending: false, nullsFirst: false });
+        if (error) throw error;
+        if (!data?.length) return { message: "No physio programs started yet." };
+        return data;
       }
       case "get_wellness_scans": {
         let query = db
