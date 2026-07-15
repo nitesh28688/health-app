@@ -1,16 +1,18 @@
 # Handoff — pick up here next session
 
 ## NEWEST: Wellness overhaul (Phase 61, 2026-07-14, later same session)
-Wellness mode got a scoring/UX overhaul — full detail in STRUCTURE.md Phase 61. The
-critical operational bit: **migration `0033_wellness_quality.sql` must be run manually
-in the Supabase SQL Editor** (it also finally applies 0030's `skin_age_estimate`,
-which was confirmed STILL missing in production — every skin-age estimate to date was
-silently dropped). Until it's run, the scan route's fallback keeps stripping the new
-columns (photo_quality, ai_confidence, skin_age_estimate) — scans still work, the new
-fields just don't persist. Verify with:
-`select skin_age_estimate, photo_quality, ai_confidence from wellness_scans limit 1;`
-Also pending: a real logged-in scan to confirm the new rubric produces sane calibrated
-scores and time_of_day lands on recommendations.
+Wellness mode got a scoring/UX overhaul — full detail in STRUCTURE.md Phase 61.
+Migration `0033_wellness_quality.sql` is **CONFIRMED LIVE** (user ran it, then verified
+directly: `skin_age_estimate`/`photo_quality`/`ai_confidence` all queryable on
+`wellness_scans`, no error). This also recovers `skin_age_estimate` from migration
+0030, which had been silently unapplied in production for two sessions — every
+prior skin-age estimate was dropped, so old skin scans will show no skin age; only
+scans taken from now on will have it.
+
+**Not yet done: a real logged-in scan to confirm the new rubric in practice** — that
+the calibrated scoring lands in a sane range, photo_quality/ai_confidence populate,
+and time_of_day correctly splits recommendations into AM/PM. Code is deployed and
+compiles clean but has not been exercised end-to-end with a real scan this session.
 
 ## Status
 Code for Physio/Rehab Mode is built, committed, and the migration is **LIVE** on
@@ -85,5 +87,10 @@ STRUCTURE.md Phase 60 has full technical detail; `project_health_app` +
   re-propose without the user raising it first.
 
 ## Next step
-Confirm migration applied, then run the full Physio flow live and fix whatever breaks —
-this was built without the ability to click-test end-to-end this session.
+Two things built this session still need a real logged-in click-through, since this
+session never had login access:
+1. Full Physio flow (Workout tab → `+ Physio` → intake → red-flag → pain check → AI
+   routine → do exercises → check-in → "Continue session" adapts sensibly).
+2. A fresh Wellness scan (any type) to confirm calibrated scoring, quality/confidence
+   chips, skin age (skin scans), and correctly time-split AM/PM routine.
+Fix whatever breaks in either. No other open task.
