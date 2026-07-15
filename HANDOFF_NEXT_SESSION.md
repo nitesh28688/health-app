@@ -1,5 +1,29 @@
 # Handoff — pick up here next session
 
+## NEWEST: Women's health — cycle surfaced on Trends + conditions/tags (2026-07-15)
+Built, typechecks clean, **migration NOT yet run against the live DB** and **nothing
+click-tested** (no login this session). Do this first next session:
+1. Run `supabase/migrations/0034_womens_health.sql` against prod — it **drops**
+   `profiles.track_cycle` (now unused, opt-in toggle removed) and adds
+   `profiles.conditions text[]` + `cycle_logs.symptom_tags text[]`.
+2. Log in as a female-sex user and check: Trends shows a pink "Cycle Tracking" card
+   (no more Settings toggle — it's unconditional now), `/cycle` shows symptom-tag
+   chips on the log form + a new "Conditions" section (PCOS/PCOD/endometriosis/
+   thyroid chips) that saves to `profiles.conditions` and shows static tips per
+   selected condition.
+3. Confirm a male-sex user sees neither the Settings toggle (removed) nor the Trends
+   card (still correctly gated).
+Files: `web/app/trends/page.tsx`, `web/app/cycle/page.tsx`, `web/app/settings/page.tsx`,
+`web/lib/womensHealth.ts` (new — symptom tag list + condition tips), `web/lib/useUser.ts`.
+
+Also added: the AI assistant (`web/app/api/ai/assistant/route.ts`) now fetches
+`profiles.sex`/`profiles.conditions` server-side and, only if a woman has flagged a
+condition on the Cycle tab, appends a note to the system instruction telling it to
+factor PCOS/PCOD/etc. into relevant diet/fitness answers. Never brings it up unless
+a condition is actually flagged. Untested end-to-end (needs login + a real chat
+turn with a condition set) — check this too once migration 0034 is live.
+
+
 ## NEWEST: Wellness overhaul (Phase 61, 2026-07-14, later same session)
 Wellness mode got a scoring/UX overhaul — full detail in STRUCTURE.md Phase 61.
 Migration `0033_wellness_quality.sql` is **CONFIRMED LIVE** (user ran it, then verified

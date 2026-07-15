@@ -24,7 +24,7 @@ export interface Profile {
   active_plan_id: number | null;
   phone: string | null;
   avatar_url: string | null;
-  track_cycle: boolean;
+  conditions: string[];
   diet_type: "balanced" | "high_protein" | "low_carb" | "keto" | "diabetic_friendly";
   target_weight_kg: number | null;
   terms_accepted_at: string | null;

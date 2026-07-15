@@ -8,12 +8,13 @@ import { offlineWrite } from "@/lib/offlineWrite";
 import { awardBadge } from "@/lib/badges";
 import type { Profile } from "@/lib/useUser";
 import { PageSkeleton } from "@/lib/Skeleton";
-import { Dumbbell, Droplet, Flame, BookOpen, Target, Check, PartyPopper, Clock } from "lucide-react";
+import { Dumbbell, Droplet, Flame, BookOpen, Target, Check, PartyPopper, Clock, Activity } from "lucide-react";
 
 interface BmiRow { log_date: string; weight_kg: number | null; body_fat_pct: number | null; waist_cm: number | null; bmi: number | null; }
 interface DayTotal { log_date: string; kcal: number; protein_g: number; carbs_g: number; fat_g: number; water_ml: number; kcal_burned: number; }
 interface Streak { kind: string; current_streak: number; best_streak: number; }
 interface FastingSession { id: string; started_at: string; ended_at: string | null; target_hours: number | null; }
+interface CyclePrediction { avg_cycle_days: number | null; predicted_start: string | null; cycles_used: number; }
 
 function daysAgo(n: number) {
   const d = new Date(); d.setDate(d.getDate() - n); return todayLocal(d);
@@ -106,6 +107,8 @@ function Trends({ profile, userId }: { profile: Profile | null; userId: string }
 
   const [allTotals, setAllTotals] = useState<DayTotal[]>([]);
   const [fasts, setFasts] = useState<FastingSession[]>([]);
+  const [cyclePrediction, setCyclePrediction] = useState<CyclePrediction | null>(null);
+  const showCycle = profile?.sex === "female";
 
   // Just a short preview here — full history (grouped by month, with delete)
   // lives on its own page now, same reasoning as weightHistory below.
@@ -132,6 +135,10 @@ function Trends({ profile, userId }: { profile: Profile | null; userId: string }
     setWeek(((totalsRes.data as DayTotal[]) ?? []).slice(-7));
     const sts = (streakRes.data as Streak[]) ?? [];
     setStreaks(sts);
+    if (showCycle) {
+      const cycleRes = await supabase.rpc("predict_next_period");
+      setCyclePrediction((cycleRes.data as CyclePrediction[])?.[0] ?? null);
+    }
     setLoaded(true);
 
     // Evaluate streak badges
@@ -139,7 +146,7 @@ function Trends({ profile, userId }: { profile: Profile | null; userId: string }
       if (s.current_streak >= 7) awardBadge(userId, "streak_7");
       if (s.current_streak >= 30) awardBadge(userId, "streak_30");
     }
-  }, [userId, loadFasts]);
+  }, [userId, loadFasts, showCycle]);
   useEffect(() => { load(); }, [load]);
 
   async function logWeight() {
@@ -195,6 +202,25 @@ function Trends({ profile, userId }: { profile: Profile | null; userId: string }
           );
         })}
       </div>
+
+      {/* cycle tracking — surfaced here for every woman, no opt-in toggle needed */}
+      {showCycle && (
+        <Link href="/cycle" className="mt-6 flex items-center gap-4 rounded-2xl border border-pink-200 dark:border-pink-900 bg-pink-50 dark:bg-pink-950/30 p-4 active:bg-pink-100 dark:active:bg-pink-950/50">
+          <Activity className="w-8 h-8 text-pink-500 shrink-0" />
+          <div className="flex-1 min-w-0">
+            <h2 className="font-bold">Cycle Tracking</h2>
+            {cyclePrediction?.predicted_start ? (
+              <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-0.5">
+                Next period ~{new Date(cyclePrediction.predicted_start + "T12:00:00").toLocaleDateString("en-IN", { day: "numeric", month: "long" })}
+                <span className="text-xs text-neutral-400"> · avg {cyclePrediction.avg_cycle_days} days</span>
+              </p>
+            ) : (
+              <p className="text-xs text-neutral-500 mt-0.5">Log a period to start predicting your next one.</p>
+            )}
+          </div>
+          <span className="text-neutral-400 shrink-0">→</span>
+        </Link>
+      )}
 
       {/* goal progress — visible card with a ring, not a buried text link */}
       {profile?.target_weight_kg ? (

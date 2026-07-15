@@ -7,7 +7,7 @@ import { supabase } from "@/lib/supabase";
 import type { Profile } from "@/lib/useUser";
 import { PageSkeleton } from "@/lib/Skeleton";
 import { pushSupported, currentPushSubscription, enablePush, disablePush } from "@/lib/push";
-import { Check, ChevronLeft, Pill, Activity, Mail, KeyRound, Trash2, LogOut } from "lucide-react";
+import { Check, ChevronLeft, Pill, Mail, KeyRound, Trash2, LogOut } from "lucide-react";
 
 const inputCls =
   "rounded-xl border border-neutral-300 dark:border-neutral-700 bg-white/50 dark:bg-neutral-900/50 px-4 py-3 text-base w-full focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition-all shadow-sm";
@@ -21,9 +21,6 @@ function SettingsForm({ profile, setProfile, userId, email }: {
   const [shareWorkouts, setShareWorkouts] = useState(profile.share_workouts);
   const [shareDiary, setShareDiary] = useState(profile.share_diary);
   const [shareWeight, setShareWeight] = useState(profile.share_weight);
-
-  // ── Health tracking ──
-  const [trackCycle, setTrackCycle] = useState(profile.track_cycle ?? false);
 
   // ── Notifications ──
   const [notifStatus, setNotifStatus] = useState<"unknown" | "enabled" | "disabled" | "unsupported">("unknown");
@@ -74,7 +71,6 @@ function SettingsForm({ profile, setProfile, userId, email }: {
       share_workouts: shareWorkouts,
       share_diary: shareDiary,
       share_weight: shareWeight,
-      track_cycle: trackCycle,
     };
     const { data, error } = await supabase.from("profiles").update(patch).eq("id", userId).select().single();
     if (error) { setError(error.message); return; }
@@ -160,22 +156,6 @@ function SettingsForm({ profile, setProfile, userId, email }: {
           <span className="flex items-center gap-2"><Pill className="w-5 h-5 text-indigo-500" /> Medications</span>
           <span className="text-neutral-400">→</span>
         </Link>
-        {profile.sex !== "male" && profile.sex != null && (
-          <>
-            <label className="flex items-center justify-between py-3 border-b border-neutral-100 dark:border-neutral-900">
-              <span>Track menstrual cycle</span>
-              <input type="checkbox" checked={trackCycle}
-                onChange={(e) => setTrackCycle(e.target.checked)}
-                className="w-6 h-6 accent-indigo-600 cursor-pointer" />
-            </label>
-            {trackCycle && (
-              <Link href="/cycle" className="flex items-center justify-between py-3 border-b border-neutral-100 dark:border-neutral-900">
-                <span className="flex items-center gap-2"><Activity className="w-5 h-5 text-pink-500" /> Cycle tracking</span>
-                <span className="text-neutral-400">→</span>
-              </Link>
-            )}
-          </>
-        )}
       </section>
 
       {/* ── Appearance ── */}
