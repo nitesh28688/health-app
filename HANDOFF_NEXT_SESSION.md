@@ -23,8 +23,9 @@ Built, tsc + next build clean, **migration 0036 NOT yet run** and **untested liv
    file as binary). Fixed via node script replacing it with
    String.fromCharCode(0). Same lesson as the physio session — don't type that
    escape into source.
-v2 deferred (deliberately, don't build unasked): proactive reminders ("6 weeks
-since last laser") via cron+push, and photo attachments on entries.
+v2 deferred: photo attachments on entries. **Journal reminders explicitly REJECTED
+by the user (2026-07-16) — "don't like the hobby cron, we will do it when we make
+the proper app" (native app, post-Apple-publisher). Don't re-propose.**
 
 ## NEWEST: Assistant scope widened — engage with anything health-adjacent (2026-07-16, later)
 No migration, prompt-only — **untested**. User (Blunt tone, named "Coach") said "I had
