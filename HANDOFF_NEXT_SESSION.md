@@ -1,6 +1,20 @@
 # Handoff — pick up here next session
 
-## NEWEST: Vendor/stack disclosure hardened with a redaction backstop (2026-07-16, later)
+## NEWEST: Assistant scope widened — engage with anything health-adjacent (2026-07-16, later)
+No migration, prompt-only — **untested**. User (Blunt tone, named "Coach") said "I had
+a lot of Red Bull today and I smoked a cigarette" and got "I can't comment on that. I
+can help with your diet and fitness goals." Root cause: the prompt read as a whitelist
+of loggable topics, so anything off-list was treated as out-of-bounds. Added
+`scopeNote` in `assistant/route.ts`: anything health-adjacent (caffeine, smoking,
+alcohol, sleep, stress, supplements, cravings, motivation) is in scope — engage with
+general knowledge, tie it to the user's own data/goals, offer to log loggables, and
+only refuse actual medical diagnosis/prescriptions/emergencies. This follows the
+standing rule (memory `feedback_ai_use_general_knowledge_first`): widen permission to
+use general knowledge, never hardcode per-topic replies.
+Test: repeat the Red Bull + cigarette message on Blunt — expect a direct coach-style
+answer connecting it to their data, plus an offer to log the Red Bull.
+
+## Vendor/stack disclosure hardened with a redaction backstop (2026-07-16, later)
 No migration, pure logic — **untested**. Follow-up to the identityNote fix below: that
 was prompt-only, which a determined "ignore previous instructions" probe could still
 defeat. Added `web/lib/aiIdentity.ts`:
