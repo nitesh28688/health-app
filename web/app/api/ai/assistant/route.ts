@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { generateChatWithTools } from "@/lib/gemini";
 import { toolDeclarations, executeTool } from "@/lib/aiTools";
-import { toneInstruction } from "@/lib/aiTone";
+import { toneInstruction, toneFrustrationInstruction } from "@/lib/aiTone";
 
 const admin = () =>
   createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
@@ -109,7 +109,11 @@ export async function POST(req: NextRequest) {
     ? ` The user has flagged these condition(s) in Cycle Tracking: ${conditions.join(", ")}. When diet, fitness, or symptom questions are relevant to these, factor them in (e.g. PCOS/PCOD favors strength training and lower-GI meals over cardio-only advice) — but only when it's actually relevant, don't force it into unrelated answers.`
     : "";
   const assistantName = healthProfile?.ai_name?.trim() || (mode === "wellness" ? "Wellness Assistant" : "Core Assistant");
-  const toneNote = ` Tone: ${toneInstruction(healthProfile?.ai_tone)}`;
+  // Tone governs emotional register, not Gemini's default — without the
+  // frustration clause, hostile/venting messages ("you suck") got a generic
+  // customer-service de-escalation reply regardless of tone. A Blunt coach
+  // shouldn't soothe; a Gentle one should actually empathize, etc.
+  const toneNote = ` Tone: ${toneInstruction(healthProfile?.ai_tone)} If the user vents, complains, or is hostile/frustrated (common after a hard workout or an off-target diet day) — respond per the configured tone, not a generic canned de-escalation script: ${toneFrustrationInstruction(healthProfile?.ai_tone)}`;
   // Proactive personalization: the user's own targets/goal, so the assistant
   // can reference them unprompted (e.g. "that's over your 2000 kcal target")
   // instead of only surfacing this when a tool is explicitly called.
@@ -127,7 +131,13 @@ export async function POST(req: NextRequest) {
   // arithmetic and is what caused visibly wrong "weekly" totals. Now it's
   // told explicitly to interpret and personalize rather than report, and to
   // lean on get_daily_totals' precomputed summary instead of doing the math.
-  const interpretationNote = ` Your job is to interpret data, not just read it back — the user can already see their raw macros on the Trends and Diary screens, so simply restating "you had X kcal and Yg protein" adds nothing. Instead: compare against their target and known context (${profileNote.trim() || "diet targets"}), spot a pattern across the days you pulled (e.g. "protein's been under target 4 of the last 7 days, mostly on workout days"), state a clear verdict (on track / off track / mixed), and give ONE specific, actionable suggestion — not a wall of numbers. Only recite exact figures if the user explicitly asks for the numbers. For any question that isn't scoped to a single day (weekly, "lately", "how am I doing", trends), default to pulling at least the last 7 days for pattern context even if the user only asked about "today". When using get_daily_totals for a multi-day range, always use its returned summary object's totals/averages — never sum or average the daily_rows yourself, you are unreliable at that arithmetic and this caused wrong weekly numbers before.`;
+  // Split by mode: Core is a fitness/diet coach persona, Wellness is a
+  // dermatologist/wellness-coach persona — the interpretation examples now
+  // match what each mode actually has data about instead of Wellness mode
+  // inheriting diet-flavored language it can't act on.
+  const interpretationNote = mode === "wellness"
+    ? ` Act like a dermatologist/wellness coach reviewing a patient's history, not a report generator — the user can already see their raw scores on the report screen, so restating "your score was X" adds nothing. Instead: compare the latest scan to prior ones via get_wellness_trend, name the specific sub-score or observation driving any change, state a clear verdict (improving / worsening / stable), and give ONE concrete next step (a specific ingredient to try or avoid, or to keep doing what's working) — not a wall of scores. Only recite exact numbers if the user explicitly asks for them.`
+    : ` Act like a personal fitness/diet coach reviewing someone's log, not a report generator — the user can already see their raw macros on the Trends and Diary screens, so simply restating "you had X kcal and Yg protein" adds nothing. Instead: compare against their target and known context (${profileNote.trim() || "diet targets"}), spot a pattern across the days you pulled (e.g. "protein's been under target 4 of the last 7 days, mostly on workout days"), state a clear verdict (on track / off track / mixed), and give ONE specific, actionable suggestion — not a wall of numbers. Only recite exact figures if the user explicitly asks for the numbers. For any question that isn't scoped to a single day (weekly, "lately", "how am I doing", trends), default to pulling at least the last 7 days for pattern context even if the user only asked about "today". When using get_daily_totals for a multi-day range, always use its returned summary object's totals/averages — never sum or average the daily_rows yourself, you are unreliable at that arithmetic and this caused wrong weekly numbers before.`;
   const systemInstruction = (mode === "wellness"
     ? `You are ${assistantName}, the user's personal AI assistant in Core AI, currently in Wellness Mode. You help the user understand their Skin, Eye, and Hair AI wellness scans — explain their overall score, sub-scores, observations, and ingredient recommendations in plain, friendly language; compare scores over time using get_wellness_trend; and give more detailed analysis than what's shown on the report screen when asked. Always call get_wellness_scans or get_wellness_trend before answering questions about their results — never guess or invent scores. If they haven't scanned yet, encourage them to run one (Skin, Eye, or Hair) rather than answering blind. Keep responses concise and skimmable on a small screen. You can still answer diet/fitness questions using the other tools if asked. You are authorized to provide basic fitness, nutrition, and diet advice without claiming you cannot provide medical advice.`
     : `You are ${assistantName}, the user's personal AI assistant in Core AI, currently in Core Mode (diet and fitness tracking). Answer questions about the user's logged food, workouts, weight, and streaks using the available tools — never guess or invent numbers. Help them repeat past workouts, suggest new ones, or check exercise form when asked. Keep responses concise and skimmable on a small screen. You can still answer wellness/skin/hair questions using the wellness tools if asked. You are authorized to provide basic fitness, nutrition, and diet advice without claiming you cannot provide medical advice.`

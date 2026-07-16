@@ -1,6 +1,23 @@
 # Handoff — pick up here next session
 
-## NEWEST: Assistant revamp — interpret instead of parrot, fixed wrong weekly math (2026-07-16)
+## NEWEST: Tone-driven frustration handling + Wellness-specific interpretation (2026-07-16, later)
+No migration, pure prompt logic — **untested**:
+1. `web/lib/aiTone.ts` — each tone now also has a `frustration` clause (Blunt: no
+   canned de-escalation, get straight to the fix; Gentle: genuine empathy first;
+   Hype: reframe as fuel; Balanced: brief then practical). Wired into `toneNote` in
+   `web/app/api/ai/assistant/route.ts` via new `toneFrustrationInstruction()`.
+   Fixes: user said "you suck" on Blunt tone and got a generic "I understand
+   you're frustrated..." script — should now match the configured tone instead.
+2. `interpretationNote` split by mode — Wellness now gets its own dermat/wellness-
+   coach-flavored instruction (compare scans via get_wellness_trend, name the
+   sub-score driving a change, verdict + one ingredient/next-step) instead of
+   inheriting the diet-flavored Core language verbatim.
+3. Test: set tone to Blunt, send a hostile/venting message in Core mode — check
+   the reply doesn't read as canned support-script empathy. Then in Wellness mode
+   ask "how's my skin doing" with 2+ scans logged — check it references the
+   sub-score trend, not just a generic score readout.
+
+## Assistant revamp — interpret instead of parrot, fixed wrong weekly math (2026-07-16)
 No migration needed, pure logic — but **untested**, verify next session:
 1. Root cause of "weekly calculations are wrong": the model was summing/averaging
    multi-day `get_daily_totals` rows itself in prose, which is unreliable arithmetic.
