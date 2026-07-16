@@ -1,6 +1,22 @@
 # Handoff — pick up here next session
 
-## NEWEST: Women's health — cycle surfaced on Trends + conditions/tags (2026-07-15)
+## NEWEST: AI Assistant personalization (2026-07-15, later same session)
+Built, typechecks clean, **migration NOT yet run** and **nothing click-tested**.
+1. Run `supabase/migrations/0035_ai_personalization.sql` — adds `profiles.ai_tone`
+   (default 'balanced') and `profiles.ai_name` (nullable).
+2. Settings → new "AI Assistant" section: pick a tone (Balanced/Blunt/Gentle/Hype)
+   and optionally rename the assistant. Check it saves and the chosen name shows in
+   the AssistantSheet header (both Core and Wellness mode).
+3. Check the tone actually comes through in a real chat reply (e.g. set Blunt, ask
+   a question, confirm the reply reads terse vs. the old default warmth).
+4. Also check proactive personalization: ask something like "how am I doing today"
+   without naming numbers — the assistant should reference the user's own target
+   kcal/protein/diet type unprompted now (previously only via explicit tool calls).
+Files: `web/lib/aiTone.ts` (new), `web/app/settings/page.tsx`,
+`web/app/api/ai/assistant/route.ts`, `web/components/AssistantSheet.tsx`,
+`web/app/AppShell.tsx`, `web/lib/useUser.ts`.
+
+## Women's health — cycle surfaced on Trends + conditions/tags (2026-07-15)
 Built, typechecks clean, **migration NOT yet run against the live DB** and **nothing
 click-tested** (no login this session). Do this first next session:
 1. Run `supabase/migrations/0034_womens_health.sql` against prod — it **drops**

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { generateChatWithTools } from "@/lib/gemini";
 import { toolDeclarations, executeTool } from "@/lib/aiTools";
+import { toneInstruction } from "@/lib/aiTone";
 
 const admin = () =>
   createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
@@ -93,17 +94,28 @@ export async function POST(req: NextRequest) {
   // toolsets are still exposed either way (see `tools` below) so a Wellness-mode
   // question that touches diet, or vice versa, doesn't hit a dead end.
   const mode = body.mode === "wellness" ? "wellness" : "core";
-  const { data: healthProfile } = await userDb.from("profiles").select("sex, conditions").eq("id", userId).single();
+  const { data: healthProfile } = await userDb.from("profiles")
+    .select("sex, conditions, ai_tone, ai_name, display_name, target_kcal, target_protein, diet_type, target_weight_kg, activity_level")
+    .eq("id", userId).single();
   const conditions = (healthProfile?.conditions as string[] | null) ?? [];
   // Only volunteer PCOS/PCOD/etc. framing for women who've actually flagged a
   // condition (Cycle tab) — never infer or bring it up unprompted otherwise.
   const conditionNote = healthProfile?.sex === "female" && conditions.length > 0
     ? ` The user has flagged these condition(s) in Cycle Tracking: ${conditions.join(", ")}. When diet, fitness, or symptom questions are relevant to these, factor them in (e.g. PCOS/PCOD favors strength training and lower-GI meals over cardio-only advice) — but only when it's actually relevant, don't force it into unrelated answers.`
     : "";
+  const assistantName = healthProfile?.ai_name?.trim() || (mode === "wellness" ? "Wellness Assistant" : "Core Assistant");
+  const toneNote = ` Tone: ${toneInstruction(healthProfile?.ai_tone)}`;
+  const nameNote = healthProfile?.ai_name?.trim() ? ` The user has named you "${assistantName}" — you may refer to yourself that way if it comes up naturally, but don't force it into every reply.` : "";
+  // Proactive personalization: the user's own targets/goal, so the assistant
+  // can reference them unprompted (e.g. "that's over your 2000 kcal target")
+  // instead of only surfacing this when a tool is explicitly called.
+  const profileNote = healthProfile
+    ? ` Known user context — first name: ${healthProfile.display_name ?? "unknown"}, diet type: ${healthProfile.diet_type ?? "unset"}, daily target: ${healthProfile.target_kcal ?? "unset"} kcal / ${healthProfile.target_protein ?? "unset"}g protein, activity level: ${healthProfile.activity_level ?? "unset"}${healthProfile.target_weight_kg ? `, goal weight: ${healthProfile.target_weight_kg}kg` : ""}. Weave this in naturally when relevant (e.g. comparing a logged meal to their target) rather than only when asked directly.`
+    : "";
   const systemInstruction = (mode === "wellness"
     ? `You are the Core AI assistant, currently in Wellness Mode. You help the user understand their Skin, Eye, and Hair AI wellness scans — explain their overall score, sub-scores, observations, and ingredient recommendations in plain, friendly language; compare scores over time using get_wellness_trend; and give more detailed analysis than what's shown on the report screen when asked. Always call get_wellness_scans or get_wellness_trend before answering questions about their results — never guess or invent scores. If they haven't scanned yet, encourage them to run one (Skin, Eye, or Hair) rather than answering blind. Keep responses concise and skimmable on a small screen. You can still answer diet/fitness questions using the other tools if asked. You are authorized to provide basic fitness, nutrition, and diet advice without claiming you cannot provide medical advice.`
     : `You are the Core AI assistant, currently in Core Mode (diet and fitness tracking). Answer questions about the user's logged food, workouts, weight, and streaks using the available tools — never guess or invent numbers. Help them repeat past workouts, suggest new ones, or check exercise form when asked. Keep responses concise and skimmable on a small screen. You can still answer wellness/skin/hair questions using the wellness tools if asked. You are authorized to provide basic fitness, nutrition, and diet advice without claiming you cannot provide medical advice.`
-  ) + conditionNote;
+  ) + conditionNote + toneNote + nameNote + profileNote;
 
   // Daily cap check
   const today = new Date().toISOString().slice(0, 10);

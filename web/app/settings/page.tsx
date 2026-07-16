@@ -7,7 +7,8 @@ import { supabase } from "@/lib/supabase";
 import type { Profile } from "@/lib/useUser";
 import { PageSkeleton } from "@/lib/Skeleton";
 import { pushSupported, currentPushSubscription, enablePush, disablePush } from "@/lib/push";
-import { Check, ChevronLeft, Pill, Mail, KeyRound, Trash2, LogOut } from "lucide-react";
+import { Check, ChevronLeft, Pill, Mail, KeyRound, Trash2, LogOut, Bot } from "lucide-react";
+import { AI_TONES } from "@/lib/aiTone";
 
 const inputCls =
   "rounded-xl border border-neutral-300 dark:border-neutral-700 bg-white/50 dark:bg-neutral-900/50 px-4 py-3 text-base w-full focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition-all shadow-sm";
@@ -21,6 +22,10 @@ function SettingsForm({ profile, setProfile, userId, email }: {
   const [shareWorkouts, setShareWorkouts] = useState(profile.share_workouts);
   const [shareDiary, setShareDiary] = useState(profile.share_diary);
   const [shareWeight, setShareWeight] = useState(profile.share_weight);
+
+  // ── AI assistant personalization ──
+  const [aiTone, setAiTone] = useState(profile.ai_tone ?? "balanced");
+  const [aiName, setAiName] = useState(profile.ai_name ?? "");
 
   // ── Notifications ──
   const [notifStatus, setNotifStatus] = useState<"unknown" | "enabled" | "disabled" | "unsupported">("unknown");
@@ -71,6 +76,8 @@ function SettingsForm({ profile, setProfile, userId, email }: {
       share_workouts: shareWorkouts,
       share_diary: shareDiary,
       share_weight: shareWeight,
+      ai_tone: aiTone,
+      ai_name: aiName.trim() || null,
     };
     const { data, error } = await supabase.from("profiles").update(patch).eq("id", userId).select().single();
     if (error) { setError(error.message); return; }
@@ -156,6 +163,25 @@ function SettingsForm({ profile, setProfile, userId, email }: {
           <span className="flex items-center gap-2"><Pill className="w-5 h-5 text-indigo-500" /> Medications</span>
           <span className="text-neutral-400">→</span>
         </Link>
+      </section>
+
+      {/* ── AI Assistant ── */}
+      <section className="mb-8">
+        <h2 className="text-lg font-bold mb-1 flex items-center gap-2"><Bot className="w-5 h-5 text-indigo-500" /> AI Assistant</h2>
+        <p className="text-sm text-neutral-500 mb-3">Personalize how Core and Wellness Assistant talk to you.</p>
+        <label className="block text-sm font-medium mb-1.5">Name (optional)</label>
+        <input value={aiName} onChange={(e) => setAiName(e.target.value)} placeholder="Core Assistant"
+          maxLength={30} className={`${inputCls} mb-4`} />
+        <label className="block text-sm font-medium mb-1.5">Tone</label>
+        <div className="flex flex-wrap gap-1.5">
+          {AI_TONES.map((t) => (
+            <button key={t.key} type="button" onClick={() => setAiTone(t.key)}
+              className={`rounded-full px-3.5 py-2 text-sm font-medium border ${
+                aiTone === t.key ? "bg-indigo-600 text-white border-indigo-600" : "border-neutral-300 dark:border-neutral-700 text-neutral-600 dark:text-neutral-400"}`}>
+              {t.label}
+            </button>
+          ))}
+        </div>
       </section>
 
       {/* ── Appearance ── */}

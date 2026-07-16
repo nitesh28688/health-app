@@ -17,12 +17,14 @@ export function AssistantSheet({
   onOpenFormCheck,
   onOpenPhysio,
   mode = "core",
+  assistantName,
 }: {
   isOpen: boolean;
   onClose: () => void;
   onOpenFormCheck: (hint: string) => void;
   onOpenPhysio: (hint: string) => void;
   mode?: "core" | "wellness";
+  assistantName?: string | null;
 }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -298,7 +300,7 @@ export function AssistantSheet({
               <Bot className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="font-semibold">{isWellness ? "Wellness Assistant" : "Core Assistant"}</h2>
+              <h2 className="font-semibold">{assistantName?.trim() || (isWellness ? "Wellness Assistant" : "Core Assistant")}</h2>
               <p className="text-xs text-neutral-500">{isWellness ? "Ask about your scans" : "Ask about your history"}</p>
             </div>
           </div>
