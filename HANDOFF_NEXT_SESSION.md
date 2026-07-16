@@ -1,6 +1,27 @@
 # Handoff — pick up here next session
 
-## NEWEST: AI Assistant personalization (2026-07-15, later same session)
+## NEWEST: Assistant revamp — interpret instead of parrot, fixed wrong weekly math (2026-07-16)
+No migration needed, pure logic — but **untested**, verify next session:
+1. Root cause of "weekly calculations are wrong": the model was summing/averaging
+   multi-day `get_daily_totals` rows itself in prose, which is unreliable arithmetic.
+   Fixed in `web/lib/aiTools.ts` — `get_daily_totals` now returns `{ daily_rows,
+   summary: { days_in_range, days_logged, totals, avg_per_day_in_range,
+   avg_per_logged_day } }`, computed deterministically in JS, and the tool
+   description + system prompt both tell the model to use `summary` instead of
+   doing the math itself.
+2. Root cause of "it just gives macros, not personalized": the system prompt only
+   asked it to *report* data. Rewrote both Core and Wellness prompts
+   (`web/app/api/ai/assistant/route.ts`) to require interpretation — compare
+   against target, spot a pattern across days, state a verdict, give ONE concrete
+   suggestion; only recite raw numbers if explicitly asked. Also defaults to
+   pulling 7 days of context even for "today" questions on anything pattern-shaped
+   ("how am I doing", "lately", etc). Assistant identity line now uses the
+   user-set custom name directly instead of a hardcoded "Core AI assistant".
+3. Test: ask "how's my diet" and "how am I doing this week" — check the weekly
+   totals in the reply actually match Trends, and check the reply reads as an
+   interpretation (verdict + one suggestion) rather than a number dump.
+
+## AI Assistant personalization (2026-07-15, later same session)
 Built, typechecks clean, **migration NOT yet run** and **nothing click-tested**.
 1. Run `supabase/migrations/0035_ai_personalization.sql` — adds `profiles.ai_tone`
    (default 'balanced') and `profiles.ai_name` (nullable).

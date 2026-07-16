@@ -4,7 +4,7 @@ import { generateWithFallback } from "@/lib/gemini";
 export const toolDeclarations = [
   {
     name: "get_daily_totals",
-    description: "Get daily calorie and macro totals for a date range (YYYY-MM-DD)",
+    description: "Get daily calorie/macro totals for a date range (YYYY-MM-DD), plus a precomputed summary (totals, per-day averages, days logged vs days in range). Always use the summary's numbers for anything described as a weekly/period total or average — do not sum or average the daily rows yourself, the model is unreliable at that arithmetic.",
     parameters: {
       type: "OBJECT",
       properties: {
@@ -135,7 +135,24 @@ export async function executeTool(name: string, args: any, db: SupabaseClient) {
       case "get_daily_totals": {
         const { data, error } = await db.rpc("get_daily_totals", { p_from: args.from_date, p_to: args.to_date });
         if (error) throw error;
-        return data;
+        const rows = (data as { log_date: string; kcal: number; protein_g: number; carbs_g: number; fat_g: number; water_ml: number; kcal_burned: number }[]) ?? [];
+        const daysInRange = Math.round((new Date(args.to_date).getTime() - new Date(args.from_date).getTime()) / 86400000) + 1;
+        const loggedRows = rows.filter((r) => Number(r.kcal) > 0);
+        const sum = (key: keyof typeof rows[number]) => rows.reduce((s, r) => s + Number(r[key] ?? 0), 0);
+        const round = (n: number) => Math.round(n * 10) / 10;
+        const totals = { kcal: sum("kcal"), protein_g: sum("protein_g"), carbs_g: sum("carbs_g"), fat_g: sum("fat_g"), water_ml: sum("water_ml"), kcal_burned: sum("kcal_burned") };
+        return {
+          daily_rows: rows,
+          summary: {
+            days_in_range: daysInRange,
+            days_logged: loggedRows.length,
+            totals,
+            avg_per_day_in_range: Object.fromEntries(Object.entries(totals).map(([k, v]) => [k, round(v / daysInRange)])),
+            avg_per_logged_day: loggedRows.length > 0
+              ? Object.fromEntries(Object.entries(totals).map(([k, v]) => [k, round(v / loggedRows.length)]))
+              : null,
+          },
+        };
       }
       case "get_weight_history": {
         const p_to = new Date().toISOString().slice(0, 10);
