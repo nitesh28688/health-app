@@ -1,6 +1,13 @@
 # Handoff — pick up here next session
 
-## NEWEST: Tone-driven frustration handling + Wellness-specific interpretation (2026-07-16, later)
+## NEWEST: Assistant no longer discloses the underlying AI vendor (2026-07-16, later)
+No migration, pure prompt logic — **untested**. User asked "who powers you" and it
+answered "I am a large language model powered by Google," breaking brand ownership.
+Added `identityNote` in `web/app/api/ai/assistant/route.ts` telling it to answer as
+"[assistant name], built into Core AI" instead and never name the vendor/model.
+Test: ask "who powers you" / "what AI are you" / "who built you" in both modes.
+
+## Tone-driven frustration handling + Wellness-specific interpretation (2026-07-16, later)
 No migration, pure prompt logic — **untested**:
 1. `web/lib/aiTone.ts` — each tone now also has a `frustration` clause (Blunt: no
    canned de-escalation, get straight to the fix; Gentle: genuine empathy first;
