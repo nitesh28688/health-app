@@ -150,23 +150,35 @@ function Products({ userId }: { userId: string }) {
       </p>
 
       <input ref={fileRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={onFile} />
-      <button
-        onClick={() => fileRef.current?.click()}
-        disabled={checking}
-        className="w-full rounded-2xl bg-gradient-to-r from-rose-500 to-pink-600 text-white shadow-md shadow-rose-500/20 py-3.5 font-semibold disabled:opacity-60 active:scale-[0.99] flex items-center justify-center gap-2 mb-2"
-      >
-        <Camera className="w-5 h-5" />
-        {checking ? "Reading the label…" : "Check a product"}
-      </button>
-      <button
-        onClick={() => { setShowTyped((v) => !v); setError(null); }}
-        className="w-full text-xs text-neutral-500 flex items-center justify-center gap-1.5 mb-1 py-1"
-      >
-        <Keyboard className="w-3.5 h-3.5" /> Scan not working? Type it in instead
-      </button>
+      {checking ? (
+        <div className="w-full rounded-2xl bg-gradient-to-r from-rose-500 to-pink-600 text-white shadow-md shadow-rose-500/20 py-3.5 font-semibold flex items-center justify-center gap-2 mb-2 opacity-80">
+          Checking…
+        </div>
+      ) : (
+        <div className="flex gap-2 mb-2">
+          <button
+            onClick={() => fileRef.current?.click()}
+            className="flex-1 rounded-2xl bg-gradient-to-r from-rose-500 to-pink-600 text-white shadow-md shadow-rose-500/20 py-3.5 font-semibold active:scale-[0.99] flex items-center justify-center gap-2"
+          >
+            <Camera className="w-5 h-5" /> Scan
+          </button>
+          <button
+            onClick={() => { setShowTyped(true); setError(null); }}
+            className="flex-1 rounded-2xl border-2 border-rose-300 dark:border-rose-800 text-rose-600 dark:text-rose-400 py-3.5 font-semibold active:scale-[0.99] flex items-center justify-center gap-2"
+          >
+            <Keyboard className="w-5 h-5" /> Type
+          </button>
+        </div>
+      )}
 
       {showTyped && (
         <div className="rounded-2xl border border-neutral-200/60 dark:border-neutral-800/60 bg-white/50 dark:bg-neutral-900/50 backdrop-blur-md shadow-sm p-3.5 mb-4">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs font-semibold text-neutral-400 uppercase">Type a product</p>
+            <button onClick={() => setShowTyped(false)} aria-label="Close" className="w-7 h-7 flex items-center justify-center text-neutral-400">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
           <input
             value={typedName}
             onChange={(e) => setTypedName(e.target.value)}
