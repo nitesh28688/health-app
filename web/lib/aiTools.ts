@@ -139,8 +139,13 @@ export const toolDeclarations = [
   },
   {
     name: "get_products",
-    description: "Get the user's skincare/haircare product shelf (Products tab): each product's name, brand, type, key actives, personalized verdict (good_match/use_carefully/skip), usage time (am/pm), conflict warnings, and expiry status. Use for questions like 'what's on my shelf', 'which sunscreen do I own', 'can I use X with Y', or when recommending ingredients (so you don't suggest something they already own or that conflicts).",
-    parameters: { type: "OBJECT", properties: {} }
+    description: "Get the user's skincare/haircare products (Products tab): each product's name, brand, type, key actives, personalized verdict (good_match/use_carefully/skip), usage time (am/pm), conflict warnings, expiry status, and status (active = currently on their shelf, finished = used up/removed previously). Defaults to active only. Use for 'what's on my shelf', 'which sunscreen do I own', 'can I use X with Y', recommending ingredients (so you don't suggest something they already own or that conflicts), AND for recalling past products ('what did I used to use', 'have I tried X before') — pass include_finished true for anything backward-looking.",
+    parameters: {
+      type: "OBJECT",
+      properties: {
+        include_finished: { type: "BOOLEAN", description: "Include products marked finished/removed, not just the current active shelf. Default false." }
+      }
+    }
   },
   {
     name: "get_wellness_trend",
@@ -345,14 +350,15 @@ Return a strict JSON object containing:
         return data;
       }
       case "get_products": {
-        const { data, error } = await db
+        let query = db
           .from("wellness_products")
-          .select("name, brand, product_type, key_actives, verdict, verdict_reason, usage_time, conflicts, pao_months, opened_at")
-          .eq("status", "active")
+          .select("name, brand, product_type, key_actives, verdict, verdict_reason, usage_time, conflicts, pao_months, opened_at, status, created_at")
           .order("created_at", { ascending: false })
           .limit(40);
+        if (!args.include_finished) query = query.eq("status", "active");
+        const { data, error } = await query;
         if (error) throw error;
-        if (!data?.length) return { message: "No products on the shelf yet — they can add one from the Products tab." };
+        if (!data?.length) return { message: "No products found — they can add one from the Products tab." };
         return data;
       }
       case "get_wellness_trend": {
