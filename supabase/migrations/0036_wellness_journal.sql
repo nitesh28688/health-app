@@ -14,11 +14,24 @@ create table wellness_journal (
   ai_comment  text,
   created_at  timestamptz not null default now(),
   -- Full-text search over the entry plus its extracted tags — pure Postgres,
-  -- no embeddings/vector store needed at this scale.
-  search_tsv  tsvector generated always as (
-    to_tsvector('english', coalesce(entry_text, '') || ' ' || coalesce(array_to_string(tags, ' '), ''))
-  ) stored
+  -- no embeddings/vector store needed at this scale. Trigger-maintained, NOT
+  -- a generated column: array_to_string() isn't immutable, so Postgres
+  -- rejects it in a generation expression (42P17, hit live 2026-07-16).
+  search_tsv  tsvector
 );
+
+create or replace function wellness_journal_tsv_update()
+returns trigger language plpgsql as $$
+begin
+  new.search_tsv := to_tsvector('english',
+    coalesce(new.entry_text, '') || ' ' || coalesce(array_to_string(new.tags, ' '), ''));
+  return new;
+end;
+$$;
+
+create trigger trg_wellness_journal_tsv
+  before insert or update of entry_text, tags on wellness_journal
+  for each row execute function wellness_journal_tsv_update();
 
 create index idx_wellness_journal_user on wellness_journal (user_id, entry_at desc);
 create index idx_wellness_journal_tsv on wellness_journal using gin (search_tsv);
