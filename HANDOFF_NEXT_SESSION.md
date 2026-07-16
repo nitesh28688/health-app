@@ -1,5 +1,27 @@
 # Handoff — pick up here next session
 
+## NEWEST: Products — preview-before-save + typed entry (2026-07-16, latest)
+No migration (schema already supports it), tsc + next build clean — **untested**.
+User feedback on the just-shipped Products tab: (1) it auto-added every scan to the
+shelf with no way to just check something without keeping it, (2) scanning
+sometimes fails (bad lighting/blur) and there was no fallback.
+1. `/api/ai/product-check` no longer inserts — it returns a `preview` object only.
+   Also now accepts `{ productName, ingredientsText? }` instead of requiring
+   `imageDataUrl` (prompt adapts: uses typed ingredients if given, else the
+   model's general knowledge of that specific product with an explicit
+   "I don't confidently recognize this" fallback rather than inventing a list).
+2. `/products` page: scan or type → result shows as a preview card (verdict +
+   reason + conflicts + actives) with "Add to my kit" / "Discard" buttons. Only
+   "Add to my kit" does the actual `wellness_products` insert (plain client-side
+   Supabase insert, RLS-scoped — no second AI call needed since the analysis
+   already ran). New "Scan not working? Type it in instead" toggle reveals a name
+   + optional-ingredients form.
+3. Test: scan a product → confirm it does NOT appear on the shelf until you tap
+   Add; tap Discard on one → confirm it's gone and never saved. Type a well-known
+   product name with no ingredients → check it gives a real verdict (or an honest
+   "don't recognize it" instead of hallucinated ingredients). Type ingredients
+   directly → check the verdict actually reflects them.
+
 ## NEWEST: Products tab — AI ingredient checker for the wellness shelf (2026-07-16, latest)
 Built, tsc + next build clean, **migration 0037 NOT yet run** and **untested live**.
 1. Run `supabase/migrations/0037_products.sql` — `wellness_products` table + widens

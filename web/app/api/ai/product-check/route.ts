@@ -19,13 +19,18 @@ export async function POST(req: NextRequest) {
   const jwt = req.headers.get("authorization")?.replace("Bearer ", "");
   if (!jwt) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
-  const { imageDataUrl } = await req.json();
-  if (typeof imageDataUrl !== "string" || !imageDataUrl.startsWith("data:image/")) {
-    return NextResponse.json({ error: "bad image payload" }, { status: 400 });
+  const { imageDataUrl, productName, ingredientsText } = await req.json();
+  const hasImage = typeof imageDataUrl === "string" && imageDataUrl.startsWith("data:image/");
+  const hasTyped = typeof productName === "string" && productName.trim().length > 0;
+  if (!hasImage && !hasTyped) {
+    return NextResponse.json({ error: "provide a photo or a product name" }, { status: 400 });
   }
-  const match = imageDataUrl.match(/^data:(image\/\w+);base64,(.+)$/) ?? [];
-  const [, mimeType, base64] = match;
-  if (!base64) return NextResponse.json({ error: "bad image payload structure" }, { status: 400 });
+  let mimeType = "", base64 = "";
+  if (hasImage) {
+    const match = imageDataUrl.match(/^data:(image\/\w+);base64,(.+)$/) ?? [];
+    [, mimeType, base64] = match;
+    if (!base64) return NextResponse.json({ error: "bad image payload structure" }, { status: 400 });
+  }
 
   const dbAdmin = admin();
   const { data: userData } = await dbAdmin.auth.getUser(jwt);
@@ -71,7 +76,13 @@ export async function POST(req: NextRequest) {
   const recentTreatments = (journalRes.data ?? [])
     .map((j) => `${j.entry_at.slice(0, 10)}: ${j.entry_text.slice(0, 120)}`);
 
-  const prompt = `You are a cosmetic-ingredient analysis AI inside a wellness app. The photo shows a skincare or haircare product — read its label, especially the INCI ingredient list if visible.
+  const inputDescription = hasImage
+    ? `The photo shows a skincare or haircare product — read its label, especially the INCI ingredient list if visible.`
+    : `The user couldn't scan the product (label unreadable/no camera) and typed it in instead:
+Product name: "${stripNulls(String(productName)).slice(0, 150)}"
+${ingredientsText && String(ingredientsText).trim() ? `Ingredients they typed from the label: "${stripNulls(String(ingredientsText)).slice(0, 1500)}"` : "They did not provide an ingredient list — use your general knowledge of this specific product if you recognize it. If you don't confidently recognize it, say so plainly in verdict_reason (e.g. \"I don't have reliable ingredient data for this exact product — here's general guidance for a product of this type\") rather than inventing a specific ingredient list."}`;
+
+  const prompt = `You are a cosmetic-ingredient analysis AI inside a wellness app. ${inputDescription}
 
 USER CONTEXT (personalize the verdict to THIS person):
 - Skin scan: ${latestByType.skin ? `type "${latestByType.skin.classification}", observations: ${JSON.stringify(latestByType.skin.observations).slice(0, 400)}` : "none yet"}
@@ -88,10 +99,13 @@ RULES:
 5. conflicts: warnings against their CURRENT shelf or recent treatments only (e.g. "You already use a salicylic acid cleanser — don't layer this AHA toner the same night", "Avoid for 48h after your laser session"). Empty array if none. Never invent shelf items.
 6. pao_months: the period-after-opening number if the open-jar symbol is legible (e.g. 12 for "12M"), else null.
 7. NON-DIAGNOSTIC: describe cosmetic suitability only, never medical conditions or treatment claims.
-8. If the image is not a skincare/haircare product at all, set not_a_product to true and leave other fields minimal.`;
+8. ${hasImage ? "If the image is not a skincare/haircare product at all, set not_a_product to true and leave other fields minimal." : "not_a_product should be false unless the typed name is obviously not a skincare/haircare product."}`;
+
+  const parts: object[] = [{ text: prompt }];
+  if (hasImage) parts.push({ inline_data: { mime_type: mimeType, data: base64 } });
 
   const aiRes = await generateWithFallback(
-    [{ text: prompt }, { inline_data: { mime_type: mimeType, data: base64 } }],
+    parts,
     {
       type: "OBJECT",
       properties: {
@@ -128,11 +142,14 @@ RULES:
   );
 
   if (parsed.not_a_product) {
-    return NextResponse.json({ error: "That doesn't look like a skincare/haircare product — try again with the label visible" }, { status: 422 });
+    return NextResponse.json({ error: hasImage ? "That doesn't look like a skincare/haircare product — try again with the label visible" : "That doesn't look like a skincare/haircare product name" }, { status: 422 });
   }
 
-  const row = {
-    user_id: userId,
+  // Preview only — nothing is saved yet. The client shows this with an
+  // "Add to my kit" action that does the actual insert, so scanning to
+  // check something you're deciding whether to buy (or a duplicate/mis-scan)
+  // doesn't silently clutter the shelf.
+  const preview = {
     name: stripNulls(String(parsed.name || "Unknown product")).slice(0, 120),
     brand: parsed.brand ? stripNulls(String(parsed.brand)).slice(0, 80) : null,
     product_type: parsed.product_type ?? "other",
@@ -146,9 +163,5 @@ RULES:
       ? Math.round(parsed.pao_months) : null,
   };
 
-  const { data: product, error: insErr } = await userDb
-    .from("wellness_products").insert(row).select("*").single();
-  if (insErr) return NextResponse.json({ error: "couldn't save product" }, { status: 500 });
-
-  return NextResponse.json({ product });
+  return NextResponse.json({ product: preview });
 }

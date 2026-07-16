@@ -4,10 +4,9 @@ import { AppShell } from "../AppShell";
 import { supabase } from "@/lib/supabase";
 import { compressImage } from "@/lib/imageCompress";
 import { PageSkeleton } from "@/lib/Skeleton";
-import { Camera, Package, AlertTriangle, CheckCircle2, XCircle, Clock } from "lucide-react";
+import { Camera, Package, AlertTriangle, CheckCircle2, XCircle, Clock, Keyboard, Plus, X } from "lucide-react";
 
-interface Product {
-  id: number;
+interface ProductPreview {
   name: string;
   brand: string | null;
   product_type: string | null;
@@ -18,6 +17,10 @@ interface Product {
   usage_time: "am" | "pm" | "both" | null;
   conflicts: string[];
   pao_months: number | null;
+}
+
+interface Product extends ProductPreview {
+  id: number;
   opened_at: string | null;
   status: "active" | "finished";
   created_at: string;
@@ -44,6 +47,15 @@ function Products({ userId }: { userId: string }) {
   const [expanded, setExpanded] = useState<number | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
+  // Typed-entry fallback for when scanning doesn't work
+  const [showTyped, setShowTyped] = useState(false);
+  const [typedName, setTypedName] = useState("");
+  const [typedIngredients, setTypedIngredients] = useState("");
+
+  // Result of a check, not yet saved — shown as a preview with Add/Discard
+  const [preview, setPreview] = useState<ProductPreview | null>(null);
+  const [saving, setSaving] = useState(false);
+
   const load = useCallback(async () => {
     const { data } = await supabase
       .from("wellness_products")
@@ -56,30 +68,61 @@ function Products({ userId }: { userId: string }) {
   }, [userId]);
   useEffect(() => { load(); }, [load]);
 
-  async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file || checking) return;
+  async function runCheck(payload: object) {
     setChecking(true);
     setError(null);
+    setPreview(null);
     try {
-      // Higher maxDim than selfies — INCI ingredient text is small print.
-      const imageDataUrl = await compressImage(file, 1600, 0.8);
       const { data: { session } } = await supabase.auth.getSession();
       const res = await fetch("/api/ai/product-check", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token}` },
-        body: JSON.stringify({ imageDataUrl }),
+        body: JSON.stringify(payload),
       });
       const body = await res.json();
-      if (!res.ok) { setError(body.error || "Couldn't analyze that photo"); return; }
-      setExpanded(body.product.id);
-      load();
+      if (!res.ok) { setError(body.error || "Couldn't analyze that"); return; }
+      setPreview(body.product as ProductPreview);
+      setShowTyped(false);
     } catch {
       setError("Couldn't analyze — check your connection and try again.");
     } finally {
       setChecking(false);
     }
+  }
+
+  async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file || checking) return;
+    // Higher maxDim than selfies — INCI ingredient text is small print.
+    const imageDataUrl = await compressImage(file, 1600, 0.8);
+    runCheck({ imageDataUrl });
+  }
+
+  function submitTyped() {
+    if (!typedName.trim() || checking) return;
+    runCheck({ productName: typedName.trim(), ingredientsText: typedIngredients.trim() || undefined });
+  }
+
+  async function addToKit() {
+    if (!preview || saving) return;
+    setSaving(true);
+    const { data, error: insErr } = await supabase
+      .from("wellness_products")
+      .insert({ user_id: userId, ...preview })
+      .select("*")
+      .single();
+    setSaving(false);
+    if (insErr) { setError("Couldn't save to your kit — try again"); return; }
+    setPreview(null);
+    setTypedName("");
+    setTypedIngredients("");
+    setExpanded((data as Product).id);
+    load();
+  }
+
+  function discardPreview() {
+    setPreview(null);
   }
 
   async function markOpened(p: Product) {
@@ -115,10 +158,84 @@ function Products({ userId }: { userId: string }) {
         <Camera className="w-5 h-5" />
         {checking ? "Reading the label…" : "Check a product"}
       </button>
+      <button
+        onClick={() => { setShowTyped((v) => !v); setError(null); }}
+        className="w-full text-xs text-neutral-500 flex items-center justify-center gap-1.5 mb-1 py-1"
+      >
+        <Keyboard className="w-3.5 h-3.5" /> Scan not working? Type it in instead
+      </button>
+
+      {showTyped && (
+        <div className="rounded-2xl border border-neutral-200/60 dark:border-neutral-800/60 bg-white/50 dark:bg-neutral-900/50 backdrop-blur-md shadow-sm p-3.5 mb-4">
+          <input
+            value={typedName}
+            onChange={(e) => setTypedName(e.target.value)}
+            placeholder="Product name, e.g. 'CeraVe Foaming Cleanser'"
+            className="w-full rounded-xl border border-neutral-300 dark:border-neutral-700 bg-white/50 dark:bg-neutral-900/50 px-3.5 py-2.5 text-sm mb-2"
+          />
+          <textarea
+            value={typedIngredients}
+            onChange={(e) => setTypedIngredients(e.target.value)}
+            placeholder="Ingredients from the label, if you can read them (optional — improves accuracy)"
+            rows={2}
+            className="w-full resize-none rounded-xl border border-neutral-300 dark:border-neutral-700 bg-white/50 dark:bg-neutral-900/50 px-3.5 py-2.5 text-sm mb-2"
+          />
+          <button
+            onClick={submitTyped}
+            disabled={!typedName.trim() || checking}
+            className="w-full rounded-xl bg-gradient-to-r from-rose-500 to-pink-600 text-white py-2.5 font-semibold text-sm disabled:opacity-40"
+          >
+            {checking ? "Checking…" : "Check this product"}
+          </button>
+        </div>
+      )}
+
       <p className="text-[11px] text-neutral-400 text-center mb-5">
         Get the ingredient list (INCI) in frame for the best verdict.
       </p>
       {error && <p className="text-sm text-amber-600 mb-4 text-center">{error}</p>}
+
+      {preview && (
+        <div className="rounded-2xl border-2 border-rose-300 dark:border-rose-800 bg-rose-50/50 dark:bg-rose-950/20 shadow-sm p-3.5 mb-5">
+          <div className="flex items-start justify-between gap-2 mb-2">
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold text-[15px]">{preview.name}</p>
+              <p className="text-xs text-neutral-500">
+                {[preview.brand, preview.product_type?.replace("_", " ")].filter(Boolean).join(" · ")}
+              </p>
+            </div>
+            {preview.verdict && (
+              <span className={`shrink-0 text-[11px] font-semibold px-2 py-1 rounded-full flex items-center gap-1 ${VERDICT_META[preview.verdict].cls}`}>
+                {(() => { const I = VERDICT_META[preview.verdict!].icon; return <I className="w-3.5 h-3.5" />; })()}
+                {VERDICT_META[preview.verdict].label}
+              </span>
+            )}
+          </div>
+          {preview.verdict_reason && <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-2">{preview.verdict_reason}</p>}
+          {preview.conflicts.map((c, i) => (
+            <p key={i} className="text-sm text-amber-700 dark:text-amber-400 bg-amber-50/60 dark:bg-amber-950/20 border-l-2 border-amber-400 dark:border-amber-700 rounded-r-lg px-3 py-2 mb-2">
+              {c}
+            </p>
+          ))}
+          {preview.key_actives.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mb-3">
+              {preview.key_actives.map((a) => (
+                <span key={a} className="text-[11px] font-medium text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900 px-2 py-0.5 rounded-full">{a}</span>
+              ))}
+            </div>
+          )}
+          <div className="flex gap-2">
+            <button onClick={addToKit} disabled={saving}
+              className="flex-1 rounded-xl bg-gradient-to-r from-rose-500 to-pink-600 text-white py-2.5 font-semibold text-sm disabled:opacity-50 flex items-center justify-center gap-1.5">
+              <Plus className="w-4 h-4" /> {saving ? "Adding…" : "Add to my kit"}
+            </button>
+            <button onClick={discardPreview} disabled={saving}
+              className="rounded-xl border border-neutral-300 dark:border-neutral-700 text-neutral-500 px-4 py-2.5 font-semibold text-sm flex items-center gap-1.5">
+              <X className="w-4 h-4" /> Discard
+            </button>
+          </div>
+        </div>
+      )}
 
       {products.length === 0 ? (
         <p className="text-sm text-neutral-400 text-center py-8">
