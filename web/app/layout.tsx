@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { SwRegister } from "./sw-register";
 import { InstallPrompt } from "./InstallPrompt";
+import { ThemeSync } from "./theme-sync";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -69,6 +70,7 @@ export default function RootLayout({
       </head>
       <body className="min-h-full flex flex-col pt-[env(safe-area-inset-top)] bg-gradient-to-br from-indigo-50/40 via-white to-violet-50/40 dark:from-indigo-950/20 dark:via-[#0a0a0a] dark:to-[#0a0a0a]">
         <SwRegister />
+        <ThemeSync />
         {children}
         <InstallPrompt />
       </body>

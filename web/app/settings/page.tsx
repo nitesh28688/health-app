@@ -9,6 +9,7 @@ import { PageSkeleton } from "@/lib/Skeleton";
 import { pushSupported, currentPushSubscription, enablePush, disablePush } from "@/lib/push";
 import { Check, ChevronLeft, Pill, Mail, KeyRound, Trash2, LogOut, Bot } from "lucide-react";
 import { AI_TONES } from "@/lib/aiTone";
+import { getTheme, setTheme, type ThemeMode } from "@/lib/theme";
 
 const inputCls =
   "rounded-xl border border-neutral-300 dark:border-neutral-700 bg-white/50 dark:bg-neutral-900/50 px-4 py-3 text-base w-full focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition-all shadow-sm";
@@ -22,6 +23,10 @@ function SettingsForm({ profile, setProfile, userId, email }: {
   const [shareWorkouts, setShareWorkouts] = useState(profile.share_workouts);
   const [shareDiary, setShareDiary] = useState(profile.share_diary);
   const [shareWeight, setShareWeight] = useState(profile.share_weight);
+
+  // ── Appearance ──
+  const [themeMode, setThemeMode] = useState<ThemeMode>("system");
+  useEffect(() => { setThemeMode(getTheme()); }, []);
 
   // ── AI assistant personalization ──
   const [aiTone, setAiTone] = useState(profile.ai_tone ?? "balanced");
@@ -188,26 +193,18 @@ function SettingsForm({ profile, setProfile, userId, email }: {
       <section className="mb-8">
         <h2 className="text-lg font-bold mb-1">Appearance</h2>
         <p className="text-sm text-neutral-500 mb-3">Customize your app experience.</p>
-        <label className="flex items-center justify-between py-3 border-b border-neutral-100 dark:border-neutral-900 cursor-pointer">
-          <span>Dark Mode</span>
-          <input type="checkbox" 
-            checked={typeof document !== "undefined" && document.documentElement.classList.contains("dark")}
-            onChange={(e) => {
-              const isDark = e.target.checked;
-              if (isDark) {
-                document.documentElement.classList.add("dark");
-                document.documentElement.classList.remove("light");
-                localStorage.setItem("theme", "dark");
-              } else {
-                document.documentElement.classList.remove("dark");
-                document.documentElement.classList.add("light");
-                localStorage.setItem("theme", "light");
-              }
-              // Force re-render of this checkbox
-              setShareWorkouts(v => v);
-            }}
-            className="w-6 h-6 accent-indigo-600 cursor-pointer" />
-        </label>
+        <div className="py-3 border-b border-neutral-100 dark:border-neutral-900">
+          <span className="block mb-2">Theme</span>
+          <div className="flex gap-1.5">
+            {(["light", "dark", "system"] as const).map((m) => (
+              <button key={m} type="button" onClick={() => { setThemeMode(m); setTheme(m); }}
+                className={`flex-1 rounded-xl py-2.5 text-sm font-semibold border capitalize ${
+                  themeMode === m ? "bg-indigo-600 text-white border-indigo-600" : "border-neutral-300 dark:border-neutral-700 text-neutral-600 dark:text-neutral-400"}`}>
+                {m}
+              </button>
+            ))}
+          </div>
+        </div>
       </section>
 
       {/* ── Sharing with Friends ── */}
