@@ -117,6 +117,27 @@ export const toolDeclarations = [
     }
   },
   {
+    name: "search_journal",
+    description: "Search the user's wellness journal (time-stamped personal entries about treatments, skincare/hair events, habits, moods — e.g. 'laser hair removal', 'started retinol'). Use this whenever the user asks WHEN they did something, what they wrote about a topic, or to recall a past personal event. Returns matching entries with their date.",
+    parameters: {
+      type: "OBJECT",
+      properties: {
+        query: { type: "STRING", description: "Search words, e.g. 'laser' or 'retinol'" }
+      },
+      required: ["query"]
+    }
+  },
+  {
+    name: "get_recent_journal",
+    description: "Get the user's most recent wellness journal entries (newest first). Use for questions like 'what have I been up to lately' or to ground companion-style conversation in what they've actually logged.",
+    parameters: {
+      type: "OBJECT",
+      properties: {
+        limit: { type: "NUMBER", description: "How many entries, default 10, max 30" }
+      }
+    }
+  },
+  {
     name: "get_wellness_trend",
     description: "Get the score history over time for a specific wellness scan type, to describe whether the user's skin, eye, or hair score is improving, worsening, or stable.",
     parameters: {
@@ -297,6 +318,25 @@ Return a strict JSON object containing:
         const { data, error } = await query;
         if (error) throw error;
         if (!data?.length) return { message: "No usable wellness scans found yet." };
+        return data;
+      }
+      case "search_journal": {
+        if (!args.query) return { error: "query is required" };
+        const { data, error } = await db.rpc("search_journal", { q: String(args.query) });
+        if (error) throw error;
+        if (!data?.length) return { message: `No journal entries found matching "${args.query}".` };
+        return (data as any[]).map((e) => ({
+          entry_at: e.entry_at, entry_text: e.entry_text, category: e.category, tags: e.tags,
+        }));
+      }
+      case "get_recent_journal": {
+        const { data, error } = await db
+          .from("wellness_journal")
+          .select("entry_at, entry_text, category, tags")
+          .order("entry_at", { ascending: false })
+          .limit(Math.min(Number(args.limit) || 10, 30));
+        if (error) throw error;
+        if (!data?.length) return { message: "No journal entries yet." };
         return data;
       }
       case "get_wellness_trend": {

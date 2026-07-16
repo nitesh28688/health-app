@@ -9,7 +9,7 @@ import { AssistantSheet } from "@/components/AssistantSheet";
 import { FormCheckSheet } from "@/components/FormCheckSheet";
 import { PhysioSheet } from "@/components/PhysioSheet";
 import { TermsGate } from "@/components/TermsGate";
-import { Wand2, Book, Dumbbell, TrendingUp, Users, CloudUpload, Sparkles, FileText } from "lucide-react";
+import { Wand2, Book, Dumbbell, TrendingUp, Users, CloudUpload, Sparkles, FileText, BookHeart } from "lucide-react";
 import { subscribePendingCount } from "@/lib/offlineQueue";
 import { getAppMode, setAppMode, subscribeAppMode, type AppMode } from "@/lib/appMode";
 import { CURRENT_TERMS_VERSION } from "@/lib/legal";
@@ -28,7 +28,8 @@ const CORE_TABS: TabDef[] = [
 
 const WELLNESS_TABS: TabDef[] = [
   { href: "/wellness", label: "Scan", icon: Sparkles, type: null },
-  // slot 1 (index 1) is the mode-toggle button
+  { href: "/journal", label: "Journal", icon: BookHeart, type: null },
+  // slot 2 (index 2) is the mode-toggle button
   { href: "/wellness?view=reports", label: "Reports", icon: FileText, type: "reports" },
 ];
 
@@ -116,8 +117,9 @@ function NavTabs({ mode, onModeToggle }: { mode: AppMode; onModeToggle: () => vo
   const currentView = searchParams.get("view");
   const activeTabs = mode === "wellness" ? WELLNESS_TABS : CORE_TABS;
   const isWellness = mode === "wellness";
-  // The index at which the mode-toggle button is inserted
-  const toggleIdx = mode === "wellness" ? 1 : 2;
+  // The index at which the mode-toggle button is inserted (kept centered:
+  // wellness is now Scan / Journal / [toggle] / Reports)
+  const toggleIdx = 2;
 
   const accentText = isWellness ? "text-rose-600 dark:text-rose-400" : "text-indigo-600 dark:text-indigo-400";
   const accentBubble = isWellness ? "bg-rose-100 dark:bg-rose-900/30" : "bg-indigo-100 dark:bg-indigo-900/30";
@@ -249,7 +251,7 @@ export function AppShell({ children }: {
   useEffect(() => {
     if (loading || !session) return;
     if (skipSyncRef.current) { skipSyncRef.current = false; return; }
-    if (pathname.startsWith("/wellness") && mode !== "wellness") {
+    if ((pathname.startsWith("/wellness") || pathname.startsWith("/journal")) && mode !== "wellness") {
       setAppMode("wellness");
       return;
     }

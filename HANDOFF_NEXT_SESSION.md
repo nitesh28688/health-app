@@ -1,5 +1,31 @@
 # Handoff — pick up here next session
 
+## NEWEST: Wellness Journal / "Timecapsule" (2026-07-16, latest)
+Built, tsc + next build clean, **migration 0036 NOT yet run** and **untested live**.
+1. Run `supabase/migrations/0036_wellness_journal.sql` — `wellness_journal` table
+   (generated tsvector column + GIN index for full-text search), `search_journal(q)`
+   RPC (FTS with ilike fallback), and widens `ai_suggestions_kind_check` to add
+   `journal_comment` (list rebuilt from 0032, the last migration to touch it).
+2. What it is: time-stamped personal entries in Wellness mode (new Journal tab in
+   the wellness nav, Scan/Journal/[toggle]/Reports; deep-linking /journal forces
+   wellness mode same as /wellness). On save, ONE Gemini call extracts
+   category+tags (for search) and writes a tone-matched companion comment
+   (`/api/ai/journal-entry`; entry always saves even if AI is down/capped —
+   comment is best-effort, 20/day cap on kind `journal_comment`).
+3. Assistant recall: new `search_journal`/`get_recent_journal` tools in aiTools.ts;
+   wellness system prompt tells it to use them for "when did I..." questions.
+4. Test after migration: save "laser hair removal session 3 done" → expect a
+   tone-matched aftercare comment + treatment category + laser tags; then ask the
+   assistant (wellness mode) "when did I last do laser?" → should quote the entry
+   date via search_journal, not guess.
+5. Gotcha hit AGAIN this session: typing a NUL escape in an Edit/Write string
+   inserted a literal NUL byte into journal-entry/route.ts (git would treat the
+   file as binary). Fixed via node script replacing it with
+   String.fromCharCode(0). Same lesson as the physio session — don't type that
+   escape into source.
+v2 deferred (deliberately, don't build unasked): proactive reminders ("6 weeks
+since last laser") via cron+push, and photo attachments on entries.
+
 ## NEWEST: Assistant scope widened — engage with anything health-adjacent (2026-07-16, later)
 No migration, prompt-only — **untested**. User (Blunt tone, named "Coach") said "I had
 a lot of Red Bull today and I smoked a cigarette" and got "I can't comment on that. I
