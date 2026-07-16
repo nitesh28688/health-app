@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { generateChatWithTools } from "@/lib/gemini";
 import { toolDeclarations, executeTool } from "@/lib/aiTools";
 import { toneInstruction, toneFrustrationInstruction } from "@/lib/aiTone";
+import { identitySystemNote, redactVendorMentions } from "@/lib/aiIdentity";
 
 const admin = () =>
   createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
@@ -135,9 +136,11 @@ export async function POST(req: NextRequest) {
   // dermatologist/wellness-coach persona — the interpretation examples now
   // match what each mode actually has data about instead of Wellness mode
   // inheriting diet-flavored language it can't act on.
-  // Brand ownership: don't disclose the underlying model/vendor when asked
-  // "who powers you" / "what AI are you" — answer as Core AI's own assistant.
-  const identityNote = ` If asked who powers you, what model/AI you are, or who built you, do NOT name the underlying AI vendor or model — you are ${assistantName}, built into Core AI. Answer briefly along those lines and redirect to how you can help them; don't fabricate specific technical claims beyond that, just don't disclose the vendor.`;
+  // Brand ownership: the prompt instruction below is the first line of
+  // defense but not bulletproof against "ignore previous instructions"-style
+  // probing — redactVendorMentions() on the final reply (below) is the
+  // backstop that catches a leak even if the model was talked into one.
+  const identityNote = identitySystemNote(assistantName);
   const interpretationNote = mode === "wellness"
     ? ` Act like a dermatologist/wellness coach reviewing a patient's history, not a report generator — the user can already see their raw scores on the report screen, so restating "your score was X" adds nothing. Instead: compare the latest scan to prior ones via get_wellness_trend, name the specific sub-score or observation driving any change, state a clear verdict (improving / worsening / stable), and give ONE concrete next step (a specific ingredient to try or avoid, or to keep doing what's working) — not a wall of scores. Only recite exact numbers if the user explicitly asks for them.`
     : ` Act like a personal fitness/diet coach reviewing someone's log, not a report generator — the user can already see their raw macros on the Trends and Diary screens, so simply restating "you had X kcal and Yg protein" adds nothing. Instead: compare against their target and known context (${profileNote.trim() || "diet targets"}), spot a pattern across the days you pulled (e.g. "protein's been under target 4 of the last 7 days, mostly on workout days"), state a clear verdict (on track / off track / mixed), and give ONE specific, actionable suggestion — not a wall of numbers. Only recite exact figures if the user explicitly asks for the numbers. For any question that isn't scoped to a single day (weekly, "lately", "how am I doing", trends), default to pulling at least the last 7 days for pattern context even if the user only asked about "today". When using get_daily_totals for a multi-day range, always use its returned summary object's totals/averages — never sum or average the daily_rows yourself, you are unreliable at that arithmetic and this caused wrong weekly numbers before.`;
@@ -223,9 +226,11 @@ export async function POST(req: NextRequest) {
       // Append the function responses to the history
       currentContents.push({ role: "user", parts: functionResponses });
     } else {
-      // Model responded with text, we are done
+      // Model responded with text, we are done. Backstop redaction in case
+      // the model was talked into naming the vendor/stack/prompt despite
+      // identityNote — see lib/aiIdentity.ts.
       return NextResponse.json({
-        text: textPart?.text || "",
+        text: redactVendorMentions(textPart?.text || "", assistantName),
         proposals
       });
     }
