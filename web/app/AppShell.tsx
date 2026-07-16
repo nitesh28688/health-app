@@ -9,7 +9,7 @@ import { AssistantSheet } from "@/components/AssistantSheet";
 import { FormCheckSheet } from "@/components/FormCheckSheet";
 import { PhysioSheet } from "@/components/PhysioSheet";
 import { TermsGate } from "@/components/TermsGate";
-import { Wand2, Book, Dumbbell, TrendingUp, Users, CloudUpload, Sparkles, FileText, BookHeart } from "lucide-react";
+import { Wand2, Book, Dumbbell, TrendingUp, Users, CloudUpload, Sparkles, FileText, BookHeart, Package } from "lucide-react";
 import { subscribePendingCount } from "@/lib/offlineQueue";
 import { getAppMode, setAppMode, subscribeAppMode, type AppMode } from "@/lib/appMode";
 import { CURRENT_TERMS_VERSION } from "@/lib/legal";
@@ -29,7 +29,8 @@ const CORE_TABS: TabDef[] = [
 const WELLNESS_TABS: TabDef[] = [
   { href: "/wellness", label: "Scan", icon: Sparkles, type: null },
   { href: "/journal", label: "Journal", icon: BookHeart, type: null },
-  // slot 2 (index 2) is the mode-toggle button
+  // slot 2 (index 2) is the mode-toggle button — centered, same as Core
+  { href: "/products", label: "Products", icon: Package, type: null },
   { href: "/wellness?view=reports", label: "Reports", icon: FileText, type: "reports" },
 ];
 
@@ -251,7 +252,7 @@ export function AppShell({ children }: {
   useEffect(() => {
     if (loading || !session) return;
     if (skipSyncRef.current) { skipSyncRef.current = false; return; }
-    if ((pathname.startsWith("/wellness") || pathname.startsWith("/journal")) && mode !== "wellness") {
+    if ((pathname.startsWith("/wellness") || pathname.startsWith("/journal") || pathname.startsWith("/products")) && mode !== "wellness") {
       setAppMode("wellness");
       return;
     }

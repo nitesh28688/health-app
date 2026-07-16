@@ -138,6 +138,11 @@ export const toolDeclarations = [
     }
   },
   {
+    name: "get_products",
+    description: "Get the user's skincare/haircare product shelf (Products tab): each product's name, brand, type, key actives, personalized verdict (good_match/use_carefully/skip), usage time (am/pm), conflict warnings, and expiry status. Use for questions like 'what's on my shelf', 'which sunscreen do I own', 'can I use X with Y', or when recommending ingredients (so you don't suggest something they already own or that conflicts).",
+    parameters: { type: "OBJECT", properties: {} }
+  },
+  {
     name: "get_wellness_trend",
     description: "Get the score history over time for a specific wellness scan type, to describe whether the user's skin, eye, or hair score is improving, worsening, or stable.",
     parameters: {
@@ -337,6 +342,17 @@ Return a strict JSON object containing:
           .limit(Math.min(Number(args.limit) || 10, 30));
         if (error) throw error;
         if (!data?.length) return { message: "No journal entries yet." };
+        return data;
+      }
+      case "get_products": {
+        const { data, error } = await db
+          .from("wellness_products")
+          .select("name, brand, product_type, key_actives, verdict, verdict_reason, usage_time, conflicts, pao_months, opened_at")
+          .eq("status", "active")
+          .order("created_at", { ascending: false })
+          .limit(40);
+        if (error) throw error;
+        if (!data?.length) return { message: "No products on the shelf yet — they can add one from the Products tab." };
         return data;
       }
       case "get_wellness_trend": {

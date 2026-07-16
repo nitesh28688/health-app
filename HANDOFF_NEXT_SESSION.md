@@ -1,5 +1,26 @@
 # Handoff — pick up here next session
 
+## NEWEST: Products tab — AI ingredient checker for the wellness shelf (2026-07-16, latest)
+Built, tsc + next build clean, **migration 0037 NOT yet run** and **untested live**.
+1. Run `supabase/migrations/0037_products.sql` — `wellness_products` table + widens
+   `ai_suggestions_kind_check` (rebuilt from 0036's list) with `product_check`.
+2. What it is: snap a skincare/haircare product's INCI label → one Gemini vision
+   call (`/api/ai/product-check`, 10/day cap, 20s timeout) reads it and returns a
+   verdict personalized to THIS user (latest scan classification/observations,
+   flagged conditions, recent journal treatments, and their CURRENT shelf for
+   conflict warnings like "don't layer this AHA with your salicylic cleanser").
+   Also reads the PAO open-jar symbol (e.g. 12M) → "Opened today" button starts an
+   expiry countdown, computed client-side, no cron.
+3. Wellness nav is now Scan / Journal / [C] / Products / Reports — 5 slots, toggle
+   centered (this was the user's actual complaint). /products deep-link forces
+   wellness mode like /wellness and /journal.
+4. Assistant: new `get_products` tool + wellness-prompt instruction to check the
+   shelf before recommending ingredients or answering "can I use X with Y".
+5. Test after migration: photo a real product with the ingredient list visible →
+   expect name/brand/type + verdict chip + reason referencing the user's own skin
+   type + actives pills; add a second product with a conflicting active → expect a
+   conflict warning; ask Coach "what's on my shelf?" → should list via get_products.
+
 ## NEWEST: Wellness Journal / "Timecapsule" (2026-07-16, latest)
 Built, tsc + next build clean, **migration 0036 NOT yet run** and **untested live**.
 1. Run `supabase/migrations/0036_wellness_journal.sql` — `wellness_journal` table
