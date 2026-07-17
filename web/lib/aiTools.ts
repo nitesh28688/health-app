@@ -1,5 +1,6 @@
 import { SupabaseClient } from "@supabase/supabase-js";
-import { generateWithFallback } from "@/lib/gemini";
+import { generateWithFallback, generateEmbedding } from "@/lib/gemini";
+import { ageLabel } from "@/lib/recency";
 
 export const toolDeclarations = [
   {
@@ -332,34 +333,46 @@ Return a strict JSON object containing:
       }
       case "search_journal": {
         if (!args.query) return { error: "query is required" };
-        const { data, error } = await db.rpc("search_journal", { q: String(args.query) });
+        // Semantic recall (FIX 1): a query embedding lets "stressed" match an
+        // entry that said "overwhelmed" — plain FTS only matches on words that
+        // literally appear. Best-effort: falls back to the original FTS-only
+        // RPC if embedding generation fails, so a Gemini hiccup never breaks search.
+        const queryEmbedding = await generateEmbedding(String(args.query));
+        const { data, error } = queryEmbedding
+          ? await db.rpc("search_journal_hybrid", { q: String(args.query), query_embedding: queryEmbedding, match_count: 8 })
+          : await db.rpc("search_journal", { q: String(args.query) });
         if (error) throw error;
-        if (!data?.length) return { message: `No journal entries found matching "${args.query}".` };
-        return (data as any[]).map((e) => ({
+        // FIX 3: noise entries (is_usable=false) never surface as recall evidence.
+        const usable = (data as any[]).filter((e) => e.is_usable !== false);
+        if (!usable.length) return { message: `No journal entries found matching "${args.query}".` };
+        return usable.map((e) => ({
           entry_at: e.entry_at, entry_text: e.entry_text, category: e.category, tags: e.tags,
+          age: ageLabel(e.entry_at),
         }));
       }
       case "get_recent_journal": {
         const { data, error } = await db
           .from("wellness_journal")
-          .select("entry_at, entry_text, category, tags")
+          .select("entry_at, entry_text, category, tags, is_usable")
           .order("entry_at", { ascending: false })
           .limit(Math.min(Number(args.limit) || 10, 30));
         if (error) throw error;
-        if (!data?.length) return { message: "No journal entries yet." };
-        return data;
+        const usable = (data ?? []).filter((e) => e.is_usable !== false);
+        if (!usable.length) return { message: "No journal entries yet." };
+        return usable.map((e) => ({ ...e, age: ageLabel(e.entry_at) }));
       }
       case "get_products": {
         let query = db
           .from("wellness_products")
-          .select("name, brand, product_type, key_actives, verdict, verdict_reason, usage_time, conflicts, pao_months, opened_at, status, created_at")
+          .select("name, brand, product_type, key_actives, verdict, verdict_reason, usage_time, conflicts, pao_months, opened_at, status, created_at, is_usable")
           .order("created_at", { ascending: false })
           .limit(40);
         if (!args.include_finished) query = query.eq("status", "active");
         const { data, error } = await query;
         if (error) throw error;
-        if (!data?.length) return { message: "No products found — they can add one from the Products tab." };
-        return data;
+        const usable = (data ?? []).filter((p) => p.is_usable !== false);
+        if (!usable.length) return { message: "No products found — they can add one from the Products tab." };
+        return usable.map((p) => ({ ...p, age: ageLabel(p.created_at) }));
       }
       case "get_wellness_trend": {
         if (!args.scan_type) return { error: "scan_type is required" };

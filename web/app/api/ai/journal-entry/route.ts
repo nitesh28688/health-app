@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { generateWithFallback } from "@/lib/gemini";
+import { generateWithFallback, generateEmbedding } from "@/lib/gemini";
 import { toneInstruction } from "@/lib/aiTone";
 
 const admin = () =>
@@ -46,12 +46,21 @@ export async function POST(req: NextRequest) {
     .single();
   if (insErr || !entry) return NextResponse.json({ error: "couldn't save entry" }, { status: 500 });
 
+  // 1b. Embedding for semantic recall (search_journal_hybrid) — generated
+  // unconditionally, independent of the AI-comment daily cap below, so
+  // search quality doesn't degrade once a heavy user hits that cap. Cheap
+  // non-generative call; best-effort (generateEmbedding returns null on
+  // failure rather than throwing).
+  const embeddingPromise = generateEmbedding(entryText);
+
   // 2. Cap check for the AI comment only
   const today = todayIst();
   const { data: capRow } = await dbAdmin.from("ai_suggestions").select("content")
     .eq("user_id", userId).eq("log_date", today).eq("kind", "journal_comment").maybeSingle();
   const used = (capRow?.content as { count?: number } | null)?.count ?? 0;
   if (used >= DAILY_COMMENT_CAP) {
+    const embedding = await embeddingPromise;
+    if (embedding) await userDb.from("wellness_journal").update({ embedding }).eq("id", entry.id);
     return NextResponse.json({ entry, ai_comment: null, category: null, tags: [] });
   }
 
@@ -68,11 +77,13 @@ export async function POST(req: NextRequest) {
 Return strict JSON:
 - category: one of treatment | skincare | hair | mood | habit | health | other
 - tags: 1-4 short lowercase search tags (e.g. ["laser", "hair removal"]) — think "what words would they search for later to find this entry"
-- comment: your short companion response (2-3 sentences max). ${toneInstruction(profile?.ai_tone)} React to what they actually wrote: practical aftercare/next-step advice if it's a treatment (e.g. laser → skip actives 48h, moisturize, SPF), honest feedback if it's a habit (good or bad), warmth if it's a mood entry. Never medical diagnosis. No markdown, no hashtags.`;
+- comment: your short companion response (2-3 sentences max). ${toneInstruction(profile?.ai_tone)} React to what they actually wrote: practical aftercare/next-step advice if it's a treatment (e.g. laser → skip actives 48h, moisturize, SPF), honest feedback if it's a habit (good or bad), warmth if it's a mood entry. Never medical diagnosis. No markdown, no hashtags.
+- is_usable: true unless this entry has essentially no real content to act on (a single stray word, gibberish, a test entry like "test" or "asdf") — the vast majority of entries should be true, only mark false for genuinely empty/noise entries.`;
 
   let category: string | null = null;
   let tags: string[] = [];
   let aiComment: string | null = null;
+  let isUsable = true;
 
   const aiRes = await generateWithFallback([{ text: prompt }], {
     type: "OBJECT",
@@ -80,6 +91,7 @@ Return strict JSON:
       category: { type: "STRING", enum: ["treatment", "skincare", "hair", "mood", "habit", "health", "other"] },
       tags: { type: "ARRAY", items: { type: "STRING" } },
       comment: { type: "STRING" },
+      is_usable: { type: "BOOLEAN" },
     },
     required: ["category", "tags", "comment"],
   });
@@ -91,16 +103,18 @@ Return strict JSON:
       category = parsed.category ?? null;
       tags = Array.isArray(parsed.tags) ? parsed.tags.slice(0, 4).map((t: unknown) => stripNulls(String(t)).toLowerCase()) : [];
       aiComment = parsed.comment ? stripNulls(String(parsed.comment)) : null;
+      isUsable = parsed.is_usable !== false;
     } catch {
       // Bad AI JSON — entry stays saved without enrichment, that's fine.
     }
   }
 
-  // 4. Enrich the saved row + bump the cap (only when the AI actually ran)
+  // 4. Enrich the saved row (embedding + category/tags/comment/usability) + bump the cap
+  const embedding = await embeddingPromise;
+  await userDb.from("wellness_journal")
+    .update({ category, tags, ai_comment: aiComment, is_usable: isUsable, ...(embedding ? { embedding } : {}) })
+    .eq("id", entry.id);
   if (category || tags.length > 0 || aiComment) {
-    await userDb.from("wellness_journal")
-      .update({ category, tags, ai_comment: aiComment })
-      .eq("id", entry.id);
     await dbAdmin.from("ai_suggestions").upsert(
       { user_id: userId, log_date: today, kind: "journal_comment", content: { count: used + 1 } },
       { onConflict: "user_id,log_date,kind" }

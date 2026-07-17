@@ -85,6 +85,40 @@ async function callAiStudio(model: string, parts: object[], responseSchema: obje
   );
 }
 
+// text-embedding-004 outputs 768-dim vectors on both Vertex and AI Studio —
+// matches the `vector(768)` column on wellness_journal.embedding. Best-effort:
+// returns null on any failure so a Gemini outage never blocks saving a journal
+// entry (embedding is a search-quality enhancement, not required data).
+export async function generateEmbedding(text: string): Promise<number[] | null> {
+  const useVertex = !!process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
+  try {
+    if (useVertex) {
+      const client = await getVertexAuth().getClient();
+      const { token } = await client.getAccessToken();
+      const url = `https://${GOOGLE_CLOUD_LOCATION}-aiplatform.googleapis.com/v1/projects/${GOOGLE_CLOUD_PROJECT}/locations/${GOOGLE_CLOUD_LOCATION}/publishers/google/models/text-embedding-004:predict`;
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ instances: [{ content: text }] }),
+      });
+      if (!res.ok) throw new Error(`vertex embed ${res.status}`);
+      const body = await res.json();
+      const values = body?.predictions?.[0]?.embeddings?.values;
+      return Array.isArray(values) ? values : null;
+    }
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=${process.env.GEMINI_API_KEY}`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ content: { parts: [{ text }] } }) }
+    );
+    if (!res.ok) throw new Error(`ai studio embed ${res.status}`);
+    const body = await res.json();
+    const values = body?.embedding?.values;
+    return Array.isArray(values) ? values : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function generateWithFallback(parts: object[], responseSchema?: object, timeoutMs: number = PER_MODEL_TIMEOUT_MS) {
   const useVertex = !!process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
   const attempts: { model: string; call: (signal: AbortSignal) => Promise<Response> }[] = [];

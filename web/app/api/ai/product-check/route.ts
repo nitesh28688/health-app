@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { generateWithFallback, searchGrounded } from "@/lib/gemini";
 import { normalizeProductKey } from "@/lib/productKey";
+import { ageLabel, RECENCY_PROMPT_NOTE } from "@/lib/recency";
 
 const SOURCE_RANK: Record<string, number> = { general_knowledge: 1, grounded: 2, scan: 3 };
 
@@ -62,10 +63,10 @@ export async function POST(req: NextRequest) {
       .eq("is_usable", true).order("taken_at", { ascending: false }).limit(6),
     userDb.from("profiles").select("sex, conditions").eq("id", userId).single(),
     userDb.from("wellness_products")
-      .select("name, product_type, key_actives, usage_time")
+      .select("name, product_type, key_actives, usage_time, created_at, is_usable")
       .eq("status", "active").limit(30),
     userDb.from("wellness_journal")
-      .select("entry_text, entry_at, category")
+      .select("entry_text, entry_at, category, is_usable")
       .eq("category", "treatment")
       .order("entry_at", { ascending: false }).limit(3),
   ]);
@@ -75,9 +76,12 @@ export async function POST(req: NextRequest) {
     if (!latestByType[s.scan_type]) latestByType[s.scan_type] = { classification: s.classification, observations: s.observations };
   }
   const conditions = (profileRes.data?.conditions as string[] | null) ?? [];
-  const shelf = shelfRes.data ?? [];
+  // FIX 3: noise rows (is_usable=false) never inform advice. FIX 2: the rest
+  // get an age label so a stale entry doesn't outweigh a recent one.
+  const shelf = (shelfRes.data ?? []).filter((p) => p.is_usable !== false);
   const recentTreatments = (journalRes.data ?? [])
-    .map((j) => `${j.entry_at.slice(0, 10)}: ${j.entry_text.slice(0, 120)}`);
+    .filter((j) => j.is_usable !== false)
+    .map((j) => `${j.entry_at.slice(0, 10)} [${ageLabel(j.entry_at)}]: ${j.entry_text.slice(0, 120)}`);
 
   // For a typed product with no ingredients supplied, check the shared
   // cross-user ingredient cache before spending a grounding call — a popular
@@ -124,7 +128,7 @@ USER CONTEXT (personalize the verdict to THIS person):
 - Skin scan: ${latestByType.skin ? `type "${latestByType.skin.classification}", observations: ${JSON.stringify(latestByType.skin.observations).slice(0, 400)}` : "none yet"}
 - Hair scan: ${latestByType.hair ? `classification "${latestByType.hair.classification}"` : "none yet"}
 - Flagged conditions: ${conditions.length ? conditions.join(", ") : "none"}
-- Current shelf: ${shelf.length ? shelf.map((p) => `${p.name} (${p.product_type ?? "?"}; actives: ${(p.key_actives ?? []).join("/") || "none"}; ${p.usage_time ?? "?"})`).join("; ") : "empty"}
+- Current shelf: ${shelf.length ? shelf.map((p) => `${p.name} (${p.product_type ?? "?"}; actives: ${(p.key_actives ?? []).join("/") || "none"}; ${p.usage_time ?? "?"}; added ${ageLabel(p.created_at)})`).join("; ") : "empty"}
 - Recent treatments from their journal: ${recentTreatments.length ? recentTreatments.join(" | ") : "none"}
 
 RULES:
@@ -136,7 +140,8 @@ RULES:
 6. pao_months: the period-after-opening number if the open-jar symbol is legible (e.g. 12 for "12M"), else null.
 7. NON-DIAGNOSTIC: describe cosmetic suitability only, never medical conditions or treatment claims.
 8. ${hasImage ? "If the image is not a skincare/haircare product at all, set not_a_product to true and leave other fields minimal." : "not_a_product should be false unless the typed name is obviously not a skincare/haircare product."}
-9. ${hasImage ? "size_value/size_unit: the printed volume/weight if legible (e.g. 250 + \"ml\", 50 + \"g\"), else null. Never guess a size that isn't actually printed on the label." : "size_value/size_unit: always null — there's no label to read for a typed entry."}`;
+9. ${hasImage ? "size_value/size_unit: the printed volume/weight if legible (e.g. 250 + \"ml\", 50 + \"g\"), else null. Never guess a size that isn't actually printed on the label." : "size_value/size_unit: always null — there's no label to read for a typed entry."}
+10. is_usable: true unless the confidence here is genuinely too low to trust (e.g. ${hasImage ? "the label photo is too blurry/glare-obscured to read most of the ingredient list" : "no ingredient data was found from cache, search, or your own knowledge, AND you're only guessing generic product-type advice"}) — most checks should be true; false means this result shouldn't be treated as reliable evidence later.${RECENCY_PROMPT_NOTE}`;
 
   const parts: object[] = [{ text: prompt }];
   if (hasImage) parts.push({ inline_data: { mime_type: mimeType, data: base64 } });
@@ -159,6 +164,7 @@ RULES:
         pao_months: { type: "NUMBER" },
         size_value: { type: "NUMBER" },
         size_unit: { type: "STRING", enum: ["ml", "g", "oz"] },
+        is_usable: { type: "BOOLEAN" },
       },
       required: ["not_a_product", "name", "verdict", "verdict_reason"],
     },
@@ -202,6 +208,7 @@ RULES:
       ? Math.round(parsed.pao_months) : null,
     size_value: Number.isFinite(parsed.size_value) && parsed.size_value > 0 ? parsed.size_value : null,
     size_unit: ["ml", "g", "oz"].includes(parsed.size_unit) ? parsed.size_unit : null,
+    is_usable: parsed.is_usable !== false,
   };
 
   // Best-effort cache write-back — never fails the main request. A photo

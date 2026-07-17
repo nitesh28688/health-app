@@ -4,6 +4,7 @@ import { generateChatWithTools } from "@/lib/gemini";
 import { toolDeclarations, executeTool } from "@/lib/aiTools";
 import { toneInstruction, toneFrustrationInstruction } from "@/lib/aiTone";
 import { identitySystemNote, redactVendorMentions } from "@/lib/aiIdentity";
+import { RECENCY_PROMPT_NOTE } from "@/lib/recency";
 
 const admin = () =>
   createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
@@ -143,6 +144,10 @@ export async function POST(req: NextRequest) {
   // probing — redactVendorMentions() on the final reply (below) is the
   // backstop that catches a leak even if the model was talked into one.
   const identityNote = identitySystemNote(assistantName);
+  // FIX 2 (recency-weighting): journal/product tool results now carry an
+  // `age` label (see lib/recency.ts) — this tells the model what that label
+  // means so an old entry doesn't get read as current state.
+  const recencyNote = RECENCY_PROMPT_NOTE;
   // Scope widening (2026-07-16): the prompt read as a whitelist ("answer
   // questions about logged food, workouts...") so anything off-list — "I had
   // a lot of Red Bull and smoked a cigarette" — got a stonewall ("I can't
@@ -156,7 +161,7 @@ export async function POST(req: NextRequest) {
   const systemInstruction = (mode === "wellness"
     ? `You are ${assistantName}, the user's personal AI assistant in Core AI, currently in Wellness Mode. You help the user understand their Skin, Eye, and Hair AI wellness scans — explain their overall score, sub-scores, observations, and ingredient recommendations in plain, friendly language; compare scores over time using get_wellness_trend; and give more detailed analysis than what's shown on the report screen when asked. Always call get_wellness_scans or get_wellness_trend before answering questions about their results — never guess or invent scores. If they haven't scanned yet, encourage them to run one (Skin, Eye, or Hair) rather than answering blind. The user also keeps a wellness journal (time-stamped entries about treatments, skincare/hair events, habits, moods) — use search_journal/get_recent_journal to recall past entries whenever they ask "when did I..." or reference something they logged; never guess dates from memory. They also have a product shelf (Products tab) — use get_products before recommending ingredients or answering "can I use X with Y", so advice accounts for what they actually own. For anything backward-looking ("what did I used to use", "have I tried retinol before"), call get_products with include_finished true — products they've finished/removed still count as real history, not just what's currently active. Keep responses concise and skimmable on a small screen. You can still answer diet/fitness questions using the other tools if asked. You are authorized to provide basic fitness, nutrition, and diet advice without claiming you cannot provide medical advice.`
     : `You are ${assistantName}, the user's personal AI assistant in Core AI, currently in Core Mode (diet and fitness tracking). Answer questions about the user's logged food, workouts, weight, and streaks using the available tools — never guess or invent numbers. Help them repeat past workouts, suggest new ones, or check exercise form when asked. Keep responses concise and skimmable on a small screen. You can still answer wellness/skin/hair questions using the wellness tools if asked. You are authorized to provide basic fitness, nutrition, and diet advice without claiming you cannot provide medical advice.`
-  ) + identityNote + scopeNote + dateNote + interpretationNote + conditionNote + toneNote + profileNote;
+  ) + identityNote + scopeNote + dateNote + interpretationNote + recencyNote + conditionNote + toneNote + profileNote;
 
   // Daily cap check (reuses `today` computed above for the AI's date note)
   const { data: capRow } = await dbAdmin.from("ai_suggestions").select("content")

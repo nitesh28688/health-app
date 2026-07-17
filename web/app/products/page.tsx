@@ -20,6 +20,7 @@ interface ProductPreview {
   pao_months: number | null;
   size_value: number | null;
   size_unit: "ml" | "g" | "oz" | null;
+  is_usable: boolean;
 }
 
 interface Product extends ProductPreview {
