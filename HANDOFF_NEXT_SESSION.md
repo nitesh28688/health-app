@@ -22,6 +22,14 @@ search-indexed products (confirmed: Nanoliss is search-indexed) instead of claim
 Type entry to confirm grounding actually returns real ingredients now. See
 STRUCTURE.md Phase 69.
 
+**Phase 70 — grounding now also uses `url_context`.** First live retest of Phase 69
+against Nanoliss's actual site found its full INCI list is real but sits inside a
+hidden ingredients tab that a plain Google search snippet doesn't surface. Added the
+`url_context` tool alongside `google_search` so Gemini can fetch and read the full
+page once search finds it. Re-test "Nanoliss Quinoa Shampoo" via Type entry again —
+should now return the real ingredient list (Aqua, Decyl Glucoside, Hydrolyzed Quinoa,
+etc.), not "unclear". See STRUCTURE.md Phase 70.
+
 ## What's built but not yet click-tested with a real login
 This session (2026-07-14 → 2026-07-16) shipped a large amount of code that
 typechecks/builds clean but has only been exercised by the user directly in
