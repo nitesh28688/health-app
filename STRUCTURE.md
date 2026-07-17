@@ -1240,3 +1240,45 @@ All of the above: typechecks clean, no live click-testing yet (see HANDOFF_NEXT_
 **Phase 70 (2026-07-17, later still): grounding upgraded with `url_context`.** Retested Phase 69 live against Nanoliss's own site (nanoliss.com) — grounding found the product but still couldn't produce ingredients. Root cause investigated directly: `nanoliss.com/products/quinoa-shampoo.html` has a full INCI list (`Aqua, Decyl Glucoside, Sodium Methyl Cocoyl Taurate, ...`) but it's static HTML inside a hidden `#tabIngredients` tab panel — present in the page source but not the kind of content a Google search snippet surfaces. `searchGrounded()` in `lib/gemini.ts` now passes both `google_search` (find the right page) and `url_context` (fetch and read that page's actual full content) as tools, so the model can read past-the-fold/hidden-tab content once search locates the URL. General fix, not Nanoliss-specific — any product page with a similar full-ingredients-in-a-tab pattern benefits. Follow-up debugging (same session): even after this fix, `url_context` kept returning `URL_RETRIEVAL_STATUS_ERROR` for nanoliss.com specifically. Traced through three real Cloudflare-side blockers found live via direct API/curl testing: (1) Cloudflare's "Managed robots.txt" was auto-injecting a `Google-Extended: Disallow` rule (user turned it off), (2) Cloudflare Bot Fight Mode was still challenging Gemini's fetcher even with robots.txt fixed — confirmed via direct curl vs. direct Gemini API calls showing identical requests behaving differently (user turned Bot Fight Mode off entirely after WAF-custom-rule and IP Access Rule/ASN/CIDR workarounds all hit Free-plan ceilings — Free plan only allows /16-or-narrower IP Access Rule ranges and doesn't accept ASN targets in the UI despite the UI text). After both fixes, direct curl to the canonical URL (`nanoliss.com/products/quinoa-shampoo`, no `.html` — the `.html` path 308-redirects) returns clean 200 with the real ingredient list, confirming the site itself is now correctly reachable; `url_context` was still failing at last test, most likely due to Google's own crawler infrastructure caching a stale "blocked" result from before the fixes (expected to clear within hours/a day, not a further config issue). **Not yet confirmed working after cache clears — retest pending.**
 
 **Phase 71 (2026-07-17, later still): AM/PM usage_time no longer forced on haircare.** Manually-typed Nanoliss Quinoa Shampoo (ingredients entered manually, bypassing grounding) came back tagged "AM + PM" — rule 4 in `/api/ai/product-check`'s prompt only ever described am/pm/both without scoping it to skincare, so the model defaulted haircare products to "both" since neither am nor pm cleanly applied (shampoo is used per-wash, not on a daily AM/PM routine). Rule now explicitly scopes AM/PM to skincare `product_type`s only; haircare/other leaves `usage_time` unset (field isn't in the schema's `required` list), which the client already renders as no chip (`{p.usage_time && ...}` guard in `web/app/products/page.tsx`) — no schema or UI change needed, prompt-only fix.
+
+**Phase 72 (2026-07-17, later still): Products — duplicate check, shared ingredient cache, size/price/currency tracking.** Planned via EnterPlanMode/ExitPlanMode after user asked for a proper Products revamp (plan saved at `~/.claude/plans/cozy-spinning-sparkle.md`). Three real gaps: (1) re-checking the same product created duplicate shelf rows and always burned a fresh AI call even for an already-known product; (2) every typed-entry check re-ran the `searchGrounded()` web-search round-trip even for products already analyzed by anyone, wasteful given the 10/day cap; (3) no size/price tracking, so there was no way to see how long a product lasts or its cost-per-use — data the user explicitly wanted.
+
+Researched INCIDecoder as an alternative ingredient data source first — confirmed no official public API exists (only unofficial third-party scraper wrappers, legally shaky); genuine ingredient-database APIs like inciapi.com/skincareapi.dev exist but are paid, conflicting with the project's free-tier-only rule. Stuck with the Gemini-grounding approach.
+
+Migration `0039_products_tracking.sql`: `wellness_products` gains `size_value`/`size_unit` (ml/g/oz), `price`/`currency` (ISO 4217, no CHECK constraint — kept open for any country, currency guessed client-side from `Intl.NumberFormat().resolvedOptions().locale`, never hardcoded to INR per explicit user pushback), and `finished_at` (previously `finish()` only flipped `status`, so duration was never computable). New table `product_ingredient_cache` — global/shared, mirrors the `foods` table's `owner_id IS NULL = public` pattern (`0001_core.sql`/`0006_rls.sql`): RLS `select using (true)` for all users, no insert/update policy (only the server's service-role `dbAdmin` client writes to it).
+
+`web/lib/productKey.ts` (new): `normalizeProductKey(name, brand)` — pure string function, no dependencies, importable from both the API route and the client page, used for both cache lookups and duplicate detection.
+
+`/api/ai/product-check/route.ts`: typed-entry-with-no-ingredients path now checks the cache by normalized key before calling `searchGrounded()` — on a hit, skips grounding entirely and feeds the cached ingredients into the main prompt as already-known facts (the personalized verdict/conflicts still need a fresh Gemini call per-user, only the expensive grounding round-trip is skipped). After any successful analysis (scan, typed+ingredients, typed+grounded, or cache-hit), upserts into the cache with a source-trust ranking (`scan` > `grounded` > `general_knowledge`, rank stored via `SOURCE_RANK`) so a low-confidence guess can never overwrite previously verified data — a rank-losing write just bumps `hit_count`. Scan path also now asks the model to read the printed size (`size_value`/`size_unit`) off the label, same as `pao_months`.
+
+`web/app/products/page.tsx`: `addToKit()` now calls `findDuplicate()` (via `normalizeProductKey`) against the loaded active shelf and shows a `confirm()` before adding a second copy of something already owned — not a hard block, since repurchasing is legitimate. Preview card gains size (value+unit) and price (amount+currency, `CURRENCIES` list + locale-guessed default) inputs, both optional. Shelf card shows the new size/price inline and elevates the expiry countdown from small neutral text to a colored pill next to the verdict badge when `<=30` days or expired (unchanged amber/rose logic, just restyled/repositioned — items with more runway still show the old small-text treatment further down). New collapsible "Finished" section (`showFinished`/`loadFinished()`, count fetched via a `head:true` count query on initial load so the toggle button can show "(N)" without loading the full list) — the only place duration/cost-per-day (`daysToFinish()`, `price / days`) is visible, since Finished previously just removed items from view with no record at all.
+
+Migration to run:
+```sql
+alter table wellness_products add column size_value numeric;
+alter table wellness_products add column size_unit text check (size_unit in ('ml','g','oz'));
+alter table wellness_products add column price numeric;
+alter table wellness_products add column currency text;
+alter table wellness_products add column finished_at timestamptz;
+
+create table product_ingredient_cache (
+  id            bigint generated always as identity primary key,
+  name_key      text not null unique,
+  name          text not null,
+  brand         text,
+  product_type  text check (product_type in (
+    'cleanser','moisturizer','sunscreen','serum','toner','exfoliant','mask',
+    'shampoo','conditioner','hair_oil','hair_treatment','other')),
+  ingredients   text[] not null default '{}',
+  key_actives   text[] not null default '{}',
+  pao_months    int,
+  source        text not null check (source in ('scan','grounded','general_knowledge')),
+  hit_count     int not null default 1,
+  created_at    timestamptz not null default now(),
+  updated_at    timestamptz not null default now()
+);
+
+alter table product_ingredient_cache enable row level security;
+create policy product_ingredient_cache_select on product_ingredient_cache
+  for select using (true);
+```
