@@ -4,7 +4,8 @@ import { AppShell } from "../AppShell";
 import { supabase } from "@/lib/supabase";
 import { compressImage } from "@/lib/imageCompress";
 import { PageSkeleton } from "@/lib/Skeleton";
-import { Camera, Package, AlertTriangle, CheckCircle2, XCircle, Clock, Keyboard, Plus, X } from "lucide-react";
+import { Camera, Package, AlertTriangle, CheckCircle2, XCircle, Clock, Keyboard, Plus, X, History } from "lucide-react";
+import { normalizeProductKey } from "@/lib/productKey";
 
 interface ProductPreview {
   name: string;
@@ -17,6 +18,8 @@ interface ProductPreview {
   usage_time: "am" | "pm" | "both" | null;
   conflicts: string[];
   pao_months: number | null;
+  size_value: number | null;
+  size_unit: "ml" | "g" | "oz" | null;
 }
 
 interface Product extends ProductPreview {
@@ -24,6 +27,30 @@ interface Product extends ProductPreview {
   opened_at: string | null;
   status: "active" | "finished";
   created_at: string;
+  finished_at: string | null;
+  price: number | null;
+  currency: string | null;
+}
+
+const CURRENCIES = ["INR", "USD", "AED", "CAD", "GBP", "EUR", "AUD", "SGD"] as const;
+const LOCALE_CURRENCY: Record<string, string> = {
+  IN: "INR", US: "USD", AE: "AED", CA: "CAD", GB: "GBP", AU: "AUD", SG: "SGD",
+  DE: "EUR", FR: "EUR", ES: "EUR", IT: "EUR", NL: "EUR",
+};
+function guessCurrency(): string {
+  try {
+    const region = new Intl.Locale(navigator.language).maximize().region;
+    return (region && LOCALE_CURRENCY[region]) || "USD";
+  } catch {
+    return "USD";
+  }
+}
+function formatMoney(value: number, currency: string): string {
+  try {
+    return new Intl.NumberFormat(navigator.language, { style: "currency", currency, maximumFractionDigits: 0 }).format(value);
+  } catch {
+    return `${currency} ${value}`;
+  }
 }
 
 const VERDICT_META = {
@@ -38,6 +65,14 @@ function daysToExpiry(p: Product): number | null {
   const exp = new Date(p.opened_at + "T12:00:00");
   exp.setMonth(exp.getMonth() + p.pao_months);
   return Math.round((exp.getTime() - Date.now()) / 86400000);
+}
+
+/** How many days a finished product actually lasted, from when it was opened (or added, if never marked opened) to when it was marked finished. */
+function daysToFinish(p: Product): number | null {
+  if (!p.finished_at) return null;
+  const start = new Date(p.opened_at ? p.opened_at + "T12:00:00" : p.created_at);
+  const days = Math.round((new Date(p.finished_at).getTime() - start.getTime()) / 86400000);
+  return days > 0 ? days : null;
 }
 
 function Products({ userId }: { userId: string }) {
@@ -55,6 +90,14 @@ function Products({ userId }: { userId: string }) {
   // Result of a check, not yet saved — shown as a preview with Add/Discard
   const [preview, setPreview] = useState<ProductPreview | null>(null);
   const [saving, setSaving] = useState(false);
+  const [sizeValue, setSizeValue] = useState("");
+  const [sizeUnit, setSizeUnit] = useState<"ml" | "g" | "oz">("ml");
+  const [price, setPrice] = useState("");
+  const [currency, setCurrency] = useState(() => (typeof window !== "undefined" ? guessCurrency() : "USD"));
+
+  const [finishedProducts, setFinishedProducts] = useState<Product[] | null>(null);
+  const [showFinished, setShowFinished] = useState(false);
+  const [finishedCount, setFinishedCount] = useState(0);
 
   const load = useCallback(async () => {
     const { data } = await supabase
@@ -65,8 +108,24 @@ function Products({ userId }: { userId: string }) {
       .order("created_at", { ascending: false })
       .limit(60);
     setProducts((data as Product[]) ?? []);
+    const { count } = await supabase
+      .from("wellness_products")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId).eq("status", "finished");
+    setFinishedCount(count ?? 0);
   }, [userId]);
   useEffect(() => { load(); }, [load]);
+
+  async function loadFinished() {
+    const { data } = await supabase
+      .from("wellness_products")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("status", "finished")
+      .order("finished_at", { ascending: false })
+      .limit(30);
+    setFinishedProducts((data as Product[]) ?? []);
+  }
 
   async function runCheck(payload: object) {
     setChecking(true);
@@ -81,8 +140,12 @@ function Products({ userId }: { userId: string }) {
       });
       const body = await res.json();
       if (!res.ok) { setError(body.error || "Couldn't analyze that"); return; }
-      setPreview(body.product as ProductPreview);
+      const p = body.product as ProductPreview;
+      setPreview(p);
       setShowTyped(false);
+      setSizeValue(p.size_value ? String(p.size_value) : "");
+      if (p.size_unit) setSizeUnit(p.size_unit);
+      setPrice("");
     } catch {
       setError("Couldn't analyze — check your connection and try again.");
     } finally {
@@ -104,12 +167,25 @@ function Products({ userId }: { userId: string }) {
     runCheck({ productName: typedName.trim(), ingredientsText: typedIngredients.trim() || undefined });
   }
 
+  function findDuplicate(p: ProductPreview): Product | null {
+    const key = normalizeProductKey(p.name, p.brand);
+    return products?.find((existing) => normalizeProductKey(existing.name, existing.brand) === key) ?? null;
+  }
+
   async function addToKit() {
     if (!preview || saving) return;
+    const dup = findDuplicate(preview);
+    if (dup && !confirm(`You already have "${dup.name}" on your shelf. Add another one anyway?`)) return;
     setSaving(true);
     const { data, error: insErr } = await supabase
       .from("wellness_products")
-      .insert({ user_id: userId, ...preview })
+      .insert({
+        user_id: userId, ...preview,
+        size_value: sizeValue.trim() ? Number(sizeValue) : null,
+        size_unit: sizeValue.trim() ? sizeUnit : null,
+        price: price.trim() ? Number(price) : null,
+        currency: price.trim() ? currency : null,
+      })
       .select("*")
       .single();
     setSaving(false);
@@ -117,6 +193,8 @@ function Products({ userId }: { userId: string }) {
     setPreview(null);
     setTypedName("");
     setTypedIngredients("");
+    setSizeValue("");
+    setPrice("");
     setExpanded((data as Product).id);
     load();
   }
@@ -134,8 +212,10 @@ function Products({ userId }: { userId: string }) {
 
   async function finish(p: Product) {
     if (!confirm(`Remove "${p.name}" from your shelf?`)) return;
-    await supabase.from("wellness_products").update({ status: "finished" }).eq("id", p.id);
+    await supabase.from("wellness_products")
+      .update({ status: "finished", finished_at: new Date().toISOString() }).eq("id", p.id);
     load();
+    if (showFinished) loadFinished();
   }
 
   if (products === null) return <PageSkeleton />;
@@ -236,6 +316,28 @@ function Products({ userId }: { userId: string }) {
               ))}
             </div>
           )}
+          <div className="flex gap-2 mb-3">
+            <div className="flex-1 flex gap-1.5">
+              <input type="number" inputMode="decimal" value={sizeValue} onChange={(e) => setSizeValue(e.target.value)}
+                placeholder="Size (optional)"
+                className="w-full rounded-xl border border-neutral-300 dark:border-neutral-700 bg-white/50 dark:bg-neutral-900/50 px-3 py-2 text-sm" />
+              <select value={sizeUnit} onChange={(e) => setSizeUnit(e.target.value as "ml" | "g" | "oz")}
+                className="rounded-xl border border-neutral-300 dark:border-neutral-700 bg-white/50 dark:bg-neutral-900/50 px-2 py-2 text-sm">
+                <option value="ml">ml</option>
+                <option value="g">g</option>
+                <option value="oz">oz</option>
+              </select>
+            </div>
+            <div className="flex-1 flex gap-1.5">
+              <select value={currency} onChange={(e) => setCurrency(e.target.value)}
+                className="rounded-xl border border-neutral-300 dark:border-neutral-700 bg-white/50 dark:bg-neutral-900/50 px-2 py-2 text-sm">
+                {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
+              <input type="number" inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value)}
+                placeholder="Price (optional)"
+                className="w-full rounded-xl border border-neutral-300 dark:border-neutral-700 bg-white/50 dark:bg-neutral-900/50 px-3 py-2 text-sm" />
+            </div>
+          </div>
           <div className="flex gap-2">
             <button onClick={addToKit} disabled={saving}
               className="flex-1 rounded-xl bg-gradient-to-r from-rose-500 to-pink-600 text-white py-2.5 font-semibold text-sm disabled:opacity-50 flex items-center justify-center gap-1.5">
@@ -268,25 +370,35 @@ function Products({ userId }: { userId: string }) {
                       <p className="text-xs text-neutral-500 truncate">
                         {[p.brand, p.product_type?.replace("_", " ")].filter(Boolean).join(" · ")}
                         {p.usage_time && ` · ${p.usage_time === "both" ? "AM + PM" : p.usage_time.toUpperCase()}`}
+                        {p.size_value && p.size_unit && ` · ${p.size_value}${p.size_unit}`}
+                        {p.price != null && p.currency && ` · ${formatMoney(p.price, p.currency)}`}
                       </p>
                     </div>
-                    {meta && (
-                      <span className={`shrink-0 text-[11px] font-semibold px-2 py-1 rounded-full flex items-center gap-1 ${meta.cls}`}>
-                        <meta.icon className="w-3.5 h-3.5" /> {meta.label}
-                      </span>
-                    )}
+                    <div className="shrink-0 flex flex-col items-end gap-1">
+                      {meta && (
+                        <span className={`text-[11px] font-semibold px-2 py-1 rounded-full flex items-center gap-1 ${meta.cls}`}>
+                          <meta.icon className="w-3.5 h-3.5" /> {meta.label}
+                        </span>
+                      )}
+                      {expiry != null && (expiry < 0 || expiry <= 30) && (
+                        <span className={`text-[11px] font-semibold px-2 py-1 rounded-full flex items-center gap-1 ${
+                          expiry < 0 ? "bg-rose-100 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300" : "bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300"}`}>
+                          <Clock className="w-3.5 h-3.5" />
+                          {expiry < 0 ? `Expired ${-expiry}d ago` : `${expiry}d left`}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  {(p.conflicts.length > 0 || expiry != null) && (
+                  {(p.conflicts.length > 0 || (expiry != null && expiry > 30)) && (
                     <div className="flex flex-wrap gap-1.5 mt-2">
                       {p.conflicts.length > 0 && (
                         <span className="text-[11px] text-amber-600 dark:text-amber-400 flex items-center gap-1">
                           <AlertTriangle className="w-3.5 h-3.5" /> {p.conflicts.length} conflict{p.conflicts.length > 1 ? "s" : ""}
                         </span>
                       )}
-                      {expiry != null && (
-                        <span className={`text-[11px] flex items-center gap-1 ${expiry < 0 ? "text-rose-600 dark:text-rose-400" : expiry <= 30 ? "text-amber-600 dark:text-amber-400" : "text-neutral-400"}`}>
-                          <Clock className="w-3.5 h-3.5" />
-                          {expiry < 0 ? `Expired ${-expiry}d ago` : `${expiry}d left`}
+                      {expiry != null && expiry > 30 && (
+                        <span className="text-[11px] flex items-center gap-1 text-neutral-400">
+                          <Clock className="w-3.5 h-3.5" /> {expiry}d left
                         </span>
                       )}
                     </div>
@@ -332,6 +444,36 @@ function Products({ userId }: { userId: string }) {
             );
           })}
         </ul>
+      )}
+
+      {finishedCount > 0 && (
+        <div className="mt-6">
+          <button
+            onClick={() => { const next = !showFinished; setShowFinished(next); if (next && !finishedProducts) loadFinished(); }}
+            className="w-full flex items-center justify-center gap-1.5 text-sm font-semibold text-neutral-400 py-2"
+          >
+            <History className="w-4 h-4" /> {showFinished ? "Hide" : "View"} finished ({finishedCount})
+          </button>
+          {showFinished && (
+            <ul className="flex flex-col gap-2 mt-1">
+              {finishedProducts === null ? (
+                <p className="text-xs text-neutral-400 text-center py-3">Loading…</p>
+              ) : finishedProducts.map((p) => {
+                const days = daysToFinish(p);
+                const costPerDay = days && p.price != null && p.currency ? p.price / days : null;
+                return (
+                  <li key={p.id} className="rounded-xl border border-neutral-200/40 dark:border-neutral-800/40 bg-white/30 dark:bg-neutral-900/30 px-3.5 py-2.5">
+                    <p className="font-medium text-sm truncate">{p.name}</p>
+                    <p className="text-xs text-neutral-400">
+                      {[p.brand, days ? `lasted ${days}d` : null, costPerDay ? `${formatMoney(costPerDay, p.currency!)}/day` : null]
+                        .filter(Boolean).join(" · ")}
+                    </p>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
       )}
     </main>
   );

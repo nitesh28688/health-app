@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { generateWithFallback, searchGrounded } from "@/lib/gemini";
+import { normalizeProductKey } from "@/lib/productKey";
+
+const SOURCE_RANK: Record<string, number> = { general_knowledge: 1, grounded: 2, scan: 3 };
 
 const DAILY_USER_CAP = 10;
 
@@ -76,28 +79,44 @@ export async function POST(req: NextRequest) {
   const recentTreatments = (journalRes.data ?? [])
     .map((j) => `${j.entry_at.slice(0, 10)}: ${j.entry_text.slice(0, 120)}`);
 
-  // For a typed product with no ingredients supplied, try a web-search-grounded
-  // lookup first (mainstream brands often have their INCI list published on the
-  // brand site, Sephora/Nykaa/INCIDecoder etc.) rather than relying solely on
-  // the model's training-data memory, which misses smaller/newer/niche brands.
+  // For a typed product with no ingredients supplied, check the shared
+  // cross-user ingredient cache before spending a grounding call — a popular
+  // product that's already been analyzed (by this user or anyone else)
+  // shouldn't re-pay the web-search round trip every time.
+  let cachedEntry: { name: string; brand: string | null; product_type: string | null; ingredients: string[]; key_actives: string[]; pao_months: number | null; source: string } | null = null;
   let groundedFacts: string | null = null;
-  if (hasTyped && !(ingredientsText && String(ingredientsText).trim())) {
-    groundedFacts = await searchGrounded(
-      `Search the web for the real ingredient list (INCI) of the cosmetic/haircare product "${stripNulls(String(productName)).slice(0, 150)}". ` +
-      `Reply with the brand, product type, and the full INCI ingredient list if you can find it from a real source (brand website, retailer listing, INCIDecoder, etc.), citing what you found. ` +
-      `If you cannot find reliable ingredient data for this exact product, say so plainly instead of guessing.`
-    );
+  const typedHasIngredients = !!(ingredientsText && String(ingredientsText).trim());
+  if (hasTyped && !typedHasIngredients) {
+    const key = normalizeProductKey(String(productName));
+    const { data: cacheHit } = await dbAdmin.from("product_ingredient_cache")
+      .select("name, brand, product_type, ingredients, key_actives, pao_months, source")
+      .eq("name_key", key).maybeSingle();
+    if (cacheHit && cacheHit.ingredients?.length) {
+      cachedEntry = cacheHit;
+    } else {
+      // For a typed product with no ingredients supplied, try a web-search-grounded
+      // lookup (mainstream brands often have their INCI list published on the
+      // brand site, Sephora/Nykaa/INCIDecoder etc.) rather than relying solely on
+      // the model's training-data memory, which misses smaller/newer/niche brands.
+      groundedFacts = await searchGrounded(
+        `Search the web for the real ingredient list (INCI) of the cosmetic/haircare product "${stripNulls(String(productName)).slice(0, 150)}". ` +
+        `Reply with the brand, product type, and the full INCI ingredient list if you can find it from a real source (brand website, retailer listing, INCIDecoder, etc.), citing what you found. ` +
+        `If you cannot find reliable ingredient data for this exact product, say so plainly instead of guessing.`
+      );
+    }
   }
 
   const inputDescription = hasImage
-    ? `The photo shows a skincare or haircare product — read its label, especially the INCI ingredient list if visible.`
+    ? `The photo shows a skincare or haircare product — read its label, especially the INCI ingredient list if visible. Also read the printed volume/weight (e.g. "250 ml", "50 g") if visible.`
     : `The user couldn't scan the product (label unreadable/no camera) and typed it in instead:
 Product name: "${stripNulls(String(productName)).slice(0, 150)}"
-${ingredientsText && String(ingredientsText).trim()
+${typedHasIngredients
       ? `Ingredients they typed from the label: "${stripNulls(String(ingredientsText)).slice(0, 1500)}"`
-      : groundedFacts
-        ? `Web search results for this product: "${groundedFacts.slice(0, 2000)}"\nUse this search result if it actually names real ingredients for this product. If the search result itself says it couldn't find reliable data, say so plainly in verdict_reason rather than inventing a specific ingredient list.`
-        : "They did not provide an ingredient list and a web search found nothing reliable — use your general knowledge of this specific product only if you confidently recognize it. If you don't, say so plainly in verdict_reason (e.g. \"I don't have reliable ingredient data for this exact product — here's general guidance for a product of this type\") rather than inventing a specific ingredient list."}`;
+      : cachedEntry
+        ? `Already-known ingredient data from a previous verified check of this exact product: brand "${cachedEntry.brand ?? "?"}", product_type "${cachedEntry.product_type ?? "?"}", ingredients: ${cachedEntry.ingredients.join(", ")}. Use this directly as the ingredient list — no need to re-search.`
+        : groundedFacts
+          ? `Web search results for this product: "${groundedFacts.slice(0, 2000)}"\nUse this search result if it actually names real ingredients for this product. If the search result itself says it couldn't find reliable data, say so plainly in verdict_reason rather than inventing a specific ingredient list.`
+          : "They did not provide an ingredient list and a web search found nothing reliable — use your general knowledge of this specific product only if you confidently recognize it. If you don't, say so plainly in verdict_reason (e.g. \"I don't have reliable ingredient data for this exact product — here's general guidance for a product of this type\") rather than inventing a specific ingredient list."}`;
 
   const prompt = `You are a cosmetic-ingredient analysis AI inside a wellness app. ${inputDescription}
 
@@ -116,7 +135,8 @@ RULES:
 5. conflicts: warnings against their CURRENT shelf or recent treatments only (e.g. "You already use a salicylic acid cleanser — don't layer this AHA toner the same night", "Avoid for 48h after your laser session"). Empty array if none. Never invent shelf items.
 6. pao_months: the period-after-opening number if the open-jar symbol is legible (e.g. 12 for "12M"), else null.
 7. NON-DIAGNOSTIC: describe cosmetic suitability only, never medical conditions or treatment claims.
-8. ${hasImage ? "If the image is not a skincare/haircare product at all, set not_a_product to true and leave other fields minimal." : "not_a_product should be false unless the typed name is obviously not a skincare/haircare product."}`;
+8. ${hasImage ? "If the image is not a skincare/haircare product at all, set not_a_product to true and leave other fields minimal." : "not_a_product should be false unless the typed name is obviously not a skincare/haircare product."}
+9. ${hasImage ? "size_value/size_unit: the printed volume/weight if legible (e.g. 250 + \"ml\", 50 + \"g\"), else null. Never guess a size that isn't actually printed on the label." : "size_value/size_unit: always null — there's no label to read for a typed entry."}`;
 
   const parts: object[] = [{ text: prompt }];
   if (hasImage) parts.push({ inline_data: { mime_type: mimeType, data: base64 } });
@@ -137,6 +157,8 @@ RULES:
         usage_time: { type: "STRING", enum: ["am", "pm", "both"] },
         conflicts: { type: "ARRAY", items: { type: "STRING" } },
         pao_months: { type: "NUMBER" },
+        size_value: { type: "NUMBER" },
+        size_unit: { type: "STRING", enum: ["ml", "g", "oz"] },
       },
       required: ["not_a_product", "name", "verdict", "verdict_reason"],
     },
@@ -178,7 +200,41 @@ RULES:
     conflicts: cleanArr(parsed.conflicts, 6),
     pao_months: Number.isFinite(parsed.pao_months) && parsed.pao_months > 0 && parsed.pao_months <= 60
       ? Math.round(parsed.pao_months) : null,
+    size_value: Number.isFinite(parsed.size_value) && parsed.size_value > 0 ? parsed.size_value : null,
+    size_unit: ["ml", "g", "oz"].includes(parsed.size_unit) ? parsed.size_unit : null,
   };
+
+  // Best-effort cache write-back — never fails the main request. A photo
+  // label-read or user-typed real ingredients ("scan") outranks a grounded
+  // web search, which outranks the model's own unverified memory — so a
+  // low-confidence guess can never clobber a previously verified entry.
+  if (preview.ingredients.length > 0) {
+    const source = hasImage || typedHasIngredients ? "scan" : cachedEntry ? cachedEntry.source : groundedFacts ? "grounded" : "general_knowledge";
+    const newRank = SOURCE_RANK[source];
+    try {
+      const key = normalizeProductKey(preview.name, preview.brand);
+      const { data: existing } = await dbAdmin.from("product_ingredient_cache")
+        .select("id, source, hit_count").eq("name_key", key).maybeSingle();
+      if (!existing) {
+        await dbAdmin.from("product_ingredient_cache").insert({
+          name_key: key, name: preview.name, brand: preview.brand, product_type: preview.product_type,
+          ingredients: preview.ingredients, key_actives: preview.key_actives, pao_months: preview.pao_months, source,
+        });
+      } else if (newRank >= SOURCE_RANK[existing.source]) {
+        await dbAdmin.from("product_ingredient_cache").update({
+          name: preview.name, brand: preview.brand, product_type: preview.product_type,
+          ingredients: preview.ingredients, key_actives: preview.key_actives, pao_months: preview.pao_months, source,
+          hit_count: existing.hit_count + 1, updated_at: new Date().toISOString(),
+        }).eq("id", existing.id);
+      } else {
+        await dbAdmin.from("product_ingredient_cache").update({
+          hit_count: existing.hit_count + 1, updated_at: new Date().toISOString(),
+        }).eq("id", existing.id);
+      }
+    } catch {
+      // Cache is a pure optimization — a write failure here must never affect the response.
+    }
+  }
 
   return NextResponse.json({ product: preview });
 }
