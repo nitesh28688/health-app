@@ -112,7 +112,7 @@ RULES:
 1. Identify the product: name, brand, product_type (one of cleanser|moisturizer|sunscreen|serum|toner|exfoliant|mask|shampoo|conditioner|hair_oil|hair_treatment|other).
 2. ingredients: the INCI list as read from the label (empty array if not legible). key_actives: the 1-5 actives that actually matter (e.g. "niacinamide", "salicylic acid", "retinol", "SPF 50").
 3. verdict for THIS user: "good_match" | "use_carefully" | "skip", with verdict_reason (2-3 plain sentences referencing THEIR skin type/conditions/observations — not generic ingredient trivia).
-4. usage_time: "am" | "pm" | "both". Retinoids and strong exfoliating acids are always pm; SPF is always am.
+4. usage_time: ONLY applies to skincare product_types (cleanser/moisturizer/sunscreen/serum/toner/exfoliant/mask) — "am" | "pm" | "both" there, with retinoids/strong exfoliating acids always pm and SPF always am. For haircare product_types (shampoo/conditioner/hair_oil/hair_treatment) and "other", AM/PM is not a meaningful concept (haircare is used every wash, not on a daily routine) — set usage_time to null, do not force it to "both".
 5. conflicts: warnings against their CURRENT shelf or recent treatments only (e.g. "You already use a salicylic acid cleanser — don't layer this AHA toner the same night", "Avoid for 48h after your laser session"). Empty array if none. Never invent shelf items.
 6. pao_months: the period-after-opening number if the open-jar symbol is legible (e.g. 12 for "12M"), else null.
 7. NON-DIAGNOSTIC: describe cosmetic suitability only, never medical conditions or treatment claims.
