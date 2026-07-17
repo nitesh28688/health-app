@@ -165,11 +165,17 @@ async function callAiStudioChat(model: string, contents: object[], tools: object
 // look up real-world facts (e.g. a mainstream product's actual ingredient
 // list) the model wouldn't otherwise know from training data alone. Returns
 // null on any failure so callers can fall back to ungrounded behavior.
+//
+// Pairs google_search (find the right page) with url_context (actually fetch
+// and read that page's full content, not just the search snippet) — a brand's
+// full INCI list is often tucked inside a hidden tab/accordion on the product
+// page that a search snippet alone won't surface, but is present in the
+// static HTML and readable once the model fetches the page directly.
 export async function searchGrounded(prompt: string): Promise<string | null> {
   try {
     const res = await generateChatWithTools(
       [{ role: "user", parts: [{ text: prompt }] }],
-      [{ google_search: {} }]
+      [{ google_search: {} }, { url_context: {} }]
     );
     if (!res.ok) return null;
     const body = await res.json();
