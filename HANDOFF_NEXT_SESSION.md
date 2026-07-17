@@ -1,9 +1,20 @@
 # Handoff — pick up here next session
 
 ## DB status
-Migrations through **0041** are confirmed live (0039 Products tracking, 0040 semantic
-recall, 0041 usability gate — all applied and verified this session). If a future
-session adds a new migration, it's `0042_...sql`.
+Migrations through **0041** confirmed live. **0042 is NOT yet run** — paste this into
+the Supabase SQL Editor:
+```sql
+alter table foods add column is_usable boolean not null default true;
+```
+If a future session adds a new migration, it's `0043_...sql`.
+
+## Just shipped (2026-07-17, needs 0042 + click-test)
+**Phase 75 — Core-mode usability flag on food-photo estimates.** Follow-up to Phase 74
+after the user asked whether Core mode needed an equivalent fix. See STRUCTURE.md
+Phase 75 for scope reasoning (flag-only, doesn't affect totals). Once 0042 is run,
+test: take a deliberately blurry food photo via the camera button on Add Food, confirm
+(1) it still logs normally, (2) the Diary entry shows an amber "low confidence" badge
+next to the food name.
 
 ## Just shipped (2026-07-17, verified live): AI/memory layer hardening
 Three fixes from a user-provided AI-to-AI architecture comparison (Core AI vs. a
