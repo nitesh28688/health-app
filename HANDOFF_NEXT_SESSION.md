@@ -5,13 +5,22 @@ All migrations through **0038** are applied and confirmed live (user ran each in
 Supabase SQL Editor, all succeeded). No pending SQL. If a future session adds a new
 migration, it's `0039_...sql`.
 
-## Just shipped (2026-07-17, not yet click-tested)
+## Just shipped (2026-07-17, not yet fully click-tested)
 **Phase 68 — separate assistant name per mode.** User caught that the Settings
 "AI Assistant name" field applied to both Core and Wellness. Settings now has two
 fields (Core Assistant name / Wellness Assistant name), backed by new column
 `profiles.ai_name_wellness`. To verify: Settings → set different names for each →
 confirm Core chat uses one and Wellness chat/AssistantSheet header uses the other.
 See STRUCTURE.md Phase 68 for the full wiring.
+
+**Phase 69 — Products button copy + web search grounding.** Renamed the Scan/Type
+buttons to "Scan Label"/"Enter Manually". Typed product entries with no ingredients
+now get a Google Search-grounded Gemini lookup before falling back to
+training-data-only knowledge — should now correctly find real ingredient data for
+search-indexed products (confirmed: Nanoliss is search-indexed) instead of claiming
+"no reliable data." Re-test "Nanoliss Quinoa Shampoo" (and a mainstream brand) via
+Type entry to confirm grounding actually returns real ingredients now. See
+STRUCTURE.md Phase 69.
 
 ## What's built but not yet click-tested with a real login
 This session (2026-07-14 → 2026-07-16) shipped a large amount of code that
