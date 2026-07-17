@@ -31,6 +31,7 @@ function SettingsForm({ profile, setProfile, userId, email }: {
   // ── AI assistant personalization ──
   const [aiTone, setAiTone] = useState(profile.ai_tone ?? "balanced");
   const [aiName, setAiName] = useState(profile.ai_name ?? "");
+  const [aiNameWellness, setAiNameWellness] = useState(profile.ai_name_wellness ?? "");
 
   // ── Notifications ──
   const [notifStatus, setNotifStatus] = useState<"unknown" | "enabled" | "disabled" | "unsupported">("unknown");
@@ -83,6 +84,7 @@ function SettingsForm({ profile, setProfile, userId, email }: {
       share_weight: shareWeight,
       ai_tone: aiTone,
       ai_name: aiName.trim() || null,
+      ai_name_wellness: aiNameWellness.trim() || null,
     };
     const { data, error } = await supabase.from("profiles").update(patch).eq("id", userId).select().single();
     if (error) { setError(error.message); return; }
@@ -174,8 +176,11 @@ function SettingsForm({ profile, setProfile, userId, email }: {
       <section className="mb-8">
         <h2 className="text-lg font-bold mb-1 flex items-center gap-2"><Bot className="w-5 h-5 text-indigo-500" /> AI Assistant</h2>
         <p className="text-sm text-neutral-500 mb-3">Personalize how Core and Wellness Assistant talk to you.</p>
-        <label className="block text-sm font-medium mb-1.5">Name (optional)</label>
+        <label className="block text-sm font-medium mb-1.5">Core Assistant name (optional)</label>
         <input value={aiName} onChange={(e) => setAiName(e.target.value)} placeholder="Core Assistant"
+          maxLength={30} className={`${inputCls} mb-4`} />
+        <label className="block text-sm font-medium mb-1.5">Wellness Assistant name (optional)</label>
+        <input value={aiNameWellness} onChange={(e) => setAiNameWellness(e.target.value)} placeholder="Wellness Assistant"
           maxLength={30} className={`${inputCls} mb-4`} />
         <label className="block text-sm font-medium mb-1.5">Tone</label>
         <div className="flex flex-wrap gap-1.5">

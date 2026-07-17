@@ -27,6 +27,7 @@ export interface Profile {
   conditions: string[];
   ai_tone: string;
   ai_name: string | null;
+  ai_name_wellness: string | null;
   diet_type: "balanced" | "high_protein" | "low_carb" | "keto" | "diabetic_friendly";
   target_weight_kg: number | null;
   terms_accepted_at: string | null;

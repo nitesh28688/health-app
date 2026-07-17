@@ -101,7 +101,7 @@ export async function POST(req: NextRequest) {
   // question that touches diet, or vice versa, doesn't hit a dead end.
   const mode = body.mode === "wellness" ? "wellness" : "core";
   const { data: healthProfile } = await userDb.from("profiles")
-    .select("sex, conditions, ai_tone, ai_name, display_name, target_kcal, target_protein, diet_type, target_weight_kg, activity_level")
+    .select("sex, conditions, ai_tone, ai_name, ai_name_wellness, display_name, target_kcal, target_protein, diet_type, target_weight_kg, activity_level")
     .eq("id", userId).single();
   const conditions = (healthProfile?.conditions as string[] | null) ?? [];
   // Only volunteer PCOS/PCOD/etc. framing for women who've actually flagged a
@@ -109,7 +109,9 @@ export async function POST(req: NextRequest) {
   const conditionNote = healthProfile?.sex === "female" && conditions.length > 0
     ? ` The user has flagged these condition(s) in Cycle Tracking: ${conditions.join(", ")}. When diet, fitness, or symptom questions are relevant to these, factor them in (e.g. PCOS/PCOD favors strength training and lower-GI meals over cardio-only advice) — but only when it's actually relevant, don't force it into unrelated answers.`
     : "";
-  const assistantName = healthProfile?.ai_name?.trim() || (mode === "wellness" ? "Wellness Assistant" : "Core Assistant");
+  const assistantName = mode === "wellness"
+    ? healthProfile?.ai_name_wellness?.trim() || "Wellness Assistant"
+    : healthProfile?.ai_name?.trim() || "Core Assistant";
   // Tone governs emotional register, not Gemini's default — without the
   // frustration clause, hostile/venting messages ("you suck") got a generic
   // customer-service de-escalation reply regardless of tone. A Blunt coach

@@ -58,8 +58,8 @@ export async function POST(req: NextRequest) {
   // 3. One Gemini call: extract category/tags for indexing + a tone-matched
   // companion comment. Tone comes from the same setting as the assistant.
   const { data: profile } = await userDb.from("profiles")
-    .select("ai_tone, ai_name, sex, conditions").eq("id", userId).single();
-  const assistantName = profile?.ai_name?.trim() || "Wellness Assistant";
+    .select("ai_tone, ai_name_wellness, sex, conditions").eq("id", userId).single();
+  const assistantName = profile?.ai_name_wellness?.trim() || "Wellness Assistant";
 
   const prompt = `You are ${assistantName}, a wellness companion inside the Core AI app. The user just wrote this dated journal entry about themselves (a treatment, skincare/hair event, habit, mood, or health note):
 

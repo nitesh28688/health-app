@@ -1,9 +1,17 @@
 # Handoff — pick up here next session
 
 ## DB status
-All migrations through **0037** are applied and confirmed live (user ran each in the
+All migrations through **0038** are applied and confirmed live (user ran each in the
 Supabase SQL Editor, all succeeded). No pending SQL. If a future session adds a new
-migration, it's `0038_...sql`.
+migration, it's `0039_...sql`.
+
+## Just shipped (2026-07-17, not yet click-tested)
+**Phase 68 — separate assistant name per mode.** User caught that the Settings
+"AI Assistant name" field applied to both Core and Wellness. Settings now has two
+fields (Core Assistant name / Wellness Assistant name), backed by new column
+`profiles.ai_name_wellness`. To verify: Settings → set different names for each →
+confirm Core chat uses one and Wellness chat/AssistantSheet header uses the other.
+See STRUCTURE.md Phase 68 for the full wiring.
 
 ## What's built but not yet click-tested with a real login
 This session (2026-07-14 → 2026-07-16) shipped a large amount of code that

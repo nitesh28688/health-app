@@ -382,7 +382,7 @@ export function AppShell({ children }: {
       
       <AssistantSheet
         isOpen={assistantOpen}
-        assistantName={profile.ai_name}
+        assistantName={mode === "wellness" ? profile.ai_name_wellness : profile.ai_name}
         onClose={() => setAssistantOpen(false)}
         onOpenFormCheck={(exerciseHint) => {
           setFormCheckExercise(exerciseHint);
