@@ -1282,3 +1282,5 @@ alter table product_ingredient_cache enable row level security;
 create policy product_ingredient_cache_select on product_ingredient_cache
   for select using (true);
 ```
+
+**Phase 73 (2026-07-17, later still): edit size/price/PAO on products already on the shelf.** User caught the obvious gap in Phase 72: size/price were only ever collected in the "Add to my kit" flow, so a product added before that shipped (or where the user skipped the optional fields, like the pre-existing Nanoliss Quinoa Shampoo row) had no way to backfill them short of raw SQL. Added an inline edit form to the expanded shelf card (`web/app/products/page.tsx`) — "Edit size / price" button reveals size/unit, price/currency, and PAO-months inputs (reusing the same `CURRENCIES` list and `guessCurrency()` default as the add-flow), "Save" does a plain `update` on the row. No API/schema change, client-only.

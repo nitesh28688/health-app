@@ -40,7 +40,9 @@ product twice, confirm the "already have this" warning appears on Add; (2) check
 product a second time and confirm it's noticeably faster (cache hit skips grounding);
 (3) add size+price to a product, mark it Finished, confirm it shows up in the new
 "View finished" section with a duration and cost-per-day; (4) confirm price shows in
-your own currency, not hardcoded ₹.
+your own currency, not hardcoded ₹; (5) open an existing product (e.g. the Nanoliss
+Quinoa Shampoo added before this shipped), tap "Edit size / price", fill in size/price/
+PAO, Save, and confirm it now shows on the card.
 
 ## Just shipped (2026-07-17, not yet fully click-tested)
 **Phase 68 — separate assistant name per mode.** User caught that the Settings
