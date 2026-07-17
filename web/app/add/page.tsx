@@ -157,8 +157,12 @@ function AddFood({ userId }: { userId: string }) {
         name: est.name, source: "ai", owner_id: userId, is_liquid: !!est.is_liquid,
         kcal: est.kcal, protein_g: est.protein_g, carbs_g: est.carbs_g,
         fat_g: est.fat_g, fiber_g: est.fiber_g,
+        is_usable: est.is_usable !== false,
       }).select("*").single();
       if (error || !food) { setPhotoMsg(error?.message ?? "couldn't save"); return; }
+      if (est.is_usable === false) {
+        setPhotoMsg("Photo wasn't very clear — logged your best-guess estimate, worth double-checking the numbers.");
+      }
       await insertAiServings(food.id, est.servings);
       pick(food as Food);
     } catch (e) {

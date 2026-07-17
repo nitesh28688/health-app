@@ -38,13 +38,13 @@ export async function POST(req: NextRequest) {
 
   const res = await generateWithFallback(
     [
-      { text: "Identify the food in this photo and estimate its nutrition per 100 grams. If this isn't food, set is_food to false. Set is_liquid to true if it's a drink/beverage/soup measured in ml rather than grams. Also give 1-2 natural household serving measures in servings with the typical weight in grams of ONE such serving: piece for countable items, glass/cup for drinks, katori (~150g) for curries/dal/rice, plate for full plates, slice/bowl/tbsp/tsp/scoop where natural. If this is packaged food, look closely for a printed net weight (e.g. \"15g\", \"Net Wt. 30g\") on the packaging and use that exact figure for the serving size instead of guessing a generic default — packaged snack sizes vary widely and a printed weight is always more accurate than an estimate." },
+      { text: "Identify the food in this photo and estimate its nutrition per 100 grams. If this isn't food, set is_food to false. Set is_liquid to true if it's a drink/beverage/soup measured in ml rather than grams. Also give 1-2 natural household serving measures in servings with the typical weight in grams of ONE such serving: piece for countable items, glass/cup for drinks, katori (~150g) for curries/dal/rice, plate for full plates, slice/bowl/tbsp/tsp/scoop where natural. If this is packaged food, look closely for a printed net weight (e.g. \"15g\", \"Net Wt. 30g\") on the packaging and use that exact figure for the serving size instead of guessing a generic default — packaged snack sizes vary widely and a printed weight is always more accurate than an estimate. Also set is_usable: false if the photo is too blurry/dark/obscured to confidently identify the food and estimate its nutrition (you're mostly guessing), true otherwise — most photos should be true." },
       { inline_data: { mime_type: mimeType, data: base64 } },
     ],
     {
       type: "OBJECT",
       properties: {
-        is_food: { type: "BOOLEAN" }, name: { type: "STRING" }, is_liquid: { type: "BOOLEAN" },
+        is_food: { type: "BOOLEAN" }, name: { type: "STRING" }, is_liquid: { type: "BOOLEAN" }, is_usable: { type: "BOOLEAN" },
         kcal: { type: "NUMBER" }, protein_g: { type: "NUMBER" },
         carbs_g: { type: "NUMBER" }, fat_g: { type: "NUMBER" }, fiber_g: { type: "NUMBER" },
         servings: {

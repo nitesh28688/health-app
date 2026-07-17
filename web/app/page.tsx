@@ -29,7 +29,7 @@ const MICRO_LABELS: Record<string, string> = {
 interface LogRow {
   id: number; food_id: number; meal: string; qty_g: number; qty_unit_label: string | null; kcal: number;
   protein_g: number; carbs_g: number; fat_g: number; fiber_g: number;
-  foods: { name: string } | null;
+  foods: { name: string; is_usable?: boolean } | null;
 }
 interface Totals { kcal: number; protein_g: number; carbs_g: number; fat_g: number; fiber_g: number; water_ml: number; kcal_burned: number; }
 
@@ -100,7 +100,7 @@ function Diary({ profile, userId }: { profile: Profile | null; userId: string })
 
   const load = useCallback(async () => {
     const [logsRes, totalsRes] = await Promise.all([
-      supabase.from("food_logs").select("id,food_id,meal,qty_g,qty_unit_label,kcal,protein_g,carbs_g,fat_g,fiber_g,foods(name)")
+      supabase.from("food_logs").select("id,food_id,meal,qty_g,qty_unit_label,kcal,protein_g,carbs_g,fat_g,fiber_g,foods(name,is_usable)")
         .eq("user_id", userId).eq("log_date", date).order("id"),
       supabase.rpc("get_daily_totals", { p_from: date, p_to: date }),
     ]);
@@ -391,7 +391,14 @@ function Diary({ profile, userId }: { profile: Profile | null; userId: string })
                 {items.map((l) => (
                   <li key={l.id} className="rounded-2xl border border-neutral-200/60 dark:border-neutral-800/60 bg-white/50 dark:bg-neutral-900/50 backdrop-blur-md shadow-sm px-4 py-3 flex items-center gap-3 relative">
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{l.foods?.name ?? "Food"}</p>
+                      <p className="text-sm font-medium truncate flex items-center gap-1.5">
+                        {l.foods?.name ?? "Food"}
+                        {l.foods?.is_usable === false && (
+                          <span title="AI estimate from an unclear photo — double-check these numbers" className="shrink-0 text-[10px] font-semibold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 px-1.5 py-0.5 rounded-full">
+                            low confidence
+                          </span>
+                        )}
+                      </p>
                       <p className="text-xs text-neutral-500">{l.qty_unit_label ?? `${Math.round(l.qty_g)}g`} · {Math.round(Number(l.kcal))} kcal</p>
                       <p className="text-[11px] text-neutral-400">
                         Protein {Math.round(Number(l.protein_g))}g · Carbs {Math.round(Number(l.carbs_g))}g ·
