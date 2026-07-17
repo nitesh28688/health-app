@@ -28,7 +28,18 @@ hidden ingredients tab that a plain Google search snippet doesn't surface. Added
 `url_context` tool alongside `google_search` so Gemini can fetch and read the full
 page once search finds it. Re-test "Nanoliss Quinoa Shampoo" via Type entry again —
 should now return the real ingredient list (Aqua, Decyl Glucoside, Hydrolyzed Quinoa,
-etc.), not "unclear". See STRUCTURE.md Phase 70.
+etc.), not "unclear". See STRUCTURE.md Phase 70. Not Nanoliss-specific — should work
+for any product with a real indexed page (Hair Masque, Argan Oil Serum, other brands),
+but only Quinoa Shampoo has been confirmed live so far; user is re-testing the rest.
+
+## Strategic note: Core AI ↔ Nanoliss cross-promotion (2026-07-17)
+Both are Linear Ventures products. User's stated plan: use Core AI (this app) to
+promote Nanoliss products later — likely via the Products-tab AI recommending/
+surfacing Nanoliss items to users whose scans/profile match (dry hair, frizz, etc.),
+not just passively checking ingredients on request. No scope or design decided yet —
+flagged here so a future session doesn't miss the intent when touching Products/
+recommendations. See also memory `project_wellness_data_aggregation_plan` (planned,
+not built) for the earlier-scoped version of this idea from the Wellness-scan side.
 
 ## What's built but not yet click-tested with a real login
 This session (2026-07-14 → 2026-07-16) shipped a large amount of code that
