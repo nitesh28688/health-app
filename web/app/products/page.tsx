@@ -210,6 +210,37 @@ function Products({ userId }: { userId: string }) {
     load();
   }
 
+  // Edit size/price/pao on a product already on the shelf — those fields
+  // were only ever collected at add-time, so anything added before this
+  // existed (or where the user skipped it) had no way to backfill them.
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editSizeValue, setEditSizeValue] = useState("");
+  const [editSizeUnit, setEditSizeUnit] = useState<"ml" | "g" | "oz">("ml");
+  const [editPrice, setEditPrice] = useState("");
+  const [editCurrency, setEditCurrency] = useState("USD");
+  const [editPao, setEditPao] = useState("");
+
+  function startEdit(p: Product) {
+    setEditingId(p.id);
+    setEditSizeValue(p.size_value ? String(p.size_value) : "");
+    setEditSizeUnit(p.size_unit ?? "ml");
+    setEditPrice(p.price != null ? String(p.price) : "");
+    setEditCurrency(p.currency ?? guessCurrency());
+    setEditPao(p.pao_months != null ? String(p.pao_months) : "");
+  }
+
+  async function saveEdit(p: Product) {
+    await supabase.from("wellness_products").update({
+      size_value: editSizeValue.trim() ? Number(editSizeValue) : null,
+      size_unit: editSizeValue.trim() ? editSizeUnit : null,
+      price: editPrice.trim() ? Number(editPrice) : null,
+      currency: editPrice.trim() ? editCurrency : null,
+      pao_months: editPao.trim() ? Number(editPao) : null,
+    }).eq("id", p.id);
+    setEditingId(null);
+    load();
+  }
+
   async function finish(p: Product) {
     if (!confirm(`Remove "${p.name}" from your shelf?`)) return;
     await supabase.from("wellness_products")
@@ -420,18 +451,58 @@ function Products({ userId }: { userId: string }) {
                         ))}
                       </div>
                     )}
-                    <div className="flex gap-2">
-                      {!p.opened_at && p.pao_months && (
-                        <button onClick={() => markOpened(p)}
-                          className="flex-1 rounded-xl border border-neutral-300 dark:border-neutral-700 py-2 text-sm font-semibold">
-                          Opened today ({p.pao_months}M shelf life)
+                    {editingId === p.id ? (
+                      <div className="mb-3">
+                        <div className="flex gap-2 mb-2">
+                          <div className="flex-1 flex gap-1.5">
+                            <input type="number" inputMode="decimal" value={editSizeValue} onChange={(e) => setEditSizeValue(e.target.value)}
+                              placeholder="Size" className="w-full rounded-xl border border-neutral-300 dark:border-neutral-700 bg-white/50 dark:bg-neutral-900/50 px-3 py-2 text-sm" />
+                            <select value={editSizeUnit} onChange={(e) => setEditSizeUnit(e.target.value as "ml" | "g" | "oz")}
+                              className="rounded-xl border border-neutral-300 dark:border-neutral-700 bg-white/50 dark:bg-neutral-900/50 px-2 py-2 text-sm">
+                              <option value="ml">ml</option><option value="g">g</option><option value="oz">oz</option>
+                            </select>
+                          </div>
+                          <div className="flex-1 flex gap-1.5">
+                            <select value={editCurrency} onChange={(e) => setEditCurrency(e.target.value)}
+                              className="rounded-xl border border-neutral-300 dark:border-neutral-700 bg-white/50 dark:bg-neutral-900/50 px-2 py-2 text-sm">
+                              {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                            </select>
+                            <input type="number" inputMode="decimal" value={editPrice} onChange={(e) => setEditPrice(e.target.value)}
+                              placeholder="Price" className="w-full rounded-xl border border-neutral-300 dark:border-neutral-700 bg-white/50 dark:bg-neutral-900/50 px-3 py-2 text-sm" />
+                          </div>
+                        </div>
+                        <input type="number" inputMode="numeric" value={editPao} onChange={(e) => setEditPao(e.target.value)}
+                          placeholder="Shelf life after opening, in months (e.g. 12)"
+                          className="w-full rounded-xl border border-neutral-300 dark:border-neutral-700 bg-white/50 dark:bg-neutral-900/50 px-3 py-2 text-sm mb-2" />
+                        <div className="flex gap-2">
+                          <button onClick={() => saveEdit(p)}
+                            className="flex-1 rounded-xl bg-gradient-to-r from-rose-500 to-pink-600 text-white py-2 text-sm font-semibold">
+                            Save
+                          </button>
+                          <button onClick={() => setEditingId(null)}
+                            className="rounded-xl border border-neutral-300 dark:border-neutral-700 text-neutral-500 px-4 py-2 text-sm font-semibold">
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex gap-2">
+                        {!p.opened_at && p.pao_months && (
+                          <button onClick={() => markOpened(p)}
+                            className="flex-1 rounded-xl border border-neutral-300 dark:border-neutral-700 py-2 text-sm font-semibold">
+                            Opened today ({p.pao_months}M shelf life)
+                          </button>
+                        )}
+                        <button onClick={() => startEdit(p)}
+                          className="flex-1 rounded-xl border border-neutral-300 dark:border-neutral-700 text-neutral-500 py-2 text-sm font-semibold">
+                          Edit size / price
                         </button>
-                      )}
-                      <button onClick={() => finish(p)}
-                        className="flex-1 rounded-xl border border-neutral-300 dark:border-neutral-700 text-neutral-500 py-2 text-sm font-semibold">
-                        Finished / remove
-                      </button>
-                    </div>
+                        <button onClick={() => finish(p)}
+                          className="flex-1 rounded-xl border border-neutral-300 dark:border-neutral-700 text-neutral-500 py-2 text-sm font-semibold">
+                          Finished / remove
+                        </button>
+                      </div>
+                    )}
                     {p.ingredients.length > 0 && (
                       <details className="mt-2.5">
                         <summary className="text-xs text-neutral-400 cursor-pointer">Full ingredient list ({p.ingredients.length})</summary>
