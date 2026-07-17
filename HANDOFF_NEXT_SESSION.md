@@ -32,6 +32,27 @@ etc.), not "unclear". See STRUCTURE.md Phase 70. Not Nanoliss-specific — shoul
 for any product with a real indexed page (Hair Masque, Argan Oil Serum, other brands),
 but only Quinoa Shampoo has been confirmed live so far; user is re-testing the rest.
 
+**STILL PENDING (2026-07-17): grounding not yet confirmed working for nanoliss.com.**
+Three real Cloudflare-side blockers were found and fixed this session (see STRUCTURE.md
+Phase 70 for full detail): Managed robots.txt's auto-injected `Google-Extended:
+Disallow`, and Cloudflare **Bot Fight Mode** (currently turned OFF for nanoliss.com —
+do not re-enable until grounding is confirmed working, or you'll reintroduce the same
+block). Direct curl confirms the site itself now serves the real ingredient list
+cleanly. `url_context` was still erroring at last test — likely Google's own crawler
+infra caching a stale "blocked" result from before the fixes; expected to clear within
+hours to a day. **Next session: retest "Nanoliss Quinoa Shampoo" via Type entry. If it
+now works, try re-enabling Bot Fight Mode and retest once more** — the separate
+"AI bot policies" panel (Security → AI Crawl Control, Agent/Search/Training all set to
+Allow) might be Cloudflare's actual intended mechanism and could exempt Google's AI
+fetcher from Bot Fight Mode on its own, in which case Bot Fight Mode could safely go
+back on. Unverified — test before assuming.
+
+**Phase 71 fix (same session):** typed-entry Nanoliss Quinoa Shampoo (ingredients
+entered manually) was getting tagged "AM + PM" even though it's a shampoo — AM/PM
+usage_time is now scoped to skincare product_types only in the prompt; haircare
+products leave it unset (no chip shown). This part is already confirmed fixed/deployed,
+independent of the grounding retest above.
+
 ## Strategic note: Core AI ↔ Nanoliss cross-promotion (2026-07-17)
 Both are Linear Ventures products. User's stated plan: use Core AI (this app) to
 promote Nanoliss products later — likely via the Products-tab AI recommending/
