@@ -160,6 +160,26 @@ async function callAiStudioChat(model: string, contents: object[], tools: object
   );
 }
 
+// Best-effort Google Search grounding for a plain-text lookup (no response
+// schema — grounding + forced JSON mode isn't reliable together). Used to
+// look up real-world facts (e.g. a mainstream product's actual ingredient
+// list) the model wouldn't otherwise know from training data alone. Returns
+// null on any failure so callers can fall back to ungrounded behavior.
+export async function searchGrounded(prompt: string): Promise<string | null> {
+  try {
+    const res = await generateChatWithTools(
+      [{ role: "user", parts: [{ text: prompt }] }],
+      [{ google_search: {} }]
+    );
+    if (!res.ok) return null;
+    const body = await res.json();
+    const text = body?.candidates?.[0]?.content?.parts?.map((p: any) => p.text).filter(Boolean).join(" ");
+    return text?.trim() || null;
+  } catch {
+    return null;
+  }
+}
+
 export async function generateChatWithTools(contents: object[], tools?: object[], systemInstruction?: string) {
   const useVertex = !!process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
   const attempts: { model: string; call: (signal: AbortSignal) => Promise<Response> }[] = [];

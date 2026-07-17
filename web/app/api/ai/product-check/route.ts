@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { generateWithFallback } from "@/lib/gemini";
+import { generateWithFallback, searchGrounded } from "@/lib/gemini";
 
 const DAILY_USER_CAP = 10;
 
@@ -76,11 +76,28 @@ export async function POST(req: NextRequest) {
   const recentTreatments = (journalRes.data ?? [])
     .map((j) => `${j.entry_at.slice(0, 10)}: ${j.entry_text.slice(0, 120)}`);
 
+  // For a typed product with no ingredients supplied, try a web-search-grounded
+  // lookup first (mainstream brands often have their INCI list published on the
+  // brand site, Sephora/Nykaa/INCIDecoder etc.) rather than relying solely on
+  // the model's training-data memory, which misses smaller/newer/niche brands.
+  let groundedFacts: string | null = null;
+  if (hasTyped && !(ingredientsText && String(ingredientsText).trim())) {
+    groundedFacts = await searchGrounded(
+      `Search the web for the real ingredient list (INCI) of the cosmetic/haircare product "${stripNulls(String(productName)).slice(0, 150)}". ` +
+      `Reply with the brand, product type, and the full INCI ingredient list if you can find it from a real source (brand website, retailer listing, INCIDecoder, etc.), citing what you found. ` +
+      `If you cannot find reliable ingredient data for this exact product, say so plainly instead of guessing.`
+    );
+  }
+
   const inputDescription = hasImage
     ? `The photo shows a skincare or haircare product — read its label, especially the INCI ingredient list if visible.`
     : `The user couldn't scan the product (label unreadable/no camera) and typed it in instead:
 Product name: "${stripNulls(String(productName)).slice(0, 150)}"
-${ingredientsText && String(ingredientsText).trim() ? `Ingredients they typed from the label: "${stripNulls(String(ingredientsText)).slice(0, 1500)}"` : "They did not provide an ingredient list — use your general knowledge of this specific product if you recognize it. If you don't confidently recognize it, say so plainly in verdict_reason (e.g. \"I don't have reliable ingredient data for this exact product — here's general guidance for a product of this type\") rather than inventing a specific ingredient list."}`;
+${ingredientsText && String(ingredientsText).trim()
+      ? `Ingredients they typed from the label: "${stripNulls(String(ingredientsText)).slice(0, 1500)}"`
+      : groundedFacts
+        ? `Web search results for this product: "${groundedFacts.slice(0, 2000)}"\nUse this search result if it actually names real ingredients for this product. If the search result itself says it couldn't find reliable data, say so plainly in verdict_reason rather than inventing a specific ingredient list.`
+        : "They did not provide an ingredient list and a web search found nothing reliable — use your general knowledge of this specific product only if you confidently recognize it. If you don't, say so plainly in verdict_reason (e.g. \"I don't have reliable ingredient data for this exact product — here's general guidance for a product of this type\") rather than inventing a specific ingredient list."}`;
 
   const prompt = `You are a cosmetic-ingredient analysis AI inside a wellness app. ${inputDescription}
 

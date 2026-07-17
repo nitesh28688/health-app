@@ -160,13 +160,13 @@ function Products({ userId }: { userId: string }) {
             onClick={() => fileRef.current?.click()}
             className="flex-1 rounded-2xl bg-gradient-to-r from-rose-500 to-pink-600 text-white shadow-md shadow-rose-500/20 py-3.5 font-semibold active:scale-[0.99] flex items-center justify-center gap-2"
           >
-            <Camera className="w-5 h-5" /> Scan
+            <Camera className="w-5 h-5" /> Scan Label
           </button>
           <button
             onClick={() => { setShowTyped(true); setError(null); }}
             className="flex-1 rounded-2xl border-2 border-rose-300 dark:border-rose-800 text-rose-600 dark:text-rose-400 py-3.5 font-semibold active:scale-[0.99] flex items-center justify-center gap-2"
           >
-            <Keyboard className="w-5 h-5" /> Type
+            <Keyboard className="w-5 h-5" /> Enter Manually
           </button>
         </div>
       )}
