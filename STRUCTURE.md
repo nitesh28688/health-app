@@ -1284,3 +1284,70 @@ create policy product_ingredient_cache_select on product_ingredient_cache
 ```
 
 **Phase 73 (2026-07-17, later still): edit size/price/PAO on products already on the shelf.** User caught the obvious gap in Phase 72: size/price were only ever collected in the "Add to my kit" flow, so a product added before that shipped (or where the user skipped the optional fields, like the pre-existing Nanoliss Quinoa Shampoo row) had no way to backfill them short of raw SQL. Added an inline edit form to the expanded shelf card (`web/app/products/page.tsx`) — "Edit size / price" button reveals size/unit, price/currency, and PAO-months inputs (reusing the same `CURRENCIES` list and `guessCurrency()` default as the add-flow), "Save" does a plain `update` on the row. No API/schema change, client-only.
+
+**Phase 74 (2026-07-17, later still): AI/memory layer hardening — semantic recall, recency-weighting, usability gate.** Sourced from a user-provided fix-prompt file (`Downloads\CoreAI_fix_prompt.txt`) describing an independent AI-to-AI architecture comparison between Core AI and a third-party project ("MEGO"), scoped to three concrete gaps in the AI/memory layer. Explicitly scoped OUT: confidence scoring, contradiction detection, supersession chains, an autonomous action queue — evaluated and ruled unnecessary for this app.
+
+- **FIX 1 — semantic recall.** `search_journal` was pure Postgres FTS (`0036_wellness_journal.sql`) — a query for "stressed" could never match an entry saying "overwhelmed," no semantic understanding. Migration `0040_semantic_recall.sql` adds `wellness_journal.embedding vector(768)` (pgvector) + `search_journal_hybrid(q, query_embedding, match_count)`, which unions FTS top-K with cosine-similarity top-K (no ivfflat index — table sizes here are per-user hundreds/low-thousands of rows, sequential scan is fine, avoids ivfflat cold-start/lists-tuning footguns). `generateEmbedding()` added to `lib/gemini.ts` (`web/lib/gemini.ts:...`, mirrors the existing Vertex-then-AI-Studio fallback shape used elsewhere, `text-embedding-004`, 768-dim on both backends). `journal-entry/route.ts` now generates + stores an embedding on every save, unconditionally — NOT gated behind the `journal_comment` daily cap, so search quality never degrades once a heavy user hits it (the cap only gates the AI *comment*, always did). `aiTools.ts`'s `search_journal` case now calls `search_journal_hybrid` when a query embedding is available, falling back to the original FTS-only `search_journal` RPC if embedding generation fails (best-effort, never blocks recall). `scripts/backfill-journal-embeddings.mjs` (follows the existing `scripts/` `createRequire` + `.env.local` pattern) backfilled the one pre-existing journal row.
+- **FIX 2 — recency-weighting.** Journal/product/scan history was read as an undifferentiated flat list by every advice-giving route — an old resolved symptom or a product stopped weeks ago carried the same weight as current state. `web/lib/recency.ts` (new): `ageLabel(dateStr)` — three coarse bands (recent ≤14d / older 15-60d / old >60d), deliberately not a decay/confidence score. Wired into `aiTools.ts`'s `get_recent_journal`/`search_journal`/`get_products` (each result gets an `age` field), the assistant's system prompt (`RECENCY_PROMPT_NOTE` appended in `assistant/route.ts`, tells the model old-labeled entries are background unless the user asks about history/trends), and `product-check/route.ts`'s shelf/journal context strings (inline `ageLabel()` calls).
+- **FIX 3 — usability gate.** Extends the `wellness_scans.is_usable` pattern (Phase 61/`0033_wellness_quality.sql`) to journal entries and product records — a noise row (a one-word journal entry, a product check with an unreadable label) was being read as reliable input with the same weight as a genuine one. Migration `0041_usability_gate.sql` adds `is_usable boolean not null default true` to `wellness_journal` and `wellness_products`, and re-creates `search_journal_hybrid` (Postgres won't let `create or replace` change a function's OUT-parameter row type — `drop function` first, hit live during this session) to also return `is_usable`. Both AI extraction calls now also return an `is_usable` judgment: `journal-entry/route.ts`'s schema gains `is_usable` (prompt: false only for genuinely empty/noise entries like "test" or "asdf"), `product-check/route.ts`'s schema gains `is_usable` (false when confidence is genuinely too low to trust, e.g. an unreadable label). `aiTools.ts` filters `is_usable === false` rows out of `search_journal`/`get_recent_journal`/`get_products` results entirely (never deletes the row, just excludes it from advice-context) — same treatment everywhere FIX 2 touches.
+
+Live-verified end-to-end (not just tsc-clean) using throwaway test accounts created/cleaned up via the Admin API + real password sign-in for a genuine RLS-scoped JWT, hitting the actual deployed Vercel production URL directly:
+- FIX 1: an entry saying "overwhelmed" surfaced via `search_journal_hybrid` for query "stressed"; confirmed the plain FTS-only `search_journal` RPC returns 0 results for the same query on the same data, proving the gap and the fix.
+- FIX 2: seeded a 75-day-old entry praising retinol + a same-day entry saying they'd stopped; asked the live `/api/ai/assistant` (wellness mode) "what does my journal say about retinol, am I currently using it" — correctly answered "it doesn't look like you're using any retinol products," treating the old entry as background and the recent one as current state.
+- FIX 3: POSTed a real low-content entry ("k") to the live `/api/ai/journal-entry` route — model returned `is_usable: false`, confirmed via direct DB read.
+
+**Note on doc-naming discrepancy**: the source fix-prompt file referenced "HANDOFF.md at the repo root," but that file is stale (last touched ~Phase 34) — this project's active handoff doc has been `HANDOFF_NEXT_SESSION.md` since at least Phase 60. Updated the active one; flagging here so a future session doesn't get confused by two handoff files.
+
+Migrations to run (already applied live this session):
+```sql
+-- 0040_semantic_recall.sql
+create extension if not exists vector;
+alter table wellness_journal add column embedding vector(768);
+create or replace function search_journal_hybrid(q text, query_embedding vector(768), match_count int default 8)
+returns table (id bigint, entry_text text, entry_at timestamptz, category text, tags text[], similarity double precision)
+language sql stable security invoker as $$
+  with fts as (
+    select id, ts_rank(search_tsv, websearch_to_tsquery('english', q)) as rank
+    from wellness_journal
+    where user_id = auth.uid() and search_tsv @@ websearch_to_tsquery('english', q)
+    order by rank desc limit match_count
+  ),
+  vect as (
+    select id, 1 - (embedding <=> query_embedding) as similarity
+    from wellness_journal
+    where user_id = auth.uid() and embedding is not null
+    order by embedding <=> query_embedding limit match_count
+  ),
+  combined as (select id from fts union select id from vect)
+  select wj.id, wj.entry_text, wj.entry_at, wj.category, wj.tags,
+    coalesce((select v.similarity from vect v where v.id = wj.id), 0) as similarity
+  from wellness_journal wj join combined c on c.id = wj.id
+  order by wj.entry_at desc limit match_count * 2;
+$$;
+
+-- 0041_usability_gate.sql
+alter table wellness_journal add column is_usable boolean not null default true;
+alter table wellness_products add column is_usable boolean not null default true;
+drop function if exists search_journal_hybrid(text, vector, integer);
+create function search_journal_hybrid(q text, query_embedding vector(768), match_count int default 8)
+returns table (id bigint, entry_text text, entry_at timestamptz, category text, tags text[], is_usable boolean, similarity double precision)
+language sql stable security invoker as $$
+  with fts as (
+    select id, ts_rank(search_tsv, websearch_to_tsquery('english', q)) as rank
+    from wellness_journal
+    where user_id = auth.uid() and search_tsv @@ websearch_to_tsquery('english', q)
+    order by rank desc limit match_count
+  ),
+  vect as (
+    select id, 1 - (embedding <=> query_embedding) as similarity
+    from wellness_journal
+    where user_id = auth.uid() and embedding is not null
+    order by embedding <=> query_embedding limit match_count
+  ),
+  combined as (select id from fts union select id from vect)
+  select wj.id, wj.entry_text, wj.entry_at, wj.category, wj.tags, wj.is_usable,
+    coalesce((select v.similarity from vect v where v.id = wj.id), 0) as similarity
+  from wellness_journal wj join combined c on c.id = wj.id
+  order by wj.entry_at desc limit match_count * 2;
+$$;
+```

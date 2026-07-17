@@ -1,41 +1,34 @@
 # Handoff — pick up here next session
 
 ## DB status
-Migrations through **0038** are confirmed live. **0039 is NOT yet run** — paste this
-into the Supabase SQL Editor:
-```sql
-alter table wellness_products add column size_value numeric;
-alter table wellness_products add column size_unit text check (size_unit in ('ml','g','oz'));
-alter table wellness_products add column price numeric;
-alter table wellness_products add column currency text;
-alter table wellness_products add column finished_at timestamptz;
+Migrations through **0041** are confirmed live (0039 Products tracking, 0040 semantic
+recall, 0041 usability gate — all applied and verified this session). If a future
+session adds a new migration, it's `0042_...sql`.
 
-create table product_ingredient_cache (
-  id            bigint generated always as identity primary key,
-  name_key      text not null unique,
-  name          text not null,
-  brand         text,
-  product_type  text check (product_type in (
-    'cleanser','moisturizer','sunscreen','serum','toner','exfoliant','mask',
-    'shampoo','conditioner','hair_oil','hair_treatment','other')),
-  ingredients   text[] not null default '{}',
-  key_actives   text[] not null default '{}',
-  pao_months    int,
-  source        text not null check (source in ('scan','grounded','general_knowledge')),
-  hit_count     int not null default 1,
-  created_at    timestamptz not null default now(),
-  updated_at    timestamptz not null default now()
-);
+## Just shipped (2026-07-17, verified live): AI/memory layer hardening
+Three fixes from a user-provided AI-to-AI architecture comparison (Core AI vs. a
+third-party project "MEGO"), scoped deliberately minimal — see STRUCTURE.md Phase 74
+for full detail. All three were live-verified end-to-end this session (not just
+tsc-clean) using throwaway test accounts hitting the real deployed Vercel URL, then
+cleaned up:
+1. **Semantic recall** — journal search now does hybrid FTS+embedding matching, so
+   "stressed" finds an entry that said "overwhelmed." `search_journal_hybrid` RPC +
+   `generateEmbedding()` in `lib/gemini.ts`.
+2. **Recency-weighting** — journal/product/scan history fed to any advice-giving route
+   now carries an age label (recent/older/old), with the assistant told to treat old
+   entries as background, not current state.
+3. **Usability gate** — noise journal entries/product checks (unreadable label,
+   one-word entry) get `is_usable=false` from the same AI extraction call, and are
+   filtered out of advice-context everywhere (never deleted).
 
-alter table product_ingredient_cache enable row level security;
-create policy product_ingredient_cache_select on product_ingredient_cache
-  for select using (true);
-```
-If a future session adds a new migration, it's `0040_...sql`.
+No further action needed — this is fully shipped and verified, unlike most other
+"just shipped" entries in this doc which still need a real click-test. Nothing to
+click-test here specifically, though normal Journal/Products/Assistant usage will now
+implicitly exercise it.
 
-## Just shipped (2026-07-17, needs 0039 + click-test)
+## Just shipped (2026-07-17, click-test still pending)
 **Phase 72 — Products revamp: duplicate check, shared ingredient cache, size/price.**
-See STRUCTURE.md Phase 72 for full detail. Once 0039 is run, test: (1) check the same
+See STRUCTURE.md Phase 72 for full detail. Test: (1) check the same
 product twice, confirm the "already have this" warning appears on Add; (2) check a
 product a second time and confirm it's noticeably faster (cache hit skips grounding);
 (3) add size+price to a product, mark it Finished, confirm it shows up in the new
