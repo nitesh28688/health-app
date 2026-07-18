@@ -104,8 +104,10 @@ export async function POST(req: NextRequest) {
       // the model's training-data memory, which misses smaller/newer/niche brands.
       groundedFacts = await searchGrounded(
         `Search the web for the real ingredient list (INCI) of the cosmetic/haircare product "${stripNulls(String(productName)).slice(0, 150)}". ` +
-        `Reply with the brand, product type, and the full INCI ingredient list if you can find it from a real source (brand website, retailer listing, INCIDecoder, etc.), citing what you found. ` +
-        `If you cannot find reliable ingredient data for this exact product, say so plainly instead of guessing.`
+        `If the product name includes a brand (like "Nanoliss"), consider searching their official website directly (e.g. adding "site:nanoliss.com" to the search). ` +
+        `CRITICAL: Search snippets rarely contain the full ingredient list. You MUST use the \`url_context\` tool to fetch and read the actual product page (from the brand's site, INCIDecoder, etc.) to get the full list. ` +
+        `Reply with the brand, product type, and the full INCI ingredient list if you can find it from a real source, citing the URL you fetched. ` +
+        `If you cannot find reliable ingredient data for this exact product after fetching the page, say so plainly instead of guessing.`
       );
     }
   }

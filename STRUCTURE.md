@@ -1353,3 +1353,7 @@ language sql stable security invoker as $$
   order by wj.entry_at desc limit match_count * 2;
 $$;
 ```
+
+**Phase 76 (2026-07-18): Gemini API Tool Schema Fix & BHIM-style Nav Bar Cutout**
+- **Gemini Web Search Fix:** Fixed a silent failure in `web/lib/gemini.ts` where the Google Search grounding tool was using the invalid name `google_search` (causing Vertex AI to return 400 Bad Request, which `searchGrounded` swallowed, forcing a fallback to internal memory). Updated to `googleSearch` (AI Studio) and `googleSearchRetrieval` (Vertex AI). Also updated the `/api/ai/product-check/route.ts` prompt to explicitly instruct the model to use the `url_context` tool and search `site:nanoliss.com` for Nanoliss products. This bypasses issues where Google's search crawler index cached a Cloudflare Bot Fight Mode block page, as `url_context` fetches the raw HTML (which still contains the ingredients beneath the challenge script).
+- **BHIM-style Nav Bar Cutout:** Replaced the flat `border-t` background of the bottom navigation bar in `AppShell.tsx` with a curved cutout (moat/cradle) for the center mode toggle button. Implemented using CSS `mask-image` with a carefully calculated SVG path and `linear-gradient` to allow `backdrop-blur-xl` to apply only to the masked area, leaving a transparent gap around the button. The top edge stroke is drawn via an absolute positioned SVG path tracing the exact Bezier curve of the cutout.
