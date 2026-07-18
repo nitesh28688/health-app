@@ -147,7 +147,7 @@ function NavTabs({ mode, onModeToggle }: { mode: AppMode; onModeToggle: () => vo
               pulses. The only animation is the letter's own light pulse. */}
           <button
             onClick={onModeToggle}
-            className={`relative -mt-9 w-16 h-16 rounded-full ${destBg} text-white shadow-lg flex items-center justify-center active:scale-90 transition-all duration-200 z-10 overflow-hidden`}
+            className={`relative -mt-12 w-16 h-16 rounded-full ${destBg} text-white shadow-xl shadow-black/30 flex items-center justify-center active:scale-90 transition-all duration-200 z-10 overflow-hidden`}
             aria-label={`Switch to ${isWellness ? "Core" : "Wellness"} mode`}
           >
             {/* Glass highlight — a soft light sweep across the top of the button,
@@ -161,7 +161,7 @@ function NavTabs({ mode, onModeToggle }: { mode: AppMode; onModeToggle: () => vo
                 animate={{ opacity: 1, scale: 1, rotate: 0 }}
                 exit={{ opacity: 0, scale: 0.5, rotate: 90 }}
                 transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-                className="letter-pulse relative text-2xl font-black leading-none drop-shadow-sm"
+                className="letter-pulse relative text-3xl font-black leading-none drop-shadow-sm"
               >
                 {destLetter}
               </motion.span>
