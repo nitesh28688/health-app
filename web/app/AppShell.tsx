@@ -164,7 +164,7 @@ function NavTabs({ mode, onModeToggle }: { mode: AppMode; onModeToggle: () => vo
   return (
     <div className="max-w-md mx-auto flex px-2 py-1 relative z-10">
       {items}
-      <div className="absolute left-1/2 top-[-22px] -translate-x-1/2 pointer-events-none z-20">
+      <div className="absolute left-1/2 top-[-42px] -translate-x-1/2 pointer-events-none z-20">
         <button
           onClick={onModeToggle}
           className={`relative w-16 h-16 rounded-full ${destBg} text-white flex items-center justify-center active:scale-90 transition-all duration-200 pointer-events-auto overflow-hidden`}
