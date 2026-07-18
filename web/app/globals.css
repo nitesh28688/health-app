@@ -51,6 +51,42 @@ body {
   animation: fade-in-up 0.22s ease-out;
 }
 
+/* Nav mode-toggle button (AppShell.tsx): a light-pulse sweeping through the
+   W/C letter, like a wave of light passing through it — draws the eye to
+   the raised center button without being a garish full-button flash. */
+@keyframes letter-pulse {
+  0%, 100% { background-position: -150% 0; }
+  50% { background-position: 250% 0; }
+}
+.letter-pulse {
+  /* Explicit colors, not currentColor — this same rule also sets color:
+     transparent, and currentColor would resolve against that (making the
+     letter fully invisible outside the shimmer band) rather than the
+     white the button text would otherwise have. */
+  background-image: linear-gradient(110deg, rgba(255,255,255,0.75) 40%, #ffffff 50%, rgba(255,255,255,0.75) 60%);
+  background-size: 250% 100%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  animation: letter-pulse 2.8s ease-in-out infinite;
+}
+
+/* Soft outer rings radiating from the toggle button, echoing the "raised
+   scanner button" look. Two rings offset in time for a continuous pulse. */
+@keyframes toggle-ring {
+  0% { transform: scale(0.8); opacity: 0.55; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+.toggle-ring {
+  animation: toggle-ring 2.2s ease-out infinite;
+}
+.toggle-ring-delayed {
+  animation: toggle-ring 2.2s ease-out infinite;
+  animation-delay: 1.1s;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .page-enter { animation: none; }
+  .letter-pulse { animation: none; background-image: none; background-clip: initial; -webkit-background-clip: initial; color: inherit; }
+  .toggle-ring, .toggle-ring-delayed { animation: none; display: none; }
 }
