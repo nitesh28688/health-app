@@ -142,13 +142,12 @@ function NavTabs({ mode, onModeToggle }: { mode: AppMode; onModeToggle: () => vo
 
       items.push(
         <div key="mode-toggle" className="flex-1 flex flex-col items-center justify-center relative">
-          {/* Radiating pulse rings behind the button — echoes the "raised
-              scanner button" look, invites the tap without a full-button flash. */}
-          <span className={`toggle-ring pointer-events-none absolute -mt-5 w-14 h-14 rounded-full ${isWellness ? "bg-indigo-400/60" : "bg-rose-400/60"}`} />
-          <span className={`toggle-ring-delayed pointer-events-none absolute -mt-5 w-14 h-14 rounded-full ${isWellness ? "bg-indigo-400/60" : "bg-rose-400/60"}`} />
+          {/* BHIM-style: a solid disc floating over the flat bar, roughly half
+              protruding above it — no outline ring, no halo, no radiating
+              pulses. The only animation is the letter's own light pulse. */}
           <button
             onClick={onModeToggle}
-            className={`relative -mt-5 w-14 h-14 rounded-full ${destBg} backdrop-blur-md text-white shadow-lg flex items-center justify-center active:scale-90 transition-all duration-200 border border-white/40 dark:border-white/15 ring-4 ring-white/50 dark:ring-neutral-950/60 z-10 overflow-hidden`}
+            className={`relative -mt-9 w-16 h-16 rounded-full ${destBg} text-white shadow-lg flex items-center justify-center active:scale-90 transition-all duration-200 z-10 overflow-hidden`}
             aria-label={`Switch to ${isWellness ? "Core" : "Wellness"} mode`}
           >
             {/* Glass highlight — a soft light sweep across the top of the button,
@@ -162,7 +161,7 @@ function NavTabs({ mode, onModeToggle }: { mode: AppMode; onModeToggle: () => vo
                 animate={{ opacity: 1, scale: 1, rotate: 0 }}
                 exit={{ opacity: 0, scale: 0.5, rotate: 90 }}
                 transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-                className="letter-pulse relative text-xl font-black leading-none drop-shadow-sm"
+                className="letter-pulse relative text-2xl font-black leading-none drop-shadow-sm"
               >
                 {destLetter}
               </motion.span>
