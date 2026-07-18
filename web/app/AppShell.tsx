@@ -9,7 +9,7 @@ import { AssistantSheet } from "@/components/AssistantSheet";
 import { FormCheckSheet } from "@/components/FormCheckSheet";
 import { PhysioSheet } from "@/components/PhysioSheet";
 import { TermsGate } from "@/components/TermsGate";
-import { Wand2, Book, Dumbbell, TrendingUp, Users, CloudUpload, Sparkles, FileText, BookHeart, Package } from "lucide-react";
+import { Wand2, Book, Dumbbell, TrendingUp, Users, CloudUpload, Sparkles, FileText, BookHeart, Package, Heart } from "lucide-react";
 import { subscribePendingCount } from "@/lib/offlineQueue";
 import { getAppMode, setAppMode, subscribeAppMode, type AppMode } from "@/lib/appMode";
 import { CURRENT_TERMS_VERSION } from "@/lib/legal";
@@ -156,7 +156,7 @@ function NavTabs({ mode, onModeToggle }: { mode: AppMode; onModeToggle: () => vo
   }
 
   // ── Mode Toggle Button ──
-  const destText = isWellness ? "Core" : "Wellness";
+  const DestIcon = isWellness ? Dumbbell : Heart;
   const destBg = isWellness
     ? "bg-gradient-to-br from-indigo-500/90 to-violet-600/90 shadow-indigo-500/40"
     : "bg-gradient-to-br from-rose-500/90 to-pink-600/90 shadow-rose-500/40";
@@ -173,16 +173,16 @@ function NavTabs({ mode, onModeToggle }: { mode: AppMode; onModeToggle: () => vo
         >
           <span className="pointer-events-none absolute inset-0 rounded-full bg-gradient-to-b from-white/40 via-white/5 to-transparent" />
           <AnimatePresence mode="wait">
-            <motion.span
+            <motion.div
               key={mode}
               initial={{ opacity: 0, scale: 0.5, rotate: -90 }}
               animate={{ opacity: 1, scale: 1, rotate: 0 }}
               exit={{ opacity: 0, scale: 0.5, rotate: 90 }}
               transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-              className="letter-pulse relative text-[9.5px] uppercase tracking-tight font-black leading-none drop-shadow-sm"
+              className="relative drop-shadow-sm"
             >
-              {destText}
-            </motion.span>
+              <DestIcon className="w-7 h-7" strokeWidth={2.5} />
+            </motion.div>
           </AnimatePresence>
         </button>
       </div>
