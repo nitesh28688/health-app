@@ -156,7 +156,7 @@ function NavTabs({ mode, onModeToggle }: { mode: AppMode; onModeToggle: () => vo
   }
 
   // ── Mode Toggle Button ──
-  const destLetter = isWellness ? "C" : "W";
+  const destText = isWellness ? "Core" : "Wellness";
   const destBg = isWellness
     ? "bg-gradient-to-br from-indigo-500/90 to-violet-600/90 shadow-indigo-500/40"
     : "bg-gradient-to-br from-rose-500/90 to-pink-600/90 shadow-rose-500/40";
@@ -179,9 +179,9 @@ function NavTabs({ mode, onModeToggle }: { mode: AppMode; onModeToggle: () => vo
               animate={{ opacity: 1, scale: 1, rotate: 0 }}
               exit={{ opacity: 0, scale: 0.5, rotate: 90 }}
               transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-              className="letter-pulse relative text-2xl font-black leading-none drop-shadow-sm"
+              className="letter-pulse relative text-[11px] uppercase tracking-wider font-black leading-none drop-shadow-sm"
             >
-              {destLetter}
+              {destText}
             </motion.span>
           </AnimatePresence>
         </button>
