@@ -171,7 +171,8 @@ function NavTabs({ mode, onModeToggle }: { mode: AppMode; onModeToggle: () => vo
           style={{ boxShadow: "0 10px 22px -4px rgba(0,0,0,0.45)" }}
           aria-label={`Switch to ${isWellness ? "Core" : "Wellness"} mode`}
         >
-          <span className="pointer-events-none absolute inset-0 rounded-full bg-gradient-to-b from-white/40 via-white/5 to-transparent" />
+          <span className="pointer-events-none absolute inset-0 rounded-full bg-gradient-to-b from-white/40 via-white/5 to-transparent z-0" />
+          <div className="absolute inset-0 w-[200%] bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer z-10 pointer-events-none mix-blend-overlay" />
           <AnimatePresence mode="wait">
             <motion.div
               key={mode}
@@ -179,9 +180,9 @@ function NavTabs({ mode, onModeToggle }: { mode: AppMode; onModeToggle: () => vo
               animate={{ opacity: 1, scale: 1, rotate: 0 }}
               exit={{ opacity: 0, scale: 0.5, rotate: 90 }}
               transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-              className="relative drop-shadow-sm"
+              className="relative drop-shadow-md z-20"
             >
-              <DestIcon className="w-7 h-7" strokeWidth={2.5} />
+              <DestIcon className="w-8 h-8" strokeWidth={2.5} />
             </motion.div>
           </AnimatePresence>
         </button>

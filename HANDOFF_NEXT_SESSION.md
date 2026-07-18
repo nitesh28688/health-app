@@ -8,9 +8,9 @@ alter table foods add column is_usable boolean not null default true;
 ```
 If a future session adds a new migration, it's `0043_...sql`.
 ## Just shipped (2026-07-18, click-test pending)
-**Phase 76 — Gemini web search fix & BHIM-style Nav Bar Cutout.** 
+**Phase 76 — Gemini web search fix & Premium Nav Bar Mode Toggle.** 
 1. **Gemini grounding fixed**: Corrected the Google Search tool schema and explicitly prompted the model to use `url_context` and search `site:nanoliss.com`. This bypasses Cloudflare Bot Fight Mode blocks because Gemini's fetcher reads the raw HTML. Test: Add "Nanoliss Quinoa Hair Masque" via Type entry — it should now correctly find and return the real ingredients instead of returning "unclear".
-2. **BHIM-style Nav Bar Cutout**: Replaced the flat navigation bar background with a curved cutout (moat) for the center mode toggle button using CSS masks and SVGs. Test: Look at the bottom navigation bar to ensure the mode toggle button hovers inside a transparent gap, and the top border smoothly traces the curve.
+2. **Premium Nav Bar Mode Toggle**: Replaced the flat navigation bar background with a curved cutout (moat) for the center mode toggle button using CSS masks and SVGs. Replaced the text ("W" or "C") with larger premium Lucide icons (Heart/Dumbbell) and added a whole-button sweeping light beam shimmer animation for a premium feel. Test: Look at the bottom navigation bar to ensure the mode toggle button hovers inside a transparent gap, and the top border smoothly traces the curve. Observe the larger icons and the sweeping light animation.
 
 ## Just shipped (2026-07-17, needs 0042 + click-test)
 **Phase 75 — Core-mode usability flag on food-photo estimates.** Follow-up to Phase 74
