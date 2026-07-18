@@ -132,44 +132,8 @@ function NavTabs({ mode, onModeToggle }: { mode: AppMode; onModeToggle: () => vo
 
   for (let slot = 0; slot < totalSlots; slot++) {
     if (slot === toggleIdx) {
-      // ── Mode Toggle Button ──
-      // The destination mode's identity: rose when in Core (inviting to Wellness),
-      // indigo when in Wellness (inviting back to Core).
-      const destLetter = isWellness ? "C" : "W";
-      const destBg = isWellness
-        ? "bg-gradient-to-br from-indigo-500/90 to-violet-600/90 shadow-indigo-500/40"
-        : "bg-gradient-to-br from-rose-500/90 to-pink-600/90 shadow-rose-500/40";
-
-      items.push(
-        <div key="mode-toggle" className="flex-1 flex flex-col items-center justify-center relative">
-          {/* BHIM-style: a solid disc floating over the flat bar, roughly half
-              protruding above it — no outline ring, no halo, no radiating
-              pulses. The only animation is the letter's own light pulse. */}
-          <button
-            onClick={onModeToggle}
-            className={`relative -mt-9 w-16 h-16 rounded-full ${destBg} text-white flex items-center justify-center active:scale-90 transition-all duration-200 z-10 overflow-hidden`}
-            style={{ boxShadow: "0 10px 22px -4px rgba(0,0,0,0.45)" }}
-            aria-label={`Switch to ${isWellness ? "Core" : "Wellness"} mode`}
-          >
-            {/* Glass highlight — a soft light sweep across the top of the button,
-                the classic glassmorphism "glare" that makes a flat gradient read
-                as an actual translucent surface instead of a solid sticker. */}
-            <span className="pointer-events-none absolute inset-0 rounded-full bg-gradient-to-b from-white/40 via-white/5 to-transparent" />
-            <AnimatePresence mode="wait">
-              <motion.span
-                key={mode}
-                initial={{ opacity: 0, scale: 0.5, rotate: -90 }}
-                animate={{ opacity: 1, scale: 1, rotate: 0 }}
-                exit={{ opacity: 0, scale: 0.5, rotate: 90 }}
-                transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-                className="letter-pulse relative text-2xl font-black leading-none drop-shadow-sm"
-              >
-                {destLetter}
-              </motion.span>
-            </AnimatePresence>
-          </button>
-        </div>
-      );
+      // ── Mode Toggle Spacer ──
+      items.push(<div key="mode-toggle" className="flex-1" />);
     } else {
       const t = activeTabs[tabIdx];
       tabIdx++;
@@ -191,9 +155,37 @@ function NavTabs({ mode, onModeToggle }: { mode: AppMode; onModeToggle: () => vo
     }
   }
 
+  // ── Mode Toggle Button ──
+  const destLetter = isWellness ? "C" : "W";
+  const destBg = isWellness
+    ? "bg-gradient-to-br from-indigo-500/90 to-violet-600/90 shadow-indigo-500/40"
+    : "bg-gradient-to-br from-rose-500/90 to-pink-600/90 shadow-rose-500/40";
+
   return (
     <div className="max-w-md mx-auto flex px-2 py-1 relative z-10">
       {items}
+      <div className="absolute left-1/2 top-[-22px] -translate-x-1/2 pointer-events-none z-20">
+        <button
+          onClick={onModeToggle}
+          className={`relative w-16 h-16 rounded-full ${destBg} text-white flex items-center justify-center active:scale-90 transition-all duration-200 pointer-events-auto overflow-hidden`}
+          style={{ boxShadow: "0 10px 22px -4px rgba(0,0,0,0.45)" }}
+          aria-label={`Switch to ${isWellness ? "Core" : "Wellness"} mode`}
+        >
+          <span className="pointer-events-none absolute inset-0 rounded-full bg-gradient-to-b from-white/40 via-white/5 to-transparent" />
+          <AnimatePresence mode="wait">
+            <motion.span
+              key={mode}
+              initial={{ opacity: 0, scale: 0.5, rotate: -90 }}
+              animate={{ opacity: 1, scale: 1, rotate: 0 }}
+              exit={{ opacity: 0, scale: 0.5, rotate: 90 }}
+              transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+              className="letter-pulse relative text-2xl font-black leading-none drop-shadow-sm"
+            >
+              {destLetter}
+            </motion.span>
+          </AnimatePresence>
+        </button>
+      </div>
     </div>
   );
 }
@@ -421,8 +413,8 @@ export function AppShell({ children }: {
               : "bg-white/70 dark:bg-neutral-950/70"
           }`}
           style={{
-            WebkitMask: `linear-gradient(black, black) 0 0 / calc(50% - 54.5px) 100% no-repeat, url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 110 100' width='110' height='100'%3E%3Cpath d='M 0 0 L 10 0 C 18 0 19 6 22.7 10 A 38 38 0 0 0 87.3 10 C 91 6 92 0 100 0 L 110 0 L 110 100 L 0 100 Z' fill='black' /%3E%3C/svg%3E") center top / 110px 100% no-repeat, linear-gradient(black, black) 100% 0 / calc(50% - 54.5px) 100% no-repeat`,
-            mask: `linear-gradient(black, black) 0 0 / calc(50% - 54.5px) 100% no-repeat, url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 110 100' width='110' height='100'%3E%3Cpath d='M 0 0 L 10 0 C 18 0 19 6 22.7 10 A 38 38 0 0 0 87.3 10 C 91 6 92 0 100 0 L 110 0 L 110 100 L 0 100 Z' fill='black' /%3E%3C/svg%3E") center top / 110px 100% no-repeat, linear-gradient(black, black) 100% 0 / calc(50% - 54.5px) 100% no-repeat`,
+            WebkitMask: `linear-gradient(black, black) 0 0 / calc(50% - 54.5px) 100% no-repeat, url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 110 150' width='110' height='150'%3E%3Cpath d='M 0 0 L 10 0 C 18 0 19 6 22.7 10 A 38 38 0 0 0 87.3 10 C 91 6 92 0 100 0 L 110 0 L 110 150 L 0 150 Z' fill='black' /%3E%3C/svg%3E") center top / 110px 150px no-repeat, linear-gradient(black, black) 100% 0 / calc(50% - 54.5px) 100% no-repeat`,
+            mask: `linear-gradient(black, black) 0 0 / calc(50% - 54.5px) 100% no-repeat, url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 110 150' width='110' height='150'%3E%3Cpath d='M 0 0 L 10 0 C 18 0 19 6 22.7 10 A 38 38 0 0 0 87.3 10 C 91 6 92 0 100 0 L 110 0 L 110 150 L 0 150 Z' fill='black' /%3E%3C/svg%3E") center top / 110px 150px no-repeat, linear-gradient(black, black) 100% 0 / calc(50% - 54.5px) 100% no-repeat`,
           }}
         />
         <div className={`absolute inset-x-0 top-0 h-[100px] pointer-events-none transition-colors duration-300 ease-in-out ${
