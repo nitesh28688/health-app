@@ -164,7 +164,7 @@ function NavTabs({ mode, onModeToggle }: { mode: AppMode; onModeToggle: () => vo
   return (
     <div className="max-w-md mx-auto flex px-2 py-1 relative z-10">
       {items}
-      <div className="absolute left-1/2 top-[-42px] -translate-x-1/2 pointer-events-none z-20">
+      <div className="absolute left-1/2 top-[-32px] -translate-x-1/2 pointer-events-none z-20">
         <button
           onClick={onModeToggle}
           className={`relative w-16 h-16 rounded-full ${destBg} text-white flex items-center justify-center active:scale-90 transition-all duration-200 pointer-events-auto overflow-hidden`}
@@ -413,8 +413,8 @@ export function AppShell({ children }: {
               : "bg-white/70 dark:bg-neutral-950/70"
           }`}
           style={{
-            WebkitMask: `linear-gradient(black, black) 0 0 / calc(50% - 54.5px) 100% no-repeat, url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 110 150' width='110' height='150'%3E%3Cpath d='M 0 0 L 10 0 C 18 0 19 6 22.7 10 A 38 38 0 0 0 87.3 10 C 91 6 92 0 100 0 L 110 0 L 110 150 L 0 150 Z' fill='black' /%3E%3C/svg%3E") center top / 110px 150px no-repeat, linear-gradient(black, black) 100% 0 / calc(50% - 54.5px) 100% no-repeat`,
-            mask: `linear-gradient(black, black) 0 0 / calc(50% - 54.5px) 100% no-repeat, url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 110 150' width='110' height='150'%3E%3Cpath d='M 0 0 L 10 0 C 18 0 19 6 22.7 10 A 38 38 0 0 0 87.3 10 C 91 6 92 0 100 0 L 110 0 L 110 150 L 0 150 Z' fill='black' /%3E%3C/svg%3E") center top / 110px 150px no-repeat, linear-gradient(black, black) 100% 0 / calc(50% - 54.5px) 100% no-repeat`,
+            WebkitMask: `linear-gradient(black, black) 0 0 / calc(50% - 54.5px) 100% no-repeat, url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 110 150' width='110' height='150'%3E%3Cpath d='M 0 0 L 10 0 C 15 0 17 6 19 12 A 38 38 0 0 0 91 12 C 93 6 95 0 100 0 L 110 0 L 110 150 L 0 150 Z' fill='black' /%3E%3C/svg%3E") center top / 110px 150px no-repeat, linear-gradient(black, black) 100% 0 / calc(50% - 54.5px) 100% no-repeat`,
+            mask: `linear-gradient(black, black) 0 0 / calc(50% - 54.5px) 100% no-repeat, url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 110 150' width='110' height='150'%3E%3Cpath d='M 0 0 L 10 0 C 15 0 17 6 19 12 A 38 38 0 0 0 91 12 C 93 6 95 0 100 0 L 110 0 L 110 150 L 0 150 Z' fill='black' /%3E%3C/svg%3E") center top / 110px 150px no-repeat, linear-gradient(black, black) 100% 0 / calc(50% - 54.5px) 100% no-repeat`,
           }}
         />
         <div className={`absolute inset-x-0 top-0 h-[100px] pointer-events-none transition-colors duration-300 ease-in-out ${
@@ -424,7 +424,7 @@ export function AppShell({ children }: {
         }`}>
           <div className="absolute left-0 top-0 h-[1px] w-[calc(50%-54.5px)] bg-current" />
           <svg className="absolute left-1/2 -translate-x-1/2 top-0 text-current drop-shadow-sm" width="110" height="100" viewBox="0 0 110 100">
-            <path d="M 0 0 L 10 0 C 18 0 19 6 22.7 10 A 38 38 0 0 0 87.3 10 C 91 6 92 0 100 0 L 110 0" fill="none" stroke="currentColor" strokeWidth="1" />
+            <path d="M 0 0 L 10 0 C 15 0 17 6 19 12 A 38 38 0 0 0 91 12 C 93 6 95 0 100 0 L 110 0" fill="none" stroke="currentColor" strokeWidth="1" />
           </svg>
           <div className="absolute right-0 top-0 h-[1px] w-[calc(50%-54.5px)] bg-current" />
         </div>
