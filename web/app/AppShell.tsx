@@ -179,7 +179,7 @@ function NavTabs({ mode, onModeToggle }: { mode: AppMode; onModeToggle: () => vo
               animate={{ opacity: 1, scale: 1, rotate: 0 }}
               exit={{ opacity: 0, scale: 0.5, rotate: 90 }}
               transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-              className="letter-pulse relative text-[11px] uppercase tracking-wider font-black leading-none drop-shadow-sm"
+              className="letter-pulse relative text-[9.5px] uppercase tracking-tight font-black leading-none drop-shadow-sm"
             >
               {destText}
             </motion.span>
