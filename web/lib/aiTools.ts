@@ -158,6 +158,22 @@ export const toolDeclarations = [
       },
       required: ["scan_type"]
     }
+  },
+  {
+    name: "get_recent_foods",
+    description: "Get the user's most recently and frequently logged foods. Use this to proactively recommend a familiar, specific food if the user is short on macros (e.g. 'You're short 30g of protein—how about having your usual Greek Yogurt?').",
+    parameters: { type: "OBJECT", properties: {} }
+  },
+  {
+    name: "get_weather_and_uv",
+    description: "Get current weather conditions and UV index. Use this in Wellness Mode to suggest applying SPF if UV is high, or swapping to a heavier moisturizer if humidity is low. If you do not know the user's location, default to 28.61, 77.20 (New Delhi).",
+    parameters: {
+      type: "OBJECT",
+      properties: {
+        latitude: { type: "NUMBER", description: "Latitude of the user's location (default 28.61)" },
+        longitude: { type: "NUMBER", description: "Longitude of the user's location (default 77.20)" }
+      }
+    }
   }
 ];
 
@@ -386,6 +402,47 @@ Return a strict JSON object containing:
         if (error) throw error;
         if (!data?.length) return { message: `No usable ${args.scan_type} scans found yet.` };
         return data;
+      }
+      case "get_recent_foods": {
+        const { data, error } = await db
+          .from("food_logs")
+          .select("food_id, foods(name, brand, kcal, protein_g, carbs_g, fat_g)")
+          .order("id", { ascending: false })
+          .limit(50);
+        if (error) throw error;
+        
+        // Deduplicate and count frequency
+        const foodMap = new Map();
+        for (const log of (data ?? []) as any[]) {
+          if (!log.foods) continue;
+          const key = log.food_id;
+          if (!foodMap.has(key)) {
+            foodMap.set(key, { ...log.foods, count: 1 });
+          } else {
+            foodMap.get(key).count++;
+          }
+        }
+        const sortedFoods = Array.from(foodMap.values()).sort((a, b) => b.count - a.count).slice(0, 10);
+        if (!sortedFoods.length) return { message: "No recently logged foods found." };
+        return sortedFoods;
+      }
+      case "get_weather_and_uv": {
+        const lat = args.latitude || 28.61;
+        const lon = args.longitude || 77.20;
+        try {
+          // Open-Meteo API doesn't require keys
+          const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,uv_index,weather_code&timezone=auto`);
+          if (!res.ok) return { error: "Failed to fetch weather data." };
+          const data = await res.json();
+          return {
+            temperature: `${data.current.temperature_2m}°C`,
+            humidity: `${data.current.relative_humidity_2m}%`,
+            uv_index: data.current.uv_index,
+            location_note: args.latitude ? undefined : "Defaulting to New Delhi as location wasn't specified."
+          };
+        } catch (e: any) {
+          return { error: "Could not fetch weather: " + e.message };
+        }
       }
       default:
         return { error: `Unknown tool: ${name}` };
