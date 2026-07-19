@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
 
   // 3. Gemini (REST, JSON mode — no SDK dependency)
   const prompt = `Estimate nutrition per 100 grams for this food (likely Indian cuisine): "${query}".
-Respond with realistic values. If the query is not a food, set "is_food" to false.
+Respond with realistic values. Treat beverages (including alcohol and liquor) as food. If the query is not a consumable food or beverage, set "is_food" to false.
 Set "is_liquid" to true if this is a drink/beverage/soup that people would measure in ml rather than grams (tea, coffee, juice, milk, soda, soup, lassi, smoothie, shake). False for solid foods.
 Also give 1-2 natural household serving measures in "servings" with the typical weight in grams of ONE such serving as normally served: use "piece" for countable items (roti, idli, egg...), "glass" or "cup" for drinks, "katori" (~150g) for curries/dal/rice dishes, "plate" for full plates, "slice", "bowl", "tbsp", "tsp", "scoop" where natural.`;
   const res = await generateWithFallback([{ text: prompt }], {

@@ -7,6 +7,9 @@ the Supabase SQL Editor:
 alter table foods add column is_usable boolean not null default true;
 ```
 If a future session adds a new migration, it's `0043_...sql`.
+## Just shipped (2026-07-19, verified)
+**Phase 77 — AI Food Estimates for Alcohol/Beverages.** Updated the Gemini prompts for both text search and photo estimation to explicitly treat beverages, including alcohol and liquor, as valid food items. Users can now estimate and track calories for drinks like vodka without the AI rejecting them as non-food.
+
 ## Just shipped (2026-07-18, click-test pending)
 **Phase 76 — Gemini web search fix & Premium Nav Bar Mode Toggle.** 
 1. **Gemini grounding fixed**: Corrected the Google Search tool schema and explicitly prompted the model to use `url_context` and search `site:nanoliss.com`. This bypasses Cloudflare Bot Fight Mode blocks because Gemini's fetcher reads the raw HTML. Test: Add "Nanoliss Quinoa Hair Masque" via Type entry — it should now correctly find and return the real ingredients instead of returning "unclear".
