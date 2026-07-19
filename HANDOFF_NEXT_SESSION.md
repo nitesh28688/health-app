@@ -8,6 +8,8 @@ alter table foods add column is_usable boolean not null default true;
 ```
 If a future session adds a new migration, it's `0043_...sql`.
 ## Just shipped (2026-07-19, verified)
+**Phase 78 — Proactive AI Enhancements & Gut-Skin Axis.** Supercharged the AI's proactivity. Wellness AI now checks diet patterns (get_daily_totals) for skin issues, sorts skincare routines properly, manages skin cycling, gives PAO expiry alerts, and pulls local weather/UV via a new `get_weather_and_uv` tool. Core AI now suggests progressive overload on repeated workouts and proactively uses `get_recent_foods` to suggest specific snacks if macros are short.
+
 **Phase 77 — AI Food Estimates for Alcohol/Beverages.** Updated the Gemini prompts for both text search and photo estimation to explicitly treat beverages, including alcohol and liquor, as valid food items. Users can now estimate and track calories for drinks like vodka without the AI rejecting them as non-food.
 
 ## Just shipped (2026-07-18, click-test pending)

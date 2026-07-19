@@ -1362,3 +1362,9 @@ $$;
 **Phase 77 (2026-07-19): AI Food Estimates for Alcohol/Beverages**
 - **Beverage Support:** Updated prompts in `/api/ai/food-estimate/route.ts` and `/api/ai/photo-estimate/route.ts` to explicitly instruct Gemini to treat beverages (including alcohol and liquor) as valid food items. This prevents the "That doesn't look like a food" rejection for items like vodka, allowing users to track their calories and macros.
 
+
+**Phase 78 (2026-07-19): Proactive AI Enhancements & Gut-Skin Axis**
+- **Cross-Mode Synergy:** Core AI and Wellness AI now proactively cross-reference domains. Wellness AI checks `get_daily_totals` for diet impacts on skin, and Core AI checks `get_wellness_trend` for lifestyle correlations.
+- **Core AI Updates:** Added `get_recent_foods` tool for proactive macro balancing suggestions. Enforced progressive overload targets for repeated workouts.
+- **Wellness AI Updates:** Added `get_weather_and_uv` tool via Open-Meteo API. AI now sorts routines dynamically (thinnest to thickest), manages 4-day Skin Cycles, and checks `pao_months` for expiry alerts.
+
