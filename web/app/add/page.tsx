@@ -293,11 +293,7 @@ function AddFood({ userId }: { userId: string }) {
               });
               if (error) { setSaveMsg(`Couldn't save: ${error}`); return; }
               
-              if (!activeFastId && meal === "dinner" && date === todayLocal()) {
-                setFastModalType("start_fast");
-              } else {
-                router.push("/");
-              }
+              router.push("/");
             };
 
             if (activeFastId) {
