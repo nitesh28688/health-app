@@ -1375,3 +1375,9 @@ $$;
 - **Dinner Fasting Prompt:** Disabled the automatic `"start_fast"` modal prompt that appeared after logging dinner in `app/add/page.tsx` as it was annoying.
 - **Search FTS:** Supabase migration `0043_search_fts.sql` replaced pure trigram similarity in `search_foods()` with PostgreSQL Full-Text Search (`to_tsvector`/`websearch_to_tsquery`) to properly find words out of order (e.g. "white bread" matching "white sandwich bread"), and added strict starts-with boosting (`f.name ilike q || '%'`) to fix sorting anomalies (e.g. "Coke original taste" beating "Diet Coke" on a "coke" search).
 
+**Phase 80 (2026-07-24): Premium UI/UX Polish (Haptics, Fluidity, Zero-Click AI)**
+- **Widespread Native Haptics:** Integrated `navigator.vibrate` (`hapticTap`/`hapticSuccess`) throughout the app (mode toggle, workout logging, food logging, wellness actions).
+- **Zero-Click Proactive AI Search:** Add Food page now automatically triggers AI estimation after 1s of 0 search results.
+- **Premium Empty States:** Added animated, magical empty states to Diary (floating coffee cup) and Wellness (pulsating Sparkles).
+- **Wellness Tab Refinements:** Added fluid Segmented Control (Dashboard vs History), animated Score Ring count-ups, and a floating action bar for Compare Mode.
+

@@ -3,6 +3,13 @@
 ## DB status
 Migrations through **0043** have been created/pushed. If a future session adds a new migration, it's `0044_...sql`.
 
+## Just shipped (2026-07-24, verified)
+**Phase 80 — Premium UI/UX Polish (Haptics, Fluidity, Zero-Click AI)**
+- **Widespread Native Haptics:** Integrated `navigator.vibrate` (`hapticTap`/`hapticSuccess`) throughout the app (mode toggle, workout logging, food logging, wellness actions).
+- **Zero-Click Proactive AI Search:** Add Food page now automatically triggers AI estimation after 1s of 0 search results.
+- **Premium Empty States:** Added animated, magical empty states to Diary (floating coffee cup) and Wellness (pulsating Sparkles).
+- **Wellness Tab Refinements:** Added fluid Segmented Control (Dashboard vs History), animated Score Ring count-ups, and a floating action bar for Compare Mode.
+
 ## Just shipped (2026-07-23, verified)
 **Phase 79 — Cloudflare R2 Organising, Wellness AI Reasoning, Search FTS & UX Fixes** 
 - Added user email prefixes to R2 uploads for better dashboard grouping.
