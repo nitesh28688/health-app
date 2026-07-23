@@ -46,7 +46,7 @@ export function QuantitySheet({
   // own food state so the log entry uses the corrected numbers, independent of
   // whether the underlying `foods` row could be updated (only AI/custom
   // foods owned by this user can be; shared seed foods can't via RLS).
-  onNutritionEdited?: (updated: { name: string; kcal: number; protein_g: number; carbs_g: number; fat_g: number }) => void;
+  onNutritionEdited?: (updated: { name: string; brand?: string | null; kcal: number; protein_g: number; carbs_g: number; fat_g: number }) => void;
 }) {
   const [servings, setServings] = useState<Serving[]>([]);
   const [unit, setUnit] = useState<"grams" | number>("grams");
@@ -65,6 +65,7 @@ export function QuantitySheet({
   // type the real numbers rather than being stuck with the estimate.
   const [showEditNutrition, setShowEditNutrition] = useState(false);
   const [editName, setEditName] = useState(food.name);
+  const [editBrand, setEditBrand] = useState(food.brand ?? "");
   const [editKcal, setEditKcal] = useState(String(Math.round(Number(food.kcal))));
   const [editProtein, setEditProtein] = useState(String(food.protein_g ?? 0));
   const [editCarbs, setEditCarbs] = useState(String(food.carbs_g ?? 0));
@@ -184,8 +185,10 @@ export function QuantitySheet({
 
   async function saveNutritionEdit() {
     const name = editName.trim() || food.name;
+    const brand = editBrand.trim() || null;
     const updated = {
       name,
+      brand,
       kcal: parseFloat(editKcal) || 0,
       protein_g: parseFloat(editProtein) || 0,
       carbs_g: parseFloat(editCarbs) || 0,
@@ -261,11 +264,18 @@ export function QuantitySheet({
             {!canEditFood && (
               <p className="text-xs text-amber-600">This is a shared food — your fix will apply to this entry, but won't change the default for others.</p>
             )}
-            <label className="flex flex-col gap-1">
-              <span className="text-[11px] text-neutral-500 font-medium">Name</span>
-              <input value={editName} onChange={(e) => setEditName(e.target.value)}
-                className="rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-2.5 py-2 text-sm" />
-            </label>
+            <div className="grid grid-cols-2 gap-2">
+              <label className="flex flex-col gap-1">
+                <span className="text-[11px] text-neutral-500 font-medium">Brand (optional)</span>
+                <input value={editBrand} onChange={(e) => setEditBrand(e.target.value)} placeholder="e.g. Baker's World"
+                  className="rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-2.5 py-2 text-sm" />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-[11px] text-neutral-500 font-medium">Name</span>
+                <input value={editName} onChange={(e) => setEditName(e.target.value)}
+                  className="rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-2.5 py-2 text-sm" />
+              </label>
+            </div>
             <p className="text-xs text-neutral-500 -mt-0.5 mb-1">Per 100{food.is_liquid ? "ml" : "g"} — correct these from the packet label if the AI estimate is off.</p>
             <div className="grid grid-cols-2 gap-2">
               <label className="flex flex-col gap-1">
