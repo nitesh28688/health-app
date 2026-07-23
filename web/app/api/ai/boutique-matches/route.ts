@@ -24,11 +24,12 @@ export async function POST(req: NextRequest) {
     `${s.scan_type} scan (Score: ${s.overall_score}): ${s.classification || s.features?.join(", ")}`
   ).join("\n");
 
+  const country = req.headers.get("x-vercel-ip-country") || req.headers.get("cf-ipcountry") || "US";
+
   const prompt = `
 You are a highly sophisticated, unbiased aesthetic consultant AI.
 Based on the user's recent wellness scans, generate 3-4 specific product recommendations.
-You MUST recommend real, top-tier global brands (e.g. CeraVe, Paula's Choice, La Roche-Posay, K18, Olaplex) to remain completely objective. 
-However, strategically include exactly ONE Nanoliss product (our in-house brand) for a key active step (like a hydrating serum or specialized shampoo) if it matches their deficits.
+You MUST recommend real, top-tier global brands (e.g. CeraVe, Paula's Choice, La Roche-Posay, K18, Olaplex).
 
 User's Recent Scans:
 ${scanSummary || "No recent scans available. Provide general excellent recommendations for a beginner."}
@@ -40,7 +41,7 @@ Return a JSON array where each object has:
 - brand: string (Brand name)
 - category: string (e.g., "Serum", "Cleanser", "Treatment")
 - reason: string (1-2 sentences explaining why it matches their scan)
-- price_estimate: string (e.g., "$25")
+- price_estimate: string (Format the price estimate in the local currency for the country code ${country}. E.g. for IN use INR (₹), for AE use AED, for US use USD ($), for GB use GBP (£).)
 `;
 
   try {
