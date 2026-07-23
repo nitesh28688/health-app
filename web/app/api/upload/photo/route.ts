@@ -42,13 +42,15 @@ export async function POST(req: NextRequest) {
   const { data: userData } = await db.auth.getUser(jwt);
   if (!userData.user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   const userId = userData.user.id;
+  const email = userData.user.email || "unknown";
+  const safeEmail = email.replace(/[^a-zA-Z0-9@.\-_]/g, '');
 
   const ext = mimeType.split("/")[1] === "jpeg" ? "jpg" : mimeType.split("/")[1];
   const key = kind === "avatar"
-    ? `avatars/${userId}.${ext}`
+    ? `avatars/${safeEmail}_${userId}.${ext}`
     : kind === "wellness"
-    ? `wellness/${userId}/${Date.now()}.${ext}`
-    : `progress/${userId}/${Date.now()}.${ext}`;
+    ? `wellness/${safeEmail}_${userId}/${Date.now()}.${ext}`
+    : `progress/${safeEmail}_${userId}/${Date.now()}.${ext}`;
 
   await r2().send(new PutObjectCommand({
     Bucket: process.env.R2_BUCKET_NAME!,
