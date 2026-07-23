@@ -45,10 +45,8 @@ Return a JSON object:
 `;
 
   try {
-    const aiResponse = await generateWithFallback(
-      prompt,
-      "gemini-1.5-flash", 
-      "You are a premium aesthetic protocol designer.",
+    const res = await generateWithFallback(
+      [{ text: prompt }],
       {
         type: "object",
         properties: {
@@ -70,10 +68,13 @@ Return a JSON object:
         required: ["title", "description", "duration_days", "tasks"]
       }
     );
+    if (!res.ok) throw new Error("AI failed");
+    const body = await res.json();
+    const text = body?.candidates?.[0]?.content?.parts?.[0]?.text || "null";
 
     let protocol = null;
     try {
-      protocol = JSON.parse(aiResponse);
+      protocol = JSON.parse(text);
     } catch {
       throw new Error("Failed to parse AI output");
     }

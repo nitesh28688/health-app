@@ -230,7 +230,7 @@ function DiscoverView({ userId }: { userId: string }) {
                       </div>
                       {p.description && <p className="text-[13px] text-neutral-500">{p.description}</p>}
                       <div className="mt-3 bg-neutral-200 dark:bg-neutral-800 rounded-full h-1.5 w-full overflow-hidden">
-                        <div className="bg-rose-500 h-full transition-all duration-500" style={{ width: \`\${progress}%\` }} />
+                        <div className="bg-rose-500 h-full transition-all duration-500" style={{ width: `${progress}%` }} />
                       </div>
                     </div>
                     
@@ -246,7 +246,7 @@ function DiscoverView({ userId }: { userId: string }) {
                                 <Circle className="w-5 h-5 text-neutral-300 dark:text-neutral-700 shrink-0" />
                               )}
                               <div className="flex-1 min-w-0 flex items-center justify-between gap-2">
-                                <span className={\`text-sm truncate \${isDone ? "text-neutral-400 line-through" : "font-medium"}\`}>{task.name}</span>
+                                <span className={`text-sm truncate ${isDone ? "text-neutral-400 line-through" : "font-medium"}`}>{task.name}</span>
                                 {task.time !== "any" && (
                                   <span className="shrink-0 text-[10px] font-black uppercase text-neutral-400 bg-neutral-100 dark:bg-neutral-800 px-1.5 py-0.5 rounded">{task.time}</span>
                                 )}

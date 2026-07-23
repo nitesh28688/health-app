@@ -44,10 +44,8 @@ Return a JSON array where each object has:
 `;
 
   try {
-    const aiResponse = await generateWithFallback(
-      prompt,
-      "gemini-1.5-flash", // fast and cheap
-      "You are a premium aesthetic consultant.",
+    const res = await generateWithFallback(
+      [{ text: prompt }],
       {
         type: "array",
         items: {
@@ -63,10 +61,13 @@ Return a JSON array where each object has:
         }
       }
     );
+    if (!res.ok) throw new Error("AI failed");
+    const body = await res.json();
+    const text = body?.candidates?.[0]?.content?.parts?.[0]?.text || "[]";
 
     let matches = [];
     try {
-      matches = JSON.parse(aiResponse);
+      matches = JSON.parse(text);
     } catch {
       matches = [];
     }

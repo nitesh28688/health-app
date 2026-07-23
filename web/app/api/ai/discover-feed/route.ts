@@ -48,10 +48,8 @@ If type === "protocol", ALSO include:
 `;
 
   try {
-    const aiResponse = await generateWithFallback(
-      prompt,
-      "gemini-1.5-flash", 
-      "You are a premium lifestyle and aesthetic editor.",
+    const res = await generateWithFallback(
+      [{ text: prompt }],
       {
         type: "array",
         items: {
@@ -77,10 +75,13 @@ If type === "protocol", ALSO include:
         }
       }
     );
+    if (!res.ok) throw new Error("AI failed");
+    const body = await res.json();
+    const text = body?.candidates?.[0]?.content?.parts?.[0]?.text || "[]";
 
     let feed = [];
     try {
-      feed = JSON.parse(aiResponse);
+      feed = JSON.parse(text);
     } catch {
       feed = [];
     }
