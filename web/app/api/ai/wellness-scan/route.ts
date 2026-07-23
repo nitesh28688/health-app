@@ -59,12 +59,13 @@ export async function POST(req: NextRequest) {
 - 40-59: below average — multiple clearly visible concerns.
 - 0-39: significant concerns dominating the appearance.
 Most real-world scans should land between 55 and 85. Use the full width of whichever band the evidence supports — do not cluster at 70-80 by default.
-Score every sub-category FIRST, then set overall_score to the mean of the sub_scores rounded to the nearest integer. Never pick the overall first.
+Evaluate the photo step-by-step in the 'analysis_scratchpad' FIRST. Justify every single sub-category score in the scratchpad, then output the sub_scores, then set overall_score to the mean of the sub_scores rounded to the nearest integer. Never pick the overall first.
 
 PHOTO QUALITY & CONFIDENCE:
 - photo_quality: grade the photo itself as "good", "fair", or "poor" (focus, lighting, framing, resolution).
 - confidence: your confidence in this analysis as "high", "medium", or "low", given photo quality and visibility.
 - If photo_quality is "fair" or "poor", score conservatively: avoid extreme scores in either direction (stay within 45-80 unless the evidence is unmistakable) and lower your confidence.
+- If the photo is completely unusable, write your reasoning in the scratchpad and set is_usable to false.
 
 TIME OF DAY: every recommendation MUST include time_of_day: "am", "pm", or "both".
 - Sunscreen/SPF is always "am". Retinol/retinoids and strong exfoliating acids (AHA/BHA/glycolic/salicylic leave-ons) are always "pm" (they increase sun sensitivity). Vitamin C is typically "am". Cleansers and moisturisers are "both" unless there's a reason otherwise.`;
@@ -81,6 +82,7 @@ CRITICAL RULES:
 5. UNUSABLE PHOTO CHECK: If the photo is highly blurry, does not contain a human face, is taken at an unreadable angle, or is of a non-human subject, you MUST set "is_usable" to false. If is_usable is false, you must set overall_score to 0, sub_scores to [], classification to null, and recommendations to [].
 
 Observations & recommendations schema:
+- analysis_scratchpad: Array of strings. Use this to think step-by-step and justify every score before writing them.
 - is_usable: boolean (set to false if photo is not a human face or is completely unreadable).
 - overall_score: integer (0-100, where 100 is optimal skin health). Set to 0 if is_usable is false.
 - classification: string (one of 'oily', 'dry', 'combination', 'normal', 'sensitive'). Set to null if is_usable is false.
@@ -101,6 +103,7 @@ CRITICAL RULES:
 5. UNUSABLE PHOTO CHECK: If the photo doesn't clearly contain human eyes, is taken at an unreadable angle, or is of a non-human subject, you MUST set "is_usable" to false. If is_usable is false, you must set overall_score to 0, sub_scores to [], classification to null, and recommendations to [].
 
 Observations & recommendations schema:
+- analysis_scratchpad: Array of strings. Use this to think step-by-step and justify every score before writing them.
 - is_usable: boolean (set to false if photo does not contain a clear eye area).
 - overall_score: integer (0-100). Set to 0 if is_usable is false.
 - classification: string (always null/absent).
@@ -120,6 +123,7 @@ CRITICAL RULES:
 5. UNUSABLE PHOTO CHECK: If the photo doesn't clearly contain human hair or scalp, is taken at an unreadable angle, or is of a non-human subject, you MUST set "is_usable" to false. If is_usable is false, you must set overall_score to 0, sub_scores to [], classification to null, and recommendations to [].
 
 Observations & recommendations schema:
+- analysis_scratchpad: Array of strings. Use this to think step-by-step and justify every score before writing them.
 - is_usable: boolean (set to false if photo does not contain clear hair or scalp).
 - overall_score: integer (0-100). Set to 0 if is_usable is false.
 - classification: string (one of 'straight', 'wavy', 'curly', 'coily'). Set to null if is_usable is false.
@@ -133,6 +137,10 @@ ${RUBRIC}`;
   const schema = {
     type: "OBJECT",
     properties: {
+      analysis_scratchpad: {
+        type: "ARRAY",
+        items: { type: "STRING" }
+      },
       is_usable: { type: "BOOLEAN" },
       overall_score: { type: "INTEGER" },
       classification: { type: "STRING", nullable: true },
@@ -176,7 +184,7 @@ ${RUBRIC}`;
       photo_quality: { type: "STRING", enum: ["good", "fair", "poor"] },
       confidence: { type: "STRING", enum: ["high", "medium", "low"] }
     },
-    required: ["is_usable", "overall_score", "sub_scores", "observations", "recommendations", "photo_quality", "confidence"]
+    required: ["analysis_scratchpad", "is_usable", "overall_score", "sub_scores", "observations", "recommendations", "photo_quality", "confidence"]
   };
 
   // 3. Call generateWithFallback with 20 seconds timeout
