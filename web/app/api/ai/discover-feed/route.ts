@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { generateWithFallback, searchGrounded } from "@/lib/gemini";
+import { generateWithFallback } from "@/lib/gemini";
 
 const admin = () =>
   createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
@@ -23,15 +23,11 @@ export async function POST(req: NextRequest) {
     `${s.scan_type} scan: ${s.classification || s.features?.join(", ")}`
   ).join("\n");
 
-  // Fetch current beauty trends using Google Search Grounding
-  const trends = await searchGrounded("What are the top 3 current beauty and skincare trends right now according to Vogue or Allure?");
-
   const prompt = `
 Generate a beautiful, personalized aesthetic discovery feed for this user based on their recent wellness scans.
 If they have no recent scans, provide general premium aesthetic content.
 
-Current Global Beauty Trends (Incorporate these if relevant to the user):
-${trends || "General premium aesthetic trends."}
+Crucially, you should incorporate current global beauty and skincare trends (e.g., popular trends as seen in Vogue, Allure, or on social media) into the content you generate, while keeping it highly relevant to the user's scan data.
 
 User's Recent Scans:
 ${scanSummary || "None."}
