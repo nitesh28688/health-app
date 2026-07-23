@@ -11,6 +11,7 @@ import { ExerciseDemo } from "@/components/ExerciseDemo";
 import { LiveWorkout, ActiveEx } from "@/components/LiveWorkout";
 import { PhysioSheet } from "@/components/PhysioSheet";
 import { offlineWrite } from "@/lib/offlineWrite";
+import { hapticSuccess } from "@/lib/haptics";
 import { Dumbbell, Flame, Bot, Stethoscope } from "lucide-react";
 
 interface Plan { id: number; name: string; goal: string | null; level: string | null; days_per_week: number | null; description: string | null; owner_id: string | null; }
@@ -159,6 +160,7 @@ function Workout({ profile, setProfile, userId }: {
 
   async function logDay() {
     if (!openDay) return;
+    hapticSuccess();
     const mins = parseFloat(duration) || 40;
     setLogging(true);
     await offlineWrite({
@@ -179,6 +181,7 @@ function Workout({ profile, setProfile, userId }: {
   async function logCustom() {
     const mins = parseFloat(customDuration) || 30;
     if (!customTitle.trim()) return;
+    hapticSuccess();
     setLogging(true);
     await offlineWrite({
       table: "workout_logs", op: "insert",
@@ -256,6 +259,7 @@ function Workout({ profile, setProfile, userId }: {
   async function logStructuredSession(finalExercises = activeExercises, overrideMins?: number) {
     const toLog = finalExercises.length > 0 ? finalExercises : activeExercises;
     if (toLog.length === 0) return;
+    hapticSuccess();
     // This writes across 3 tables in a dependent chain (workout_logs -> ...
     // exercises -> ... sets), each insert needing the previous one's id — not
     // safe to queue offline (a partial chain would orphan rows). Refuse

@@ -366,6 +366,19 @@ function Diary({ profile, userId }: { profile: Profile | null; userId: string })
       </div>
       )}
 
+      {/* empty slate for today */}
+      {logs !== null && logs.length === 0 && date === todayLocal() && (
+        <div className="mt-8 mb-6 flex flex-col items-center justify-center text-center animate-in fade-in slide-in-from-bottom-4 duration-700">
+          <div className="w-24 h-24 rounded-full bg-indigo-50/50 dark:bg-indigo-900/20 flex items-center justify-center mb-4 relative">
+             <div className="absolute inset-0 rounded-full border-2 border-dashed border-indigo-200 dark:border-indigo-800 animate-[spin_20s_linear_infinite]" />
+             <div className="absolute inset-2 rounded-full bg-gradient-to-br from-indigo-100 to-violet-100 dark:from-indigo-900/40 dark:to-violet-900/40 shadow-inner" />
+             <Coffee className="w-10 h-10 text-indigo-400 relative z-10 animate-bounce drop-shadow-sm" style={{ animationDuration: '3s' }} />
+          </div>
+          <h3 className="text-lg font-bold text-neutral-800 dark:text-neutral-200">A fresh start</h3>
+          <p className="text-sm text-neutral-500 mt-1 max-w-[240px]">Log your first meal or use Smart Log to get today's macro rings moving.</p>
+        </div>
+      )}
+
       {/* meals */}
       {logs !== null && MEALS.map((m) => {
         const items = (logs ?? []).filter((l) => l.meal === m.key);

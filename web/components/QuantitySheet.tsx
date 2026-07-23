@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { Bot, Pencil } from "lucide-react";
+import { hapticTap } from "@/lib/haptics";
 
 interface Serving {
   id: number;
@@ -398,6 +399,7 @@ export function QuantitySheet({
 
         <button
           onClick={async () => {
+            hapticTap();
             let label: string | null = null;
             if (unit === "grams") {
               label = food.is_liquid ? `${amt} ml` : null;

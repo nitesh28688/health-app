@@ -10,7 +10,8 @@ import { awardBadge, BADGES } from "@/lib/badges";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import { PDFReportTemplate } from "@/components/PDFReportTemplate";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence, useMotionValue, useTransform, animate } from "framer-motion";
+import { hapticTap, hapticSuccess } from "@/lib/haptics";
 import {
   Sparkles, Camera, X, AlertTriangle, CheckCircle,
   Loader2, Share2, Lock, TrendingUp, TrendingDown, Minus, ChevronRight,
@@ -175,6 +176,15 @@ function ScoreRing({ score, size = "md" }: { score: number; size?: "sm" | "md" |
   const c = Math.max(0, Math.min(100, score));
   const offset = circ - (c / 100) * circ;
   const col = scoreColorClass(c);
+  
+  const count = useMotionValue(0);
+  const rounded = useTransform(count, Math.round);
+  
+  useEffect(() => {
+    const animation = animate(count, c, { duration: 1.5, ease: "easeOut" });
+    return animation.stop;
+  }, [c]);
+
   return (
     <div className={`relative flex items-center justify-center ${cls} shrink-0`}>
       <svg className="w-full h-full transform -rotate-90" viewBox={vb}>
@@ -186,7 +196,7 @@ function ScoreRing({ score, size = "md" }: { score: number; size?: "sm" | "md" |
           transition={{ duration: 1.5, ease: "easeOut" }}
         />
       </svg>
-      <span className={`absolute font-black ${txt} text-neutral-900 dark:text-white`}>{Math.round(c)}</span>
+      <motion.span className={`absolute font-black ${txt} text-neutral-900 dark:text-white`}>{rounded}</motion.span>
     </div>
   );
 }
@@ -219,7 +229,7 @@ function daysSince(scans: Scan[], type: ScanType): number | null {
 // ─── Main ──────────────────────────────────────────────────────────────────────
 function WellnessMain({ userId, displayName }: { userId: string; displayName: string | null }) {
   const searchParams = useSearchParams();
-  const wellnessView = searchParams.get("view") === "reports" ? "reports" : "scan";
+  const [wellnessView, setWellnessView] = useState<"scan" | "reports">(searchParams.get("view") === "reports" ? "reports" : "scan");
   const [scans, setScans] = useState<Scan[] | null>(null);
   const [selectedScan, setSelectedScan] = useState<Scan | null>(null);
   const [captureType, setCaptureType] = useState<ScanType>("skin");
@@ -297,6 +307,7 @@ function WellnessMain({ userId, displayName }: { userId: string; displayName: st
 
   async function handleCapture(base64Data: string) {
     setCaptureOpen(false); setBusy(true); setProcessingStep("uploading"); setError(null);
+    hapticTap();
     try {
       const resBlob = await fetch(base64Data).then(r => r.blob());
       const fileObj = new File([resBlob], "wellness-" + Date.now() + ".jpg", { type: "image/jpeg" });
@@ -325,6 +336,7 @@ function WellnessMain({ userId, displayName }: { userId: string; displayName: st
         await awardBadge(userId, "wellness_full_spectrum");
       if (aiBody.trend && typeof aiBody.trend.score_delta === "number" && aiBody.trend.score_delta >= 10)
         await awardBadge(userId, "wellness_glow_up");
+      hapticSuccess();
       const { data: latest } = await supabase.from("wellness_scans").select("*")
         .eq("user_id", userId).eq("scan_type", captureType).order("created_at", { ascending: false }).limit(1);
       if (latest?.length) { setSelectedScan(latest[0] as Scan); setReportTab("overview"); }
@@ -699,6 +711,7 @@ function WellnessMain({ userId, displayName }: { userId: string; displayName: st
   }, [userProfile]);
 
   function toggleCompare(s: Scan) {
+    hapticTap();
     if (compareA?.id === s.id) { setCompareA(compareB); setCompareB(null); return; }
     if (compareB?.id === s.id) { setCompareB(null); return; }
     if (!compareA) { setCompareA(s); return; }
@@ -732,6 +745,19 @@ function WellnessMain({ userId, displayName }: { userId: string; displayName: st
         {busy && <Loader2 className="w-5 h-5 animate-spin text-rose-500 shrink-0" />}
       </div>
 
+      {/* Segmented Control */}
+      <div className="flex bg-neutral-100 dark:bg-neutral-800/80 p-1 rounded-xl mb-5 relative">
+        {(["scan", "reports"] as const).map(view => (
+          <button key={view} onClick={() => { hapticTap(); setWellnessView(view); }}
+            className={`flex-1 relative py-2 text-xs font-bold capitalize transition-colors z-10 ${wellnessView === view ? "text-rose-600 dark:text-rose-400" : "text-neutral-500 dark:text-neutral-400"}`}>
+            {wellnessView === view && (
+              <motion.div layoutId="wellness-tab-bubble" className="absolute inset-0 bg-white dark:bg-neutral-900 rounded-lg shadow-sm" style={{ zIndex: -1 }} transition={{ type: "spring", bounce: 0.2, duration: 0.5 }} />
+            )}
+            {view === "scan" ? "Dashboard" : "History"}
+          </button>
+        ))}
+      </div>
+
       {/* Error */}
       {error && (
         <div className="mb-4 p-3.5 bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-900/30 text-red-600 dark:text-red-400 rounded-2xl text-sm flex items-start gap-2 animate-in fade-in">
@@ -762,10 +788,14 @@ function WellnessMain({ userId, displayName }: { userId: string; displayName: st
       {/* Aggregate Score Card */}
       <div className="mb-6">
         {aggregateScore === null ? (
-          <div className="p-6 border border-dashed border-neutral-200 dark:border-neutral-800 rounded-3xl bg-neutral-50/50 dark:bg-neutral-900/10 text-center flex flex-col items-center gap-2">
-            <Sparkles className="w-10 h-10 text-neutral-300 dark:text-neutral-700" />
+          <div className="p-8 border border-neutral-200 dark:border-neutral-800 rounded-3xl bg-gradient-to-br from-indigo-50/50 to-rose-50/50 dark:from-indigo-950/20 dark:to-rose-950/20 text-center flex flex-col items-center gap-3 relative overflow-hidden animate-in fade-in duration-500 shadow-sm">
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent dark:via-white/5 animate-shimmer pointer-events-none" />
+            <div className="w-16 h-16 rounded-full bg-white dark:bg-neutral-900 shadow-md flex items-center justify-center relative">
+              <div className="absolute inset-0 rounded-full border border-rose-300 dark:border-rose-700 animate-ping opacity-20" />
+              <Sparkles className="w-7 h-7 text-rose-500 animate-pulse" />
+            </div>
             <h3 className="font-bold text-neutral-800 dark:text-neutral-200">Run your first scan</h3>
-            <p className="text-xs text-neutral-500 max-w-xs">Complete a Skin, Eye, or Hair scan to compute your aggregate Wellness Score.</p>
+            <p className="text-xs text-neutral-500 max-w-xs">Complete a Skin, Eye, or Hair scan below to compute your aggregate Wellness Score.</p>
           </div>
         ) : (
           <div className="p-5 bg-white/50 dark:bg-neutral-900/50 backdrop-blur-md border border-neutral-200 dark:border-neutral-800 shadow-sm rounded-3xl flex flex-col gap-4">
@@ -779,7 +809,7 @@ function WellnessMain({ userId, displayName }: { userId: string; displayName: st
                   </span>
                 )}
               </div>
-              <button onClick={handleShareScore} disabled={sharing}
+              <button onClick={() => { hapticTap(); handleShareScore(); }} disabled={sharing}
                 className="shrink-0 rounded-xl bg-gradient-to-br from-rose-500 to-violet-600 text-white px-3 py-2 text-[11px] font-bold flex items-center gap-1.5 shadow-md shadow-rose-500/20 active:scale-95 transition-all cursor-pointer disabled:opacity-50">
                 {sharing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Share2 className="w-3 h-3" />} Share
               </button>
@@ -795,7 +825,7 @@ function WellnessMain({ userId, displayName }: { userId: string; displayName: st
                     const sc = latestByType[t];
                     const ds = scans ? daysSince(scans, t) : null;
                     return (
-                      <button key={t} onClick={() => sc ? (setSelectedScan(sc), setReportTab("overview")) : (setCaptureType(t), setCaptureOpen(true))}
+                      <button key={t} onClick={() => { hapticTap(); sc ? (setSelectedScan(sc), setReportTab("overview")) : (setCaptureType(t), setCaptureOpen(true)); }}
                         className={"flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[10px] font-bold transition-all cursor-pointer " + (sc ? "bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 hover:scale-105 active:scale-95" : "bg-neutral-50 dark:bg-neutral-900/50 text-neutral-400 border border-dashed border-neutral-300 dark:border-neutral-700")}>
                         {(() => { const Icon = SCAN_META[t].Icon; return <Icon className="w-3 h-3" />; })()}
                         {sc ? <><span>{sc.overall_score}</span>{ds != null && ds >= 7 && <Clock className="w-2.5 h-2.5 text-amber-500" />}</> : <span className={SCAN_META[t].color}>+ {SCAN_META[t].label}</span>}
@@ -817,7 +847,7 @@ function WellnessMain({ userId, displayName }: { userId: string; displayName: st
             const ds = scans ? daysSince(scans, t) : null;
             const due = ds === null || ds >= 7;
             return (
-              <button key={t} onClick={() => { setCaptureType(t); setCaptureOpen(true); }} disabled={busy}
+              <button key={t} onClick={() => { hapticTap(); setCaptureType(t); setCaptureOpen(true); }} disabled={busy}
                 className={"relative flex flex-col items-center gap-2 p-4 rounded-2xl border transition-all cursor-pointer active:scale-[0.97] disabled:opacity-50 " + (due ? "border-rose-200/50 dark:border-rose-900/40 bg-gradient-to-b from-rose-50 to-violet-50/30 dark:from-rose-950/20 dark:to-violet-950/10 shadow-sm" : "border-neutral-200/40 dark:border-neutral-800/40 bg-neutral-50/50 dark:bg-neutral-900/20")}>
                 {due && <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-rose-500 animate-pulse" />}
                 {(() => { const Icon = SCAN_META[t].Icon; return <Icon className={"w-6 h-6 " + SCAN_META[t].color} strokeWidth={2} />; })()}
@@ -843,7 +873,7 @@ function WellnessMain({ userId, displayName }: { userId: string; displayName: st
               const scores = scoresByType[t];
               const delta = scores.length >= 2 ? scores[scores.length - 1] - scores[scores.length - 2] : 0;
               return (
-                <button key={t} onClick={() => { setSelectedScan(scan); setReportTab("overview"); }}
+                <button key={t} onClick={() => { hapticTap(); setSelectedScan(scan); setReportTab("overview"); }}
                   className="shrink-0 w-44 rounded-2xl bg-white dark:bg-neutral-900 border border-neutral-200/50 dark:border-neutral-800/50 p-4 text-left shadow-sm hover:shadow-md transition-all active:scale-[0.97] cursor-pointer">
                   <div className="flex items-center justify-between mb-3">
                     {(() => { const Icon = SCAN_META[t].Icon; return <Icon className={"w-4 h-4 " + SCAN_META[t].color} strokeWidth={2} />; })()}
@@ -885,10 +915,12 @@ function WellnessMain({ userId, displayName }: { userId: string; displayName: st
         <div>
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-xs font-black uppercase tracking-wider text-neutral-400 dark:text-neutral-500">Scan History</h2>
-            <button onClick={() => { setCompareMode(!compareMode); setCompareA(null); setCompareB(null); }}
-              className={"text-[10px] font-bold px-3 py-1.5 rounded-full border transition-all cursor-pointer " + (compareMode ? "bg-rose-500 text-white border-rose-500" : "border-neutral-300 dark:border-neutral-700 text-neutral-500 hover:border-rose-300")}>
-              {compareMode ? "✓ Compare on" : "Compare scans"}
-            </button>
+            {!compareMode && (
+              <button onClick={() => { hapticTap(); setCompareMode(true); setCompareA(null); setCompareB(null); }}
+                className="text-[10px] font-bold px-3 py-1.5 rounded-full border border-neutral-300 dark:border-neutral-700 text-neutral-500 hover:border-rose-300 transition-all cursor-pointer">
+                Compare scans
+              </button>
+            )}
           </div>
 
           {compareMode && compareA && compareB && (
@@ -951,7 +983,7 @@ function WellnessMain({ userId, displayName }: { userId: string; displayName: st
                   <div className="w-14 h-14 rounded-xl overflow-hidden bg-neutral-100 dark:bg-neutral-800 shrink-0">
                     <img src={s.photo_url} alt="" className="w-full h-full object-cover" />
                   </div>
-                  <div className="flex-1 min-w-0 cursor-pointer" onClick={() => compareMode ? toggleCompare(s) : (setSelectedScan(s), setReportTab("overview"))}>
+                  <div className="flex-1 min-w-0 cursor-pointer" onClick={() => { hapticTap(); compareMode ? toggleCompare(s) : (setSelectedScan(s), setReportTab("overview")); }}>
                     <div className="flex items-center gap-1.5 mb-0.5">
                       <meta.Icon className={"w-3.5 h-3.5 " + meta.color} strokeWidth={2} />
                       <span className="text-sm font-bold text-neutral-800 dark:text-neutral-200">{meta.label} Scan</span>
@@ -976,12 +1008,12 @@ function WellnessMain({ userId, displayName }: { userId: string; displayName: st
                     </div>
                   ) : (
                     <div className="flex items-center gap-1 shrink-0">
-                      <button onClick={() => deleteScan(s)} disabled={deletingScanId === s.id}
+                      <button onClick={() => { hapticTap(); deleteScan(s); }} disabled={deletingScanId === s.id}
                         className="w-8 h-8 rounded-full flex items-center justify-center text-neutral-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors cursor-pointer disabled:opacity-50"
                         aria-label="Delete scan">
                         {deletingScanId === s.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
                       </button>
-                      <ChevronRight className="w-4 h-4 text-neutral-300 cursor-pointer" onClick={() => { setSelectedScan(s); setReportTab("overview"); }} />
+                      <ChevronRight className="w-4 h-4 text-neutral-300 cursor-pointer" onClick={() => { hapticTap(); setSelectedScan(s); setReportTab("overview"); }} />
                     </div>
                   )}
                 </div>
@@ -1001,6 +1033,29 @@ function WellnessMain({ userId, displayName }: { userId: string; displayName: st
 
         </>
       )}
+
+      {/* Compare Mode Floating Action Bar */}
+      <AnimatePresence>
+        {compareMode && (
+          <motion.div 
+            initial={{ y: 100, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 100, opacity: 0 }}
+            className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] left-4 right-4 z-40 bg-neutral-900 dark:bg-neutral-800 text-white p-4 rounded-3xl shadow-2xl shadow-rose-500/10 flex items-center justify-between border border-neutral-800 dark:border-neutral-700"
+          >
+            <div className="flex flex-col gap-0.5">
+              <span className="text-sm font-black">Compare Scans</span>
+              <span className="text-xs text-neutral-400">
+                {compareA && compareB ? "Ready to compare above" : compareA ? "Select one more scan" : "Select two scans"}
+              </span>
+            </div>
+            <button onClick={() => { hapticTap(); setCompareMode(false); setCompareA(null); setCompareB(null); }}
+              className="bg-neutral-800 dark:bg-neutral-700 hover:bg-neutral-700 text-xs font-bold px-4 py-2 rounded-xl transition-colors cursor-pointer">
+              Cancel
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Capture Modal */}
       {captureOpen && <WellnessCaptureSheet scanType={captureType} onClose={() => setCaptureOpen(false)} onCapture={handleCapture} />}
@@ -1046,7 +1101,7 @@ function WellnessMain({ userId, displayName }: { userId: string; displayName: st
                   </div>
                   <p className="text-white/60 text-xs">{new Date(selectedScan.taken_at + "T12:00:00").toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}</p>
                 </div>
-                <button onClick={() => setSelectedScan(null)} className="w-8 h-8 rounded-full bg-white/20 text-white flex items-center justify-center hover:bg-white/30 cursor-pointer"><X className="w-4 h-4" /></button>
+                <button onClick={() => { hapticTap(); setSelectedScan(null); }} className="w-8 h-8 rounded-full bg-white/20 text-white flex items-center justify-center hover:bg-white/30 cursor-pointer"><X className="w-4 h-4" /></button>
               </div>
               {selectedScan.is_usable && selectedScan.overall_score != null && (
                 <div className="flex items-center gap-5">
@@ -1095,7 +1150,7 @@ function WellnessMain({ userId, displayName }: { userId: string; displayName: st
             {selectedScan.is_usable && (
               <div className="flex border-b border-neutral-100 dark:border-neutral-800 shrink-0">
                 {(["overview", "routine"] as const).map(tab => (
-                  <button key={tab} onClick={() => setReportTab(tab)}
+                  <button key={tab} onClick={() => { hapticTap(); setReportTab(tab); }}
                     className={"flex-1 py-3.5 text-sm font-bold transition-colors cursor-pointer flex items-center justify-center gap-1.5 " + (reportTab === tab ? "text-rose-600 dark:text-rose-400 border-b-2 border-rose-500" : "text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300")}>
                     {tab === "overview" ? <><Star className="w-3.5 h-3.5" />Overview</> : <><Sun className="w-3.5 h-3.5" />Routine</>}
                   </button>

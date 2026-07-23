@@ -64,15 +64,25 @@ function AddFood({ userId }: { userId: string }) {
       });
   }, [userId]);
 
+  const autoAiTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // debounced search
   useEffect(() => {
     if (timer.current) clearTimeout(timer.current);
+    if (autoAiTimer.current) clearTimeout(autoAiTimer.current);
     if (q.trim().length < 2) { setResults([]); setSearching(false); return; }
     setSearching(true);
     timer.current = setTimeout(async () => {
       const { data } = await supabase.rpc("search_foods", { q: q.trim() });
-      setResults((data as Food[]) ?? []);
+      const found = (data as Food[]) ?? [];
+      setResults(found);
       setSearching(false);
+      
+      if (found.length === 0 && q.trim().length >= 3) {
+        autoAiTimer.current = setTimeout(() => {
+          document.getElementById("ask-ai-btn")?.click();
+        }, 1000);
+      }
     }, 300);
   }, [q]);
 
@@ -263,7 +273,7 @@ function AddFood({ userId }: { userId: string }) {
           <p className="text-sm text-neutral-400 mb-3">
             {results.length === 0 ? "No match in the food database." : "Not the one you meant?"}
           </p>
-          <button onClick={askAI} disabled={aiBusy}
+          <button id="ask-ai-btn" onClick={askAI} disabled={aiBusy}
             className="rounded-xl border border-violet-500 text-violet-500 px-5 py-3 font-semibold text-sm disabled:opacity-50 inline-flex items-center gap-2">
             {aiBusy ? (
               <>

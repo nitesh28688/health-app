@@ -13,6 +13,7 @@ import { Wand2, Book, Dumbbell, TrendingUp, Users, CloudUpload, Sparkles, FileTe
 import { subscribePendingCount } from "@/lib/offlineQueue";
 import { getAppMode, setAppMode, subscribeAppMode, type AppMode } from "@/lib/appMode";
 import { CURRENT_TERMS_VERSION } from "@/lib/legal";
+import { hapticTap } from "@/lib/haptics";
 
 // ── Tab definitions (Profile removed — it now lives behind the header avatar) ──
 
@@ -166,7 +167,10 @@ function NavTabs({ mode, onModeToggle }: { mode: AppMode; onModeToggle: () => vo
       {items}
       <div className="absolute left-1/2 top-[-24px] -translate-x-1/2 pointer-events-none z-20">
         <button
-          onClick={onModeToggle}
+          onClick={() => {
+            hapticTap();
+            onModeToggle();
+          }}
           className={`relative w-16 h-16 rounded-full ${destBg} text-white flex items-center justify-center active:scale-90 transition-all duration-200 pointer-events-auto overflow-hidden`}
           style={{ boxShadow: "0 10px 22px -4px rgba(0,0,0,0.45)" }}
           aria-label={`Switch to ${isWellness ? "Core" : "Wellness"} mode`}
