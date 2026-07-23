@@ -1977,3 +1977,22 @@ Major UI restructure of `AppShell.tsx`. Added a persistent per-mode sticky heade
 - **Discover Feed:** Implemented `/api/ai/discover-feed` endpoint that generates a personalized aesthetic feed (articles, tips, and protocol suggestions) based on the user's 5 most recent wellness scans. 
 - **AI Protocols:** Built `/api/ai/generate-protocol` endpoint allowing users to generate custom AM/PM/Anytime daily routines by providing a specific goal (e.g., "Clear up acne before wedding"). Implemented the UI in `web/app/discover/page.tsx` with optimistic task toggling and visual progress bars.
 - **AI Boutique:** Re-designed `web/app/products/page.tsx` to include a top-level Segmented Control toggling between "My Shelf" (existing functionality) and "Boutique". The new Boutique view calls `/api/ai/boutique-matches` to analyze the user's scan history and intelligently recommend 3-4 premium global brand products alongside exactly one Nanoliss product, giving a targeted reason for each recommendation.
+
+ # # #   P h a s e   8 2 :   D i s c o v e r   F e e d   R e a l - W o r l d   M a g a z i n e   U p g r a d e 
+ 
+ * * G o a l : * *   R e p l a c e   r e p e t i t i v e   t e x t - o n l y   A I   f e e d   i t e m s   w i t h   r e a l ,   m e d i a - r i c h   a r t i c l e s   f r o m   t o p   b e a u t y   m a g a z i n e s   ( V o g u e ,   A l l u r e )   m i x e d   s e a m l e s s l y   i n t o   t h e   A I - g e n e r a t e d   p e r s o n a l i z e d   w e l l n e s s   t i p s   a n d   p r o t o c o l s . 
+ 
+ * * S t a t u s : * *   [ x ]   D o n e 
+ 
+ * * C o n t e x t : * * 
+ -   T h e   u s e r   r e q u e s t e d   t h e   D i s c o v e r   f e e d   t o   s h o w   b e a u t y   t r e n d s   a n d   p i c k   f r o m   f a m o u s   w o m e n ' s   m a g a z i n e s   i n s t e a d   o f   j u s t   b e i n g   a   l i s t   o f   A I   ' I n s i g h t s ' . 
+ -   W e   p a r s e d   l i v e   R S S   f e e d s   t o   f e t c h   r e a l   m a g a z i n e   a r t i c l e s   a n d   i n j e c t e d   t h e m   i n t o   t h e   f e e d   a s   n e w   \ e x t e r n a l _ a r t i c l e \   m e d i a   c a r d s . 
+ 
+ * * D o      A P I   ( w e b / a p p / a p i / a i / d i s c o v e r - f e e d / r o u t e . t s ) : * * 
+ 1 .   U s e d   \  s s - p a r s e r \   t o   f e t c h   a n d   p a r s e   \ h t t p s : / / w w w . v o g u e . c o m / f e e d / b e a u t y / r s s \   a n d   \ h t t p s : / / w w w . a l l u r e . c o m / f e e d / r s s \ . 
+ 2 .   M i x e d   t h e s e   e x t e r n a l   a r t i c l e s   w i t h   t h e   e x i s t i n g   A I - g e n e r a t e d   p r o t o c o l s   a n d   t i p s ,   a s s i g n i n g   t h e m   t h e   t y p e   \ e x t e r n a l _ a r t i c l e \ . 
+ 
+ * * D o      U I   ( w e b / a p p / d i s c o v e r / p a g e . t s x ) : * * 
+ 1 .   C r e a t e d   a   n e w   r e n d e r e r   f o r   \ i t e m . t y p e   = = =   ' e x t e r n a l _ a r t i c l e ' \   t h a t   d i s p l a y s   a   l a r g e ,   i m a g e - c e n t r i c   c a r d   u s i n g   t h e   a r t i c l e ' s   t h u m b n a i l . 
+ 2 .   M a d e   t h e   c a r d   c l i c k a b l e   t o   o p e n   t h e   r e a l   a r t i c l e   i n   a   n e w   t a b .  
+ 
