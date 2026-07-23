@@ -9,7 +9,7 @@ import { AssistantSheet } from "@/components/AssistantSheet";
 import { FormCheckSheet } from "@/components/FormCheckSheet";
 import { PhysioSheet } from "@/components/PhysioSheet";
 import { TermsGate } from "@/components/TermsGate";
-import { Wand2, Book, Dumbbell, TrendingUp, Users, CloudUpload, Sparkles, FileText, BookHeart, Package, Heart } from "lucide-react";
+import { Wand2, Book, Dumbbell, TrendingUp, Users, CloudUpload, Sparkles, FileText, BookHeart, Package, Heart, Compass } from "lucide-react";
 import { subscribePendingCount } from "@/lib/offlineQueue";
 import { getAppMode, setAppMode, subscribeAppMode, type AppMode } from "@/lib/appMode";
 import { CURRENT_TERMS_VERSION } from "@/lib/legal";
@@ -32,7 +32,7 @@ const WELLNESS_TABS: TabDef[] = [
   { href: "/journal", label: "Journal", icon: BookHeart, type: null },
   // slot 2 (index 2) is the mode-toggle button — centered, same as Core
   { href: "/products", label: "Products", icon: Package, type: null },
-  { href: "/wellness?view=reports", label: "Reports", icon: FileText, type: "reports" },
+  { href: "/discover", label: "Discover", icon: Compass, type: null },
 ];
 
 const CORE_ONLY_PATHS = new Set(["/", "/workout", "/trends", "/friends"]);

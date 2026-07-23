@@ -4,7 +4,7 @@ import { AppShell } from "../AppShell";
 import { supabase } from "@/lib/supabase";
 import { compressImage } from "@/lib/imageCompress";
 import { PageSkeleton } from "@/lib/Skeleton";
-import { Camera, Package, AlertTriangle, CheckCircle2, XCircle, Clock, Keyboard, Plus, X, History } from "lucide-react";
+import { Camera, Package, AlertTriangle, CheckCircle2, XCircle, Clock, Keyboard, Plus, X, History, Sparkles, ShoppingBag } from "lucide-react";
 import { normalizeProductKey } from "@/lib/productKey";
 
 interface ProductPreview {
@@ -99,6 +99,24 @@ function Products({ userId }: { userId: string }) {
   const [finishedProducts, setFinishedProducts] = useState<Product[] | null>(null);
   const [showFinished, setShowFinished] = useState(false);
   const [finishedCount, setFinishedCount] = useState(0);
+
+  const [viewMode, setViewMode] = useState<"shelf" | "boutique">("shelf");
+  const [boutiqueMatches, setBoutiqueMatches] = useState<any[] | null>(null);
+  const [boutiqueLoading, setBoutiqueLoading] = useState(false);
+
+  useEffect(() => {
+    if (viewMode === "boutique" && boutiqueMatches === null && !boutiqueLoading) {
+      setBoutiqueLoading(true);
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (!session) return;
+        fetch("/api/ai/boutique-matches", { method: "POST", headers: { Authorization: "Bearer " + session.access_token } })
+          .then(r => r.json())
+          .then(b => setBoutiqueMatches(b.matches || []))
+          .catch(() => setBoutiqueMatches([]))
+          .finally(() => setBoutiqueLoading(false));
+      });
+    }
+  }, [viewMode, boutiqueMatches, boutiqueLoading]);
 
   const load = useCallback(async () => {
     const { data } = await supabase
@@ -254,14 +272,62 @@ function Products({ userId }: { userId: string }) {
 
   return (
     <main className="px-4 pt-6 pb-8">
-      <h1 className="text-2xl font-bold mb-1 flex items-center gap-2">
-        <Package className="w-6 h-6 text-rose-500" /> Products
-      </h1>
-      <p className="text-sm text-neutral-500 mb-4">
-        Snap a product&apos;s label — AI reads the ingredients and tells you if it suits <i>your</i> skin and hair.
-      </p>
+      {/* Header and Toggle */}
+      <div className="mb-6">
+        <h1 className="text-2xl font-black tracking-tight mb-4 flex items-center gap-2">
+          <Package className="w-6 h-6 text-rose-500" /> Products
+        </h1>
+        <div className="flex bg-neutral-100 dark:bg-neutral-900 rounded-xl p-1 relative">
+          <div className="absolute top-1 bottom-1 left-1 w-[calc(50%-4px)] bg-white dark:bg-neutral-800 rounded-lg shadow-sm transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]" style={{ transform: viewMode === "boutique" ? "translateX(100%)" : "translateX(0)" }} />
+          <button onClick={() => setViewMode("shelf")} className={`flex-1 relative z-10 py-1.5 text-sm font-bold transition-colors ${viewMode === "shelf" ? "text-neutral-900 dark:text-white" : "text-neutral-500"}`}>My Shelf</button>
+          <button onClick={() => setViewMode("boutique")} className={`flex-1 relative z-10 py-1.5 text-sm font-bold flex items-center justify-center gap-1.5 transition-colors ${viewMode === "boutique" ? "text-neutral-900 dark:text-white" : "text-neutral-500"}`}>
+            <Sparkles className="w-3.5 h-3.5" /> Boutique
+          </button>
+        </div>
+      </div>
 
-      <input ref={fileRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={onFile} />
+      {viewMode === "boutique" && (
+        <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+          <div className="mb-5 bg-gradient-to-r from-rose-500/10 to-violet-500/10 border border-rose-500/20 rounded-2xl p-4">
+            <h2 className="text-sm font-bold text-rose-600 dark:text-rose-400 flex items-center gap-1.5 mb-1"><Sparkles className="w-4 h-4" /> AI Matches</h2>
+            <p className="text-xs text-neutral-600 dark:text-neutral-400">These top-tier brands were specifically selected to target your recent scan deficits.</p>
+          </div>
+          {boutiqueLoading ? (
+            <div className="flex flex-col gap-3">
+              {[1, 2, 3].map(i => <div key={i} className="h-28 rounded-2xl bg-neutral-100 dark:bg-neutral-900 animate-pulse" />)}
+            </div>
+          ) : boutiqueMatches?.length ? (
+            <ul className="flex flex-col gap-3">
+              {boutiqueMatches.map((m, i) => (
+                <li key={i} className="rounded-2xl border border-neutral-200/60 dark:border-neutral-800/60 bg-white dark:bg-neutral-950 p-4 shadow-sm flex flex-col gap-2">
+                  <div className="flex justify-between items-start gap-2">
+                    <div>
+                      <p className="text-[11px] font-black uppercase tracking-wider text-neutral-400 mb-0.5">{m.brand}</p>
+                      <p className="font-bold text-[15px]">{m.name}</p>
+                    </div>
+                    <span className="shrink-0 text-sm font-bold text-rose-500 bg-rose-50 dark:bg-rose-950/30 px-2 py-0.5 rounded-lg">{m.price_estimate}</span>
+                  </div>
+                  <p className="text-[13px] text-neutral-500 leading-relaxed bg-neutral-50 dark:bg-neutral-900/50 p-2.5 rounded-xl border border-neutral-100 dark:border-neutral-800">{m.reason}</p>
+                  <button className="mt-1 w-full bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 font-bold py-2.5 rounded-xl text-sm flex items-center justify-center gap-1.5 active:scale-[0.98] transition-transform">
+                    <ShoppingBag className="w-4 h-4" /> Find Online
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-neutral-500 text-center py-8">Couldn't load matches right now.</p>
+          )}
+        </div>
+      )}
+
+      {viewMode === "shelf" && (
+        <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+          <p className="text-sm text-neutral-500 mb-4">
+            Snap a product&apos;s label — AI reads the ingredients and tells you if it suits <i>your</i> skin and hair.
+          </p>
+
+          <input ref={fileRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={onFile} />
+
       {checking ? (
         <div className="w-full rounded-2xl bg-gradient-to-r from-rose-500 to-pink-600 text-white shadow-md shadow-rose-500/20 py-3.5 font-semibold flex items-center justify-center gap-2 mb-2 opacity-80">
           Checking…
@@ -546,6 +612,8 @@ function Products({ userId }: { userId: string }) {
             </ul>
           )}
         </div>
+      )}
+      </div>
       )}
     </main>
   );

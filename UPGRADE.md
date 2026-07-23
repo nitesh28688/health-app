@@ -1970,3 +1970,10 @@ Major UI restructure of `AppShell.tsx`. Added a persistent per-mode sticky heade
 - **Zero-Click Proactive AI Search:** Add Food page now automatically triggers AI estimation after 1s of 0 search results.
 - **Premium Empty States:** Added animated, magical empty states to Diary (floating coffee cup) and Wellness (pulsating Sparkles).
 - **Wellness Tab Refinements:** Added fluid Segmented Control (Dashboard vs History), animated Score Ring count-ups, and a floating action bar for Compare Mode.
+
+**Phase 81 (2026-07-23): Wellness Discover, Protocols & AI Boutique Integration**
+- **Database:** Created migration `0044_wellness_discover.sql` to add `wellness_protocols` (tracks active routines and task arrays) and `wellness_protocol_logs` (tracks daily completed tasks).
+- **Navigation:** Updated `AppShell.tsx` to replace the "Reports" bottom navigation item with a new "Discover" tab (`/discover`), using the `Compass` icon.
+- **Discover Feed:** Implemented `/api/ai/discover-feed` endpoint that generates a personalized aesthetic feed (articles, tips, and protocol suggestions) based on the user's 5 most recent wellness scans. 
+- **AI Protocols:** Built `/api/ai/generate-protocol` endpoint allowing users to generate custom AM/PM/Anytime daily routines by providing a specific goal (e.g., "Clear up acne before wedding"). Implemented the UI in `web/app/discover/page.tsx` with optimistic task toggling and visual progress bars.
+- **AI Boutique:** Re-designed `web/app/products/page.tsx` to include a top-level Segmented Control toggling between "My Shelf" (existing functionality) and "Boutique". The new Boutique view calls `/api/ai/boutique-matches` to analyze the user's scan history and intelligently recommend 3-4 premium global brand products alongside exactly one Nanoliss product, giving a targeted reason for each recommendation.
