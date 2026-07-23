@@ -152,6 +152,22 @@ function DiscoverView({ userId }: { userId: string }) {
             <ul className="flex flex-col gap-5">
               {feed.map((item, i) => (
                 <li key={i} className="rounded-2xl border border-neutral-200/60 dark:border-neutral-800/60 bg-white dark:bg-neutral-950 shadow-sm overflow-hidden flex flex-col">
+                  {item.type === "external_article" && (
+                    <a href={item.link} target="_blank" rel="noreferrer" className="block relative h-64 w-full group overflow-hidden">
+                      {item.image_url ? (
+                        <div className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-105" style={{ backgroundImage: `url(${item.image_url})` }} />
+                      ) : (
+                        <div className="absolute inset-0 bg-gradient-to-br from-purple-500 to-indigo-600 transition-transform duration-700 group-hover:scale-105" />
+                      )}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
+                      <div className="absolute bottom-0 left-0 right-0 p-5 flex flex-col justify-end">
+                        <div className="flex items-center gap-1.5 text-white/80 text-[10px] font-black uppercase tracking-widest mb-2">
+                          <FileText className="w-3.5 h-3.5" /> {item.source || "TRENDING"}
+                        </div>
+                        <h3 className="font-bold text-lg text-white leading-tight drop-shadow-sm">{item.title}</h3>
+                      </div>
+                    </a>
+                  )}
                   {item.type === "article" && (
                     <div className="p-5 flex flex-col gap-2 bg-gradient-to-br from-indigo-50/50 to-white dark:from-indigo-950/20 dark:to-neutral-950">
                       <div className="flex items-center gap-1.5 text-indigo-500 text-[11px] font-black uppercase tracking-wider mb-1">

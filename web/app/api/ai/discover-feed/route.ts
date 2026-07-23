@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { generateWithFallback } from "@/lib/gemini";
+import Parser from "rss-parser";
 
 const admin = () =>
   createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
@@ -81,14 +82,50 @@ If type === "protocol", ALSO include:
     const body = await res.json();
     const text = body?.candidates?.[0]?.content?.parts?.[0]?.text || "[]";
 
-    let feed = [];
+    let feed: any[] = [];
     try {
       feed = JSON.parse(text);
     } catch {
       feed = [];
     }
 
-    return NextResponse.json({ feed });
+    // Fetch RSS
+    const externalItems = [];
+    try {
+      const parser = new Parser({
+        customFields: {
+          item: [['media:content', 'media']],
+        }
+      });
+      const [vogue, allure] = await Promise.allSettled([
+        parser.parseURL("https://www.vogue.com/feed/beauty/rss"),
+        parser.parseURL("https://www.allure.com/feed/rss")
+      ]);
+
+      const processFeed = (result: PromiseSettledResult<any>, count: number) => {
+        if (result.status === 'fulfilled' && result.value?.items) {
+          return result.value.items.slice(0, count).map((i: any) => ({
+            type: "external_article",
+            title: i.title,
+            description: i.contentSnippet || i.description || "Read more about this trend...",
+            link: i.link,
+            image_url: i.media?.$?.url || null, // Extract image if available
+            source: result.value.title
+          }));
+        }
+        return [];
+      };
+
+      externalItems.push(...processFeed(vogue, 1));
+      externalItems.push(...processFeed(allure, 1));
+    } catch (e) {
+      console.error("RSS Fetch Error:", e);
+    }
+
+    // Mix external items into AI feed
+    const combinedFeed = [...externalItems, ...feed].sort(() => 0.5 - Math.random());
+
+    return NextResponse.json({ feed: combinedFeed });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
