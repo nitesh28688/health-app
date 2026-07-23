@@ -1369,3 +1369,9 @@ $$;
 - **Core AI Updates:** Added `get_recent_foods` tool for proactive macro balancing suggestions. Enforced progressive overload targets for repeated workouts.
 - **Wellness AI Updates:** Added `get_weather_and_uv` tool via Open-Meteo API. AI now sorts routines dynamically (thinnest to thickest), manages 4-day Skin Cycles, and checks `pao_months` for expiry alerts.
 
+**Phase 79 (2026-07-23): Cloudflare R2 Organising, Wellness AI Reasoning, Search FTS & UX Fixes**
+- **R2 Pathing:** `upload/photo/route.ts` was updated to prepend the user's email (`email_userid/`) to the Cloudflare R2 object paths, making the bucket human-readable and grouped by user. `scripts/migrate_r2_filenames.js` was used to rename existing files.
+- **Wellness AI Reasoning:** `api/ai/wellness-scan/route.ts` updated to enforce an `analysis_scratchpad` in the Gemini JSON schema. Forcing the model to output a structured thought process before outputting the final `overall_score` grounds the logic significantly without increasing costs by switching to 2.5 Pro.
+- **Dinner Fasting Prompt:** Disabled the automatic `"start_fast"` modal prompt that appeared after logging dinner in `app/add/page.tsx` as it was annoying.
+- **Search FTS:** Supabase migration `0043_search_fts.sql` replaced pure trigram similarity in `search_foods()` with PostgreSQL Full-Text Search (`to_tsvector`/`websearch_to_tsquery`) to properly find words out of order (e.g. "white bread" matching "white sandwich bread"), and added strict starts-with boosting (`f.name ilike q || '%'`) to fix sorting anomalies (e.g. "Coke original taste" beating "Diet Coke" on a "coke" search).
+

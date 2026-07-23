@@ -1,12 +1,15 @@
 # Handoff — pick up here next session
 
 ## DB status
-Migrations through **0041** confirmed live. **0042 is NOT yet run** — paste this into
-the Supabase SQL Editor:
-```sql
-alter table foods add column is_usable boolean not null default true;
-```
-If a future session adds a new migration, it's `0043_...sql`.
+Migrations through **0043** have been created/pushed. If a future session adds a new migration, it's `0044_...sql`.
+
+## Just shipped (2026-07-23, verified)
+**Phase 79 — Cloudflare R2 Organising, Wellness AI Reasoning, Search FTS & UX Fixes** 
+- Added user email prefixes to R2 uploads for better dashboard grouping.
+- Enforced an `analysis_scratchpad` in the Wellness AI schema to massively improve skin/hair/eye scoring logic.
+- Disabled the annoying auto-prompt for fasting after dinner.
+- Overhauled `search_foods` with Full-Text Search and start-matches to solve missing words and ranking quirks ("Coke" vs "Diet Coke").
+
 ## Just shipped (2026-07-19, verified)
 **Phase 78 — Proactive AI Enhancements & Gut-Skin Axis.** Supercharged the AI's proactivity. Wellness AI now checks diet patterns (get_daily_totals) for skin issues, sorts skincare routines properly, manages skin cycling, gives PAO expiry alerts, and pulls local weather/UV via a new `get_weather_and_uv` tool. Core AI now suggests progressive overload on repeated workouts and proactively uses `get_recent_foods` to suggest specific snacks if macros are short.
 
