@@ -95,6 +95,7 @@ edit an already-applied migration; add a new one.
 | 0026 | `0026_form_check_cap.sql` | Alters `ai_suggestions_kind_check` constraint to support 'assistant_turn' and 'form_check' kinds |
 | 0027 | `0027_wellness_scans.sql` | Creates `wellness_scans` table (skin/eye scans) and updates `ai_suggestions_kind_check` check constraint for cap tracking |
 | 0028 | `0028_wellness_scoring_hair.sql` | Adds `overall_score`, `sub_scores`, and `classification` to `wellness_scans`, adds 'hair' scan type, and expands kind constraint to 11 kinds |
+| 0043 | `0043_search_fts.sql` | `search_foods()` adds Full-Text Search (`tsvector`) and strict starts-with boosting for better ranking (e.g. "Coke" over "Diet Coke") |
 
 
 
