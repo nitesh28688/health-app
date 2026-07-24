@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { generateWithFallback } from "@/lib/gemini";
 import Parser from "rss-parser";
 
 const admin = () =>
@@ -17,116 +16,57 @@ export async function POST(req: NextRequest) {
   if (!userData.user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   const userId = userData.user.id;
 
-  const { data: scans } = await db.from("wellness_scans").select("*")
-    .eq("user_id", userId).order("taken_at", { ascending: false }).limit(5);
-
-  const scanSummary = (scans || []).map(s => 
-    `${s.scan_type} scan: ${s.classification || s.features?.join(", ")}`
-  ).join("\n");
-
-  const prompt = `
-Generate a beautiful, personalized aesthetic discovery feed for this user based on their recent wellness scans.
-If they have no recent scans, provide general premium aesthetic content.
-
-Crucially, you should incorporate current global beauty and skincare trends (e.g., popular trends as seen in Vogue, Allure, or on social media) into the content you generate, while keeping it highly relevant to the user's scan data.
-
-User's Recent Scans:
-${scanSummary || "None."}
-
-The feed should contain an array of items. Each item can be either an 'article', 'tip', or a 'protocol'.
-- 'article': A bite-sized insight (e.g. "Ingredient Spotlight: Peptides for barrier repair").
-- 'tip': A highly actionable short tip based on their scan.
-- 'protocol': A suggested routine (e.g., "14-Day Glass Skin Bootcamp") that they can enroll in. It MUST contain 'duration_days' and a 'tasks' array (each task having 'name' and 'time'='am'|'pm'|'any').
-
-Generate 3-5 items for the feed, mixing the types. Make the tone sophisticated, empathetic, and premium.
-
-Return a JSON array of objects.
-Each object MUST have:
-- type: "article" | "tip" | "protocol"
-- title: string
-- description: string
-If type === "protocol", ALSO include:
-- duration_days: integer
-- tasks: array of objects { name: string, time: "am" | "pm" | "any" }
-`;
-
   try {
-    const res = await generateWithFallback(
-      [{ text: prompt }],
-      {
-        type: "array",
-        items: {
-          type: "object",
-          properties: {
-            type: { type: "string" },
-            title: { type: "string" },
-            description: { type: "string" },
-            duration_days: { type: "number" },
-            tasks: { 
-              type: "array", 
-              items: { 
-                type: "object", 
-                properties: { 
-                  name: { type: "string" }, 
-                  time: { type: "string" } 
-                },
-                required: ["name", "time"]
-              } 
-            }
-          },
-          required: ["type", "title", "description"]
-        }
+    // 1. Fetch user's personalized cached AI items from their latest scan
+    const { data: cacheRow } = await db.from("wellness_discover_feed_cache").select("items").eq("user_id", userId).maybeSingle();
+    const personalizedItems = cacheRow?.items || [];
+
+    // 2. Fetch external RSS items
+    const parser = new Parser({
+      customFields: {
+        item: [['media:thumbnail', 'thumbnail']],
       }
-    );
-    if (!res.ok) throw new Error("AI failed");
-    const body = await res.json();
-    const text = body?.candidates?.[0]?.content?.parts?.[0]?.text || "[]";
+    });
 
-    let feed: any[] = [];
-    try {
-      feed = JSON.parse(text);
-    } catch {
-      feed = [];
-    }
+    const [vogue, allure] = await Promise.allSettled([
+      parser.parseURL("https://www.vogue.com/feed/beauty/rss"),
+      parser.parseURL("https://www.allure.com/feed/rss")
+    ]);
 
-    // Fetch RSS
-    const externalItems = [];
-    try {
-      const parser = new Parser({
-        customFields: {
-          item: [['media:content', 'media']],
-        }
-      });
-      const [vogue, allure] = await Promise.allSettled([
-        parser.parseURL("https://www.vogue.com/feed/beauty/rss"),
-        parser.parseURL("https://www.allure.com/feed/rss")
-      ]);
-
-      const processFeed = (result: PromiseSettledResult<any>, count: number) => {
-        if (result.status === 'fulfilled' && result.value?.items) {
-          return result.value.items.slice(0, count).map((i: any) => ({
+    const externalItems: any[] = [];
+    
+    const processFeed = (result: PromiseSettledResult<any>, count: number) => {
+      if (result.status === 'fulfilled' && result.value?.items) {
+        return result.value.items.slice(0, count).map((i: any) => {
+          let description = i.contentSnippet || i.description || "Read more about this trend...";
+          if (description.length > 150) {
+            description = description.substring(0, 150) + "...";
+          }
+          return {
             type: "external_article",
             title: i.title,
-            description: i.contentSnippet || i.description || "Read more about this trend...",
+            description: description,
             link: i.link,
-            image_url: i.media?.$?.url || null, // Extract image if available
+            image_url: i.thumbnail?.$?.url || null,
             source: result.value.title
-          }));
-        }
-        return [];
-      };
+          };
+        });
+      }
+      return [];
+    };
 
-      externalItems.push(...processFeed(vogue, 1));
-      externalItems.push(...processFeed(allure, 1));
-    } catch (e) {
-      console.error("RSS Fetch Error:", e);
-    }
+    externalItems.push(...processFeed(vogue, 5));
+    externalItems.push(...processFeed(allure, 5));
 
-    // Mix external items into AI feed
-    const combinedFeed = [...externalItems, ...feed].sort(() => 0.5 - Math.random());
+    const combinedExternal = externalItems.sort(() => 0.5 - Math.random());
+    
+    // Mix personalized items (always put them near the top/mixed in)
+    const finalFeed = [...personalizedItems, ...combinedExternal];
 
-    return NextResponse.json({ feed: combinedFeed });
+    return NextResponse.json({ feed: finalFeed });
   } catch (err: any) {
+    console.error("RSS Feed Error:", err);
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
+

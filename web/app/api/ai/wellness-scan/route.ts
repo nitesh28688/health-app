@@ -90,6 +90,8 @@ Observations & recommendations schema:
 - observations: Array of { area: string, note: string }. You MUST provide a highly detailed, "full spectrum" analysis of every facial zone (T-zone, cheeks, under-eyes, forehead, chin) covering texture, hydration, pores, elasticity, and tone.
 - recommendations: Array of { ingredient: string, why: string, how_to_use: string, time_of_day: "am"|"pm"|"both" }. You MUST provide a comprehensive, multi-step skincare routine (e.g., Cleanser, Exfoliant like AHA/BHA, Treatment like Retinol/Vitamin C, Moisturizer, Sunscreen). Detail exactly how to incorporate them into an AM/PM regimen. Set to empty array [] if is_usable is false.
 - skin_age_estimate: integer. Based on your holistic assessment of texture, fine lines, hydration, pore size, and radiance, estimate the visible skin age (e.g. 24, 31, 38). This should reflect the apparent skin condition, not the person's calendar age. Set to null if is_usable is false.
+- discover_tip: { title: string, description: string }. A highly actionable short tip based on the scan for the user's Discover Feed.
+- discover_protocol: { title: string, description: string, duration_days: integer, tasks: array of { name: string, time: "am"|"pm"|"any"} }. A suggested routine for the user's Discover Feed.
 
 ${RUBRIC}`;
   } else if (scanType === "eye") {
@@ -110,6 +112,8 @@ Observations & recommendations schema:
 - sub_scores: Array of { category: string, score: integer, note: string } for: "Dark Circles", "Puffiness", "Hydration", "Fine Lines".
 - observations: Array of { area: string, note: string }. You MUST provide a highly detailed, "full spectrum" analysis of the eye region (under-eye, eyelids, outer corners/crow's feet) covering texture, hydration, lines, and pigmentation.
 - recommendations: Array of { ingredient: string, why: string, how_to_use: string, time_of_day: "am"|"pm"|"both" }. You MUST provide a comprehensive eye care routine detailing exactly what active ingredients to use and how to incorporate them into an AM/PM regimen safely. Set to empty array [] if is_usable is false.
+- discover_tip: { title: string, description: string }. A highly actionable short tip based on the scan for the user's Discover Feed.
+- discover_protocol: { title: string, description: string, duration_days: integer, tasks: array of { name: string, time: "am"|"pm"|"any"} }. A suggested routine for the user's Discover Feed.
 
 ${RUBRIC}`;
   } else {
@@ -130,6 +134,8 @@ Observations & recommendations schema:
 - sub_scores: Array of { category: string, score: integer, note: string } for: "Scalp Health", "Hair Thickness/Density", "Dryness/Damage", "Frizz".
 - observations: Array of { area: string, note: string }. You MUST provide a highly detailed, "full spectrum" analysis of the hair and scalp (roots, mid-lengths, ends, scalp condition) covering texture, hydration, density, and damage.
 - recommendations: Array of { ingredient: string, why: string, how_to_use: string, time_of_day: "am"|"pm"|"both" }. You MUST provide a comprehensive hair care routine (e.g., clarifying treatments, deep conditioning, leave-in actives, scalp serums) detailing exactly how and when to use them. Set to empty array [] if is_usable is false.
+- discover_tip: { title: string, description: string }. A highly actionable short tip based on the scan for the user's Discover Feed.
+- discover_protocol: { title: string, description: string, duration_days: integer, tasks: array of { name: string, time: "am"|"pm"|"any"} }. A suggested routine for the user's Discover Feed.
 
 ${RUBRIC}`;
   }
@@ -179,6 +185,36 @@ ${RUBRIC}`;
           },
           required: ["ingredient", "why", "how_to_use", "time_of_day"]
         }
+      },
+      discover_tip: {
+        type: "OBJECT",
+        nullable: true,
+        properties: {
+          title: { type: "STRING" },
+          description: { type: "STRING" }
+        },
+        required: ["title", "description"]
+      },
+      discover_protocol: {
+        type: "OBJECT",
+        nullable: true,
+        properties: {
+          title: { type: "STRING" },
+          description: { type: "STRING" },
+          duration_days: { type: "INTEGER" },
+          tasks: {
+            type: "ARRAY",
+            items: {
+              type: "OBJECT",
+              properties: {
+                name: { type: "STRING" },
+                time: { type: "STRING" }
+              },
+              required: ["name", "time"]
+            }
+          }
+        },
+        required: ["title", "description", "duration_days", "tasks"]
       },
       skin_age_estimate: { type: "INTEGER", nullable: true },
       photo_quality: { type: "STRING", enum: ["good", "fair", "poor"] },
@@ -288,6 +324,24 @@ ${RUBRIC}`;
   if (upsertErr) {
     console.error("Failed to update daily cap suggestion:", upsertErr);
     return NextResponse.json({ error: "Database error updating daily cap" }, { status: 500 });
+  }
+
+  // 7. Update Discover Feed Cache
+  if (estimate.is_usable && (estimate.discover_tip || estimate.discover_protocol)) {
+    const discoverItems = [];
+    if (estimate.discover_tip) {
+      discoverItems.push({ type: "tip", ...estimate.discover_tip });
+    }
+    if (estimate.discover_protocol) {
+      discoverItems.push({ type: "protocol", ...estimate.discover_protocol });
+    }
+    
+    if (discoverItems.length > 0) {
+      await db.from("wellness_discover_feed_cache").upsert(
+        { user_id: userId, items: discoverItems, updated_at: new Date().toISOString() },
+        { onConflict: "user_id" }
+      );
+    }
   }
 
   const backendModel = (res as any).selectedModel || "unknown";

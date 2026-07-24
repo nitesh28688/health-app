@@ -4,6 +4,10 @@
 Migrations through **0043** have been created/pushed. If a future session adds a new migration, it's `0044_...sql`.
 
 ## Just shipped (2026-07-24, verified)
+**Phase 81 — Discover Feed 0-Credit Architecture:**
+- **Zero-Credit Loading:** The Discover Feed (`api/ai/discover-feed`) now costs 0 AI credits to load. It purely fetches RSS articles (Vogue, Allure) and mixes them with cached AI tips.
+- **Scan-time Generation:** Personalized AI discover tips and protocols are now generated for "free" concurrently alongside the standard wellness scan in `api/ai/wellness-scan`, then stored in a new `wellness_discover_feed_cache` table for the feed to consume.
+
 **Phase 80 — Premium UI/UX Polish (Haptics, Fluidity, Zero-Click AI)**
 - **Widespread Native Haptics:** Integrated `navigator.vibrate` (`hapticTap`/`hapticSuccess`) throughout the app (mode toggle, workout logging, food logging, wellness actions).
 - **Zero-Click Proactive AI Search:** Add Food page now automatically triggers AI estimation after 1s of 0 search results.
