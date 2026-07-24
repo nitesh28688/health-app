@@ -45,24 +45,25 @@ export async function POST(req: NextRequest) {
       `${s.scan_type} scan (Score: ${s.overall_score}): ${s.classification || 'unknown'} skin/hair. Observations: ${JSON.stringify(s.observations)}`
     ).join("\n");
 
-    const country = req.headers.get("x-vercel-ip-country") || req.headers.get("cf-ipcountry") || "US";
+    const timeZone = req.headers.get("x-timezone") || "America/New_York";
 
     const prompt = `
 You are a highly sophisticated, unbiased aesthetic consultant AI.
-Based on the user's recent wellness scans, generate 3-4 specific product recommendations.
-You MUST recommend real, top-tier global brands (e.g. CeraVe, Paula's Choice, La Roche-Posay, K18, Olaplex).
+Based on the user's recent wellness scans, suggest 3-4 routine categories (e.g. Cleanser, Vitamin C Serum, Spot Treatment) they should add to their shelf to fix their specific issues.
+For each category, provide two product recommendations from real, top-tier global brands:
+1. A "Premium Pick" (luxury or clinical brand like Skinceuticals, K18, La Mer).
+2. An "Accessible Pick" (a highly effective, affordable alternative or 'dupe' like CeraVe, The Ordinary, Good Molecules).
 
 User's Recent Scans:
 ${scanSummary}
 
-For each product, explain EXACTLY why they need it based on their scan data. 
-
 Return a JSON array where each object has:
-- name: string (Product name)
-- brand: string (Brand name)
-- category: string (e.g., "Serum", "Cleanser", "Treatment")
-- reason: string (1-2 sentences explaining why it matches their scan)
-- price_estimate: string (Estimate the typical retail price of this product specifically in the country ${country}. Account for regional retail pricing, local taxes, and import markups; DO NOT just mathematically convert the US Dollar price. Format it in the local currency for ${country}, e.g., for IN use INR (₹), for AE use AED, for US use USD ($).)
+- category: string (e.g., "Vitamin C Serum", "Exfoliant")
+- reason: string (1-2 sentences explaining EXACTLY why they need this category based on specific observations from their scan report, e.g. "Since your scan detected slight dehydration and prominent dark circles...")
+- premium_pick: object with 'brand', 'name', and 'price_estimate'
+- accessible_pick: object with 'brand', 'name', and 'price_estimate'
+
+For ALL price_estimates, estimate the typical retail price specifically for the region corresponding to the timezone: ${timeZone}. Account for regional retail pricing and import markups. Format it in the local currency for that region (e.g., ₹ for India, $ for US).
 `;
 
     const res = await generateWithFallback(
@@ -72,13 +73,20 @@ Return a JSON array where each object has:
         items: {
           type: "object",
           properties: {
-            name: { type: "string" },
-            brand: { type: "string" },
             category: { type: "string" },
             reason: { type: "string" },
-            price_estimate: { type: "string" }
+            premium_pick: {
+              type: "object",
+              properties: { brand: { type: "string" }, name: { type: "string" }, price_estimate: { type: "string" } },
+              required: ["brand", "name", "price_estimate"]
+            },
+            accessible_pick: {
+              type: "object",
+              properties: { brand: { type: "string" }, name: { type: "string" }, price_estimate: { type: "string" } },
+              required: ["brand", "name", "price_estimate"]
+            }
           },
-          required: ["name", "brand", "category", "reason", "price_estimate"]
+          required: ["category", "reason", "premium_pick", "accessible_pick"]
         }
       }
     );

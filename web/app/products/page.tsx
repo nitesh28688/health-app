@@ -105,15 +105,17 @@ function Products({ userId }: { userId: string }) {
   const [boutiqueMatches, setBoutiqueMatches] = useState<any[] | null>(null);
   const [boutiqueLoading, setBoutiqueLoading] = useState(false);
 
-  const [searchingOnline, setSearchingOnline] = useState<Record<number, boolean>>({});
-  const [onlineResults, setOnlineResults] = useState<Record<number, {retailer: string; bestPrice: string; url: string}>>({});
+  const [searchingOnline, setSearchingOnline] = useState<Record<string, boolean>>({});
+  const [onlineResults, setOnlineResults] = useState<Record<string, {retailer: string; bestPrice: string; url: string}>>({});
 
-  async function findOnline(index: number, brand: string, name: string) {
-    if (searchingOnline[index]) return;
-    setSearchingOnline(prev => ({ ...prev, [index]: true }));
+  async function findOnline(key: string, brand: string, name: string) {
+    if (searchingOnline[key]) return;
+    setSearchingOnline(prev => ({ ...prev, [key]: true }));
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("No session");
+      
+      const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
       
       const res = await fetch("/api/ai/find-online", {
         method: "POST",
@@ -121,16 +123,16 @@ function Products({ userId }: { userId: string }) {
           "Content-Type": "application/json",
           "Authorization": "Bearer " + session.access_token
         },
-        body: JSON.stringify({ brand, name })
+        body: JSON.stringify({ brand, name, timeZone })
       });
       if (!res.ok) throw new Error("Failed");
       const data = await res.json();
-      setOnlineResults(prev => ({ ...prev, [index]: data }));
+      setOnlineResults(prev => ({ ...prev, [key]: data }));
     } catch (e) {
       console.error("Find online failed:", e);
       alert("Could not find current pricing for this item online. Try again later.");
     } finally {
-      setSearchingOnline(prev => ({ ...prev, [index]: false }));
+      setSearchingOnline(prev => ({ ...prev, [key]: false }));
     }
   }
 
@@ -139,7 +141,14 @@ function Products({ userId }: { userId: string }) {
       setBoutiqueLoading(true);
       supabase.auth.getSession().then(({ data: { session } }) => {
         if (!session) return;
-        fetch("/api/ai/boutique-matches", { method: "POST", headers: { Authorization: "Bearer " + session.access_token } })
+        const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        fetch("/api/ai/boutique-matches", { 
+          method: "POST", 
+          headers: { 
+            "Authorization": "Bearer " + session.access_token,
+            "x-timezone": timeZone
+          } 
+        })
           .then(r => r.json())
           .then(b => setBoutiqueMatches(b.matches || []))
           .catch(() => setBoutiqueMatches([]))
@@ -327,36 +336,48 @@ function Products({ userId }: { userId: string }) {
               {[1, 2, 3].map(i => <div key={i} className="h-28 rounded-2xl bg-neutral-100 dark:bg-neutral-900 animate-pulse" />)}
             </div>
           ) : boutiqueMatches?.length ? (
-            <ul className="flex flex-col gap-3">
-              {boutiqueMatches.map((m, i) => (
-                <li key={i} className="rounded-2xl border border-neutral-200/60 dark:border-neutral-800/60 bg-white dark:bg-neutral-950 p-4 shadow-sm flex flex-col gap-2">
-                  <div className="flex justify-between items-start gap-2">
-                    <div>
-                      <p className="text-[11px] font-black uppercase tracking-wider text-neutral-400 mb-0.5">{m.brand}</p>
-                      <p className="font-bold text-[15px]">{m.name}</p>
-                    </div>
-                    <span className="shrink-0 text-sm font-bold text-rose-500 bg-rose-50 dark:bg-rose-950/30 px-2 py-0.5 rounded-lg">{m.price_estimate}</span>
+            <ul className="flex flex-col gap-6">
+              {boutiqueMatches.map((cat, i) => (
+                <li key={i} className="flex flex-col gap-3">
+                  <div className="bg-neutral-50 dark:bg-neutral-900/50 p-3.5 rounded-2xl border border-neutral-200/60 dark:border-neutral-800/60">
+                    <h3 className="font-black text-lg text-rose-600 dark:text-rose-400 mb-1.5">{cat.category}</h3>
+                    <p className="text-[13px] text-neutral-600 dark:text-neutral-400 leading-relaxed">{cat.reason}</p>
                   </div>
-                  <p className="text-[13px] text-neutral-500 leading-relaxed bg-neutral-50 dark:bg-neutral-900/50 p-2.5 rounded-xl border border-neutral-100 dark:border-neutral-800">{m.reason}</p>
-                  
-                  {onlineResults[i] ? (
-                    <a href={onlineResults[i].url} target="_blank" rel="noreferrer" className="mt-1 w-full bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/50 font-bold py-2.5 px-4 rounded-xl text-sm flex items-center justify-between active:scale-[0.98] transition-transform">
-                      <div className="flex flex-col items-start text-left">
-                        <span className="text-[11px] font-black uppercase opacity-70 mb-0.5">Best Price at {onlineResults[i].retailer}</span>
-                        <span className="text-base">{onlineResults[i].bestPrice}</span>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {[
+                      { key: `${i}-premium`, label: "Splurge", data: cat.premium_pick, badgeClass: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" },
+                      { key: `${i}-accessible`, label: "Steal", data: cat.accessible_pick, badgeClass: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" }
+                    ].map(pick => (
+                      <div key={pick.key} className="rounded-2xl border border-neutral-200/60 dark:border-neutral-800/60 bg-white dark:bg-neutral-950 p-4 shadow-sm flex flex-col justify-between gap-3">
+                        <div>
+                          <div className="flex justify-between items-start gap-2 mb-1.5">
+                            <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md ${pick.badgeClass}`}>{pick.label}</span>
+                            <span className="shrink-0 text-xs font-bold text-neutral-500 bg-neutral-100 dark:bg-neutral-900 px-2 py-0.5 rounded-lg">{pick.data.price_estimate}</span>
+                          </div>
+                          <p className="text-[11px] font-black uppercase tracking-wider text-neutral-400 mb-0.5">{pick.data.brand}</p>
+                          <p className="font-bold text-[14px] leading-tight">{pick.data.name}</p>
+                        </div>
+                        {onlineResults[pick.key] ? (
+                          <a href={onlineResults[pick.key].url} target="_blank" rel="noreferrer" className="mt-1 w-full bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/50 font-bold py-2 px-3 rounded-xl text-xs flex items-center justify-between active:scale-[0.98] transition-transform">
+                            <div className="flex flex-col items-start text-left">
+                              <span className="text-[10px] font-black uppercase opacity-70 mb-0.5">Best Price at {onlineResults[pick.key].retailer}</span>
+                              <span className="text-sm">{onlineResults[pick.key].bestPrice}</span>
+                            </div>
+                            <ArrowRight className="w-4 h-4 opacity-50" />
+                          </a>
+                        ) : (
+                          <button 
+                            onClick={() => findOnline(pick.key, pick.data.brand, pick.data.name)}
+                            disabled={searchingOnline[pick.key]}
+                            className="mt-1 w-full bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 font-bold py-2 rounded-xl text-xs flex items-center justify-center gap-1.5 active:scale-[0.98] transition-transform disabled:opacity-70 disabled:active:scale-100"
+                          >
+                            {searchingOnline[pick.key] ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ShoppingBag className="w-3.5 h-3.5" />}
+                            {searchingOnline[pick.key] ? "Searching..." : "Find Online"}
+                          </button>
+                        )}
                       </div>
-                      <ArrowRight className="w-5 h-5 opacity-50" />
-                    </a>
-                  ) : (
-                    <button 
-                      onClick={() => findOnline(i, m.brand, m.name)}
-                      disabled={searchingOnline[i]}
-                      className="mt-1 w-full bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 font-bold py-2.5 rounded-xl text-sm flex items-center justify-center gap-1.5 active:scale-[0.98] transition-transform disabled:opacity-70 disabled:active:scale-100"
-                    >
-                      {searchingOnline[i] ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShoppingBag className="w-4 h-4" />}
-                      {searchingOnline[i] ? "Searching Retailers..." : "Find Online"}
-                    </button>
-                  )}
+                    ))}
+                  </div>
                 </li>
               ))}
             </ul>

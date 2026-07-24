@@ -16,17 +16,15 @@ export async function POST(req: NextRequest) {
   if (!userData.user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
   try {
-    const { brand, name } = await req.json();
+    const { brand, name, timeZone } = await req.json();
 
     if (!brand || !name) {
       return NextResponse.json({ error: "Missing brand or name" }, { status: 400 });
     }
 
-    const country = req.headers.get("x-vercel-ip-country") || req.headers.get("cf-ipcountry") || "US";
-
     const prompt = `Search online for the product "${brand} ${name}".
-Find it across multiple major retailers that ship to the country code: ${country}.
-Determine the current best price in the local currency for ${country} and the exact URL to buy it at that price.
+Find it across multiple major retailers that ship to the region corresponding to the timezone: ${timeZone || "America/New_York"}.
+Determine the current best price in the local currency for that region and the exact URL to buy it at that price.
 Return ONLY a valid JSON object in this exact format, with no markdown formatting:
 {
   "bestPrice": "Price in local currency (e.g. ₹750, $15.00, etc)",
