@@ -27,7 +27,11 @@ export async function POST(req: NextRequest) {
 
     // Fast path: Cache hit (0 credits)
     if (matches.length > 0) {
-      return NextResponse.json({ matches });
+      // Check if it's the old format (missing premium_pick)
+      const isOldFormat = matches[0] && !matches[0].premium_pick;
+      if (!isOldFormat) {
+        return NextResponse.json({ matches });
+      }
     }
 
     // Slow path: Lazy Backfill (Cost: 1 API call ONE TIME per legacy user)

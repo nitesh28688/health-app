@@ -347,7 +347,7 @@ function Products({ userId }: { userId: string }) {
                     {[
                       { key: `${i}-premium`, label: "Splurge", data: cat.premium_pick, badgeClass: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" },
                       { key: `${i}-accessible`, label: "Steal", data: cat.accessible_pick, badgeClass: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" }
-                    ].map(pick => (
+                    ].filter(pick => pick.data).map(pick => (
                       <div key={pick.key} className="rounded-2xl border border-neutral-200/60 dark:border-neutral-800/60 bg-white dark:bg-neutral-950 p-4 shadow-sm flex flex-col justify-between gap-3">
                         <div>
                           <div className="flex justify-between items-start gap-2 mb-1.5">
