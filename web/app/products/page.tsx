@@ -106,7 +106,7 @@ function Products({ userId }: { userId: string }) {
   const [boutiqueLoading, setBoutiqueLoading] = useState(false);
 
   const [searchingOnline, setSearchingOnline] = useState<Record<string, boolean>>({});
-  const [onlineResults, setOnlineResults] = useState<Record<string, {retailer: string; bestPrice: string; url: string}>>({});
+  const [onlineResults, setOnlineResults] = useState<Record<string, {imageUrl?: string; offers: {retailer: string; price: string; url: string}[]}>>({});
 
   async function findOnline(key: string, brand: string, name: string) {
     if (searchingOnline[key]) return;
@@ -358,13 +358,19 @@ function Products({ userId }: { userId: string }) {
                           <p className="font-bold text-[14px] leading-tight">{pick.data.name}</p>
                         </div>
                         {onlineResults[pick.key] ? (
-                          <a href={onlineResults[pick.key].url} target="_blank" rel="noreferrer" className="mt-1 w-full bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/50 font-bold py-2 px-3 rounded-xl text-xs flex items-center justify-between active:scale-[0.98] transition-transform">
-                            <div className="flex flex-col items-start text-left">
-                              <span className="text-[10px] font-black uppercase opacity-70 mb-0.5">Best Price at {onlineResults[pick.key].retailer}</span>
-                              <span className="text-sm">{onlineResults[pick.key].bestPrice}</span>
+                          <div className="mt-1 flex flex-col gap-2 bg-neutral-50 dark:bg-neutral-900/40 p-2 rounded-xl border border-neutral-100 dark:border-neutral-800">
+                            {onlineResults[pick.key].imageUrl && (
+                              <img src={onlineResults[pick.key].imageUrl} alt="Product Thumbnail" className="w-16 h-16 object-contain rounded-md mx-auto mix-blend-multiply dark:mix-blend-normal bg-transparent" />
+                            )}
+                            <div className="flex flex-col gap-1.5">
+                              {onlineResults[pick.key].offers.map((offer, idx) => (
+                                <a key={idx} href={offer.url} target="_blank" rel="noreferrer" className="w-full bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/50 font-bold py-1.5 px-2.5 rounded-lg text-[10px] flex items-center justify-between hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors">
+                                  <span>{offer.retailer}</span>
+                                  <span>{offer.price}</span>
+                                </a>
+                              ))}
                             </div>
-                            <ArrowRight className="w-4 h-4 opacity-50" />
-                          </a>
+                          </div>
                         ) : (
                           <button 
                             onClick={() => findOnline(pick.key, pick.data.brand, pick.data.name)}

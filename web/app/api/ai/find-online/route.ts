@@ -24,12 +24,18 @@ export async function POST(req: NextRequest) {
 
     const prompt = `Search online for the product "${brand} ${name}".
 Find it across multiple major retailers that ship to the region corresponding to the timezone: ${timeZone || "America/New_York"}.
-Determine the current best price in the local currency for that region and the exact URL to buy it at that price.
+Determine the current price in the local currency for that region and the exact URL to buy it at that price for 3-4 different trusted retailers (e.g. Amazon, Sephora, Nykaa, etc.).
+Also, try to find a direct URL to a high-quality product image (jpg/png).
 Return ONLY a valid JSON object in this exact format, with no markdown formatting:
 {
-  "bestPrice": "Price in local currency (e.g. ₹750, $15.00, etc)",
-  "retailer": "Retailer Name",
-  "url": "https://..."
+  "imageUrl": "https://... (optional, leave null if not found)",
+  "offers": [
+    {
+      "price": "Price in local currency (e.g. ₹750, $15.00, etc)",
+      "retailer": "Retailer Name",
+      "url": "https://..."
+    }
+  ]
 }`;
 
     const text = await searchGrounded(prompt);
