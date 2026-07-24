@@ -38,9 +38,12 @@ Return ONLY a valid JSON object in this exact format, with no markdown formattin
       return NextResponse.json({ error: "Could not find product online." }, { status: 404 });
     }
 
-    // Attempt to parse JSON from the grounded text. The model might wrap it in ```json ... ```
-    const jsonStr = text.replace(/```json/g, '').replace(/```/g, '').trim();
-    const result = JSON.parse(jsonStr);
+    // Attempt to parse JSON from the grounded text. The model might wrap it in ```json ... ``` or include conversational text.
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      throw new Error("No JSON object found in response");
+    }
+    const result = JSON.parse(jsonMatch[0]);
 
     return NextResponse.json(result);
   } catch (err: any) {

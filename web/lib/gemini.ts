@@ -209,7 +209,7 @@ export async function searchGrounded(prompt: string): Promise<string | null> {
   try {
     const res = await generateChatWithTools(
       [{ role: "user", parts: [{ text: prompt }] }],
-      [{ googleSearchRetrieval: {} }, { googleSearch: {} }, { url_context: {} }]
+      [{ googleSearch: {} }, { url_context: {} }]
     );
     if (!res.ok) {
       console.error("[searchGrounded] API Error:", res.status, await res.text().catch(()=>""));
