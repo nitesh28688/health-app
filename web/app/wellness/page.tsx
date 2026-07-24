@@ -846,8 +846,6 @@ function WellnessMain({ userId, displayName }: { userId: string; displayName: st
         )}
       </div>
 
-      </div>
-
         </>
       ) : (
         <>
