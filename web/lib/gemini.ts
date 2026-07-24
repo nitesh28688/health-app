@@ -19,8 +19,8 @@
 // without ever responding. Without a timeout that hang ate the caller's entire budget
 // before the chain ever reached a healthy model. A timeout must be treated the same as
 // a 503 (try the next model), not left to throw uncaught.
-const VERTEX_MODEL_CHAIN = ["gemini-2.5-flash", "gemini-2.5-flash-lite"];
-const AI_STUDIO_FALLBACK_CHAIN = ["gemini-2.5-flash", "gemini-flash-latest", "gemini-2.0-flash"];
+const VERTEX_MODEL_CHAIN = ["gemini-2.5-flash-lite", "gemini-2.5-flash"];
+const AI_STUDIO_FALLBACK_CHAIN = ["gemini-2.5-flash-lite", "gemini-2.5-flash", "gemini-flash-latest", "gemini-2.0-flash"];
 const PER_MODEL_TIMEOUT_MS = 9000;
 
 const GOOGLE_CLOUD_PROJECT = process.env.GOOGLE_CLOUD_PROJECT;
