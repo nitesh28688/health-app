@@ -62,7 +62,7 @@ Return a JSON array where each object has:
 - brand: string (Brand name)
 - category: string (e.g., "Serum", "Cleanser", "Treatment")
 - reason: string (1-2 sentences explaining why it matches their scan)
-- price_estimate: string (Format the price estimate in the local currency for the country code ${country}. E.g. for IN use INR (₹), for AE use AED, for US use USD ($), for GB use GBP (£).)
+- price_estimate: string (Estimate the typical retail price of this product specifically in the country ${country}. Account for regional retail pricing, local taxes, and import markups; DO NOT just mathematically convert the US Dollar price. Format it in the local currency for ${country}, e.g., for IN use INR (₹), for AE use AED, for US use USD ($).)
 `;
 
     const res = await generateWithFallback(
