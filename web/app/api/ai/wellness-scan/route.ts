@@ -92,6 +92,7 @@ Observations & recommendations schema:
 - skin_age_estimate: integer. Based on your holistic assessment of texture, fine lines, hydration, pore size, and radiance, estimate the visible skin age (e.g. 24, 31, 38). This should reflect the apparent skin condition, not the person's calendar age. Set to null if is_usable is false.
 - discover_tip: { title: string, description: string }. A highly actionable short tip based on the scan for the user's Discover Feed.
 - discover_protocol: { title: string, description: string, duration_days: integer, tasks: array of { name: string, time: "am"|"pm"|"any"} }. A suggested routine for the user's Discover Feed.
+- boutique_matches: Array of { name: string, brand: string, category: string, reason: string, price_estimate: string }. Generate 3-4 specific product recommendations from real, top-tier global brands (e.g. CeraVe, Paula's Choice, La Roche-Posay). Explain EXACTLY why they need it based on their scan. Format price_estimate in the local currency.
 
 ${RUBRIC}`;
   } else if (scanType === "eye") {
@@ -114,6 +115,7 @@ Observations & recommendations schema:
 - recommendations: Array of { ingredient: string, why: string, how_to_use: string, time_of_day: "am"|"pm"|"both" }. You MUST provide a comprehensive eye care routine detailing exactly what active ingredients to use and how to incorporate them into an AM/PM regimen safely. Set to empty array [] if is_usable is false.
 - discover_tip: { title: string, description: string }. A highly actionable short tip based on the scan for the user's Discover Feed.
 - discover_protocol: { title: string, description: string, duration_days: integer, tasks: array of { name: string, time: "am"|"pm"|"any"} }. A suggested routine for the user's Discover Feed.
+- boutique_matches: Array of { name: string, brand: string, category: string, reason: string, price_estimate: string }. Generate 3-4 specific product recommendations from real, top-tier global eye care brands. Explain EXACTLY why they need it based on their scan. Format price_estimate in the local currency.
 
 ${RUBRIC}`;
   } else {
@@ -136,6 +138,7 @@ Observations & recommendations schema:
 - recommendations: Array of { ingredient: string, why: string, how_to_use: string, time_of_day: "am"|"pm"|"both" }. You MUST provide a comprehensive hair care routine (e.g., clarifying treatments, deep conditioning, leave-in actives, scalp serums) detailing exactly how and when to use them. Set to empty array [] if is_usable is false.
 - discover_tip: { title: string, description: string }. A highly actionable short tip based on the scan for the user's Discover Feed.
 - discover_protocol: { title: string, description: string, duration_days: integer, tasks: array of { name: string, time: "am"|"pm"|"any"} }. A suggested routine for the user's Discover Feed.
+- boutique_matches: Array of { name: string, brand: string, category: string, reason: string, price_estimate: string }. Generate 3-4 specific product recommendations from real, top-tier global haircare brands (e.g. K18, Olaplex, Redken). Explain EXACTLY why they need it based on their scan. Format price_estimate in the local currency.
 
 ${RUBRIC}`;
   }
@@ -215,6 +218,21 @@ ${RUBRIC}`;
           }
         },
         required: ["title", "description", "duration_days", "tasks"]
+      },
+      boutique_matches: {
+        type: "ARRAY",
+        nullable: true,
+        items: {
+          type: "OBJECT",
+          properties: {
+            name: { type: "STRING" },
+            brand: { type: "STRING" },
+            category: { type: "STRING" },
+            reason: { type: "STRING" },
+            price_estimate: { type: "STRING" }
+          },
+          required: ["name", "brand", "category", "reason", "price_estimate"]
+        }
       },
       skin_age_estimate: { type: "INTEGER", nullable: true },
       photo_quality: { type: "STRING", enum: ["good", "fair", "poor"] },
@@ -327,7 +345,7 @@ ${RUBRIC}`;
   }
 
   // 7. Update Discover Feed Cache
-  if (estimate.is_usable && (estimate.discover_tip || estimate.discover_protocol)) {
+  if (estimate.is_usable && (estimate.discover_tip || estimate.discover_protocol || estimate.boutique_matches)) {
     const discoverItems = [];
     if (estimate.discover_tip) {
       discoverItems.push({ type: "tip", ...estimate.discover_tip });
@@ -336,9 +354,30 @@ ${RUBRIC}`;
       discoverItems.push({ type: "protocol", ...estimate.discover_protocol });
     }
     
+    // We update the row in one go. If there's an existing row we need to 
+    // fetch it to not wipe out boutique_matches if they aren't generated here,
+    // or we can just blindly update since a new scan generates everything fresh.
+    const updatePayload: any = { 
+      user_id: userId, 
+      updated_at: new Date().toISOString() 
+    };
+
     if (discoverItems.length > 0) {
+      updatePayload.items = discoverItems;
+    }
+    if (estimate.boutique_matches) {
+      updatePayload.boutique_matches = estimate.boutique_matches;
+    }
+
+    if (Object.keys(updatePayload).length > 2) { // more than just user_id and updated_at
+      // Fetch existing to not overwrite other columns if we are only updating one
+      const { data: existing } = await db.from("wellness_discover_feed_cache").select("*").eq("user_id", userId).maybeSingle();
+      
       await db.from("wellness_discover_feed_cache").upsert(
-        { user_id: userId, items: discoverItems, updated_at: new Date().toISOString() },
+        { 
+          ...existing,
+          ...updatePayload
+        },
         { onConflict: "user_id" }
       );
     }

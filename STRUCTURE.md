@@ -98,6 +98,7 @@ edit an already-applied migration; add a new one.
 | 0043 | `0043_search_fts.sql` | `search_foods()` adds Full-Text Search (`tsvector`) and strict starts-with boosting for better ranking (e.g. "Coke" over "Diet Coke") |
 | 0044 | `0044_wellness_discover.sql` | `wellness_protocols` and `wellness_protocol_logs` tables for storing user protocols and tracking task completion. |
 | 0045 | `0045_discover_feed_cache.sql` | `wellness_discover_feed_cache` table to cache personalized AI discover items generated during scans to save AI credits. |
+| 0046 | `0046_boutique_cache.sql` | Adds `boutique_matches` to `wellness_discover_feed_cache` to store 0-credit product recommendations. |
 
 ### Key design decisions worth understanding
 
@@ -1380,7 +1381,7 @@ $$;
 - **Premium Empty States:** Added animated, magical empty states to Diary (floating coffee cup) and Wellness (pulsating Sparkles).
 - **Wellness Tab Refinements:** Added fluid Segmented Control (Dashboard vs History), animated Score Ring count-ups, and a floating action bar for Compare Mode.
 
-**Phase 81 (2026-07-24): Discover Feed 0-Credit Architecture**
-- **Zero-Credit Loading:** The Discover Feed (`api/ai/discover-feed`) now costs 0 AI credits to load. It purely fetches RSS articles (Vogue, Allure) and mixes them with cached AI tips.
-- **Scan-time Generation:** Personalized AI discover tips and protocols are now generated for "free" concurrently alongside the standard wellness scan in `api/ai/wellness-scan`, then stored in a new `wellness_discover_feed_cache` table for the feed to consume.
+**Phase 81 (2026-07-24): Discover Feed & Boutique 0-Credit Architecture**
+- **Zero-Credit Loading:** The Discover Feed (`api/ai/discover-feed`) and Boutique matches (`api/ai/boutique-matches`) now cost 0 AI credits to load. The Discover feed purely fetches RSS articles and mixes them with cached AI tips, while Boutique fetches directly from the cache.
+- **Scan-time Generation:** Personalized AI discover tips, protocols, and boutique matches are now generated for "free" concurrently alongside the standard wellness scan in `api/ai/wellness-scan`, then stored in a `wellness_discover_feed_cache` table.
 
