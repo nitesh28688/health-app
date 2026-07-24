@@ -207,12 +207,36 @@ async function callAiStudioChat(model: string, contents: object[], tools: object
 // static HTML and readable once the model fetches the page directly.
 export async function searchGrounded(prompt: string): Promise<string | null> {
   try {
-    const res = await generateChatWithTools(
-      [{ role: "user", parts: [{ text: prompt }] }],
-      [{ googleSearch: {} }, { url_context: {} }]
-    );
-    if (!res.ok) {
-      console.error("[searchGrounded] API Error:", res.status, await res.text().catch(()=>""));
+    // We intentionally bypass VERTEX_MODEL_CHAIN here and hardcode gemini-2.5-flash.
+    // flash-lite struggles to follow the strict JSON formatting instructions when 
+    // combined with the Search Grounding tool, resulting in parse errors.
+    const contents = [{ role: "user", parts: [{ text: prompt }] }];
+    const tools = [{ googleSearch: {} }, { url_context: {} }];
+    
+    let res = null;
+    if (!!process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
+      const controller = new AbortController();
+      const killer = setTimeout(() => controller.abort(), PER_MODEL_TIMEOUT_MS);
+      try {
+        res = await callVertexChat("gemini-2.5-flash", contents, tools, undefined, controller.signal);
+      } finally {
+        clearTimeout(killer);
+      }
+    }
+    
+    // Fallback to AI Studio if Vertex fails or is unconfigured
+    if (!res || !res.ok) {
+      const controller = new AbortController();
+      const killer = setTimeout(() => controller.abort(), PER_MODEL_TIMEOUT_MS);
+      try {
+        res = await callAiStudioChat("gemini-2.5-flash", contents, tools, undefined, controller.signal);
+      } finally {
+        clearTimeout(killer);
+      }
+    }
+
+    if (!res || !res.ok) {
+      console.error("[searchGrounded] API Error:", res?.status);
       return null;
     }
     const body = await res.json();
