@@ -58,6 +58,8 @@ For each category, provide two product recommendations from real, top-tier globa
 1. A "Premium Pick" (luxury or clinical brand like Skinceuticals, K18, La Mer).
 2. An "Accessible Pick" (a highly effective, affordable alternative or 'dupe' like CeraVe, The Ordinary, Good Molecules).
 
+CRITICAL: Both the Premium Pick and Accessible Pick MUST be the EXACT TYPE of product described in the category. For example, if the category is 'Hair Growth Serum', do NOT recommend a shampoo or a conditioner. Both picks MUST be actual Hair Growth Serums.
+
 User's Recent Scans:
 ${scanSummary}
 
