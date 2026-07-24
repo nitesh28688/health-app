@@ -769,7 +769,7 @@ function WellnessMain({ userId, displayName }: { userId: string; displayName: st
       {/* AI Insight */}
       {insight && showInsight && (
         <div className="mb-4 rounded-2xl border border-violet-200/60 dark:border-violet-900/40 bg-gradient-to-br from-violet-50/80 to-indigo-50/50 dark:from-violet-950/30 dark:to-indigo-950/20 p-4 relative animate-in fade-in duration-200">
-          <div className="flex items-center gap-2 mb-1.5"><Zap className="w-4 h-4 text-violet-500" /><span className="text-xs font-black text-violet-900 dark:text-violet-200 uppercase tracking-wider">Core Insights</span></div>
+          <div className="flex items-center gap-2 mb-1.5"><Zap className="w-4 h-4 text-violet-500" /><span className="text-xs font-black text-violet-900 dark:text-violet-200 uppercase tracking-wider">Wellness Insights</span></div>
           <p className="text-sm text-violet-800 dark:text-violet-200 pr-6 leading-relaxed">{insight}</p>
           <button onClick={() => setShowInsight(false)} className="absolute top-3 right-3 w-6 h-6 flex items-center justify-center rounded-full text-violet-400 hover:text-violet-600 hover:bg-violet-100 dark:hover:bg-violet-900/50 transition-colors cursor-pointer"><X className="w-3.5 h-3.5" /></button>
         </div>
@@ -784,6 +784,26 @@ function WellnessMain({ userId, displayName }: { userId: string; displayName: st
 
       {wellnessView === "scan" ? (
         <>
+
+      {/* Primary Actions: New Scan Buttons */}
+      <div className="mb-6">
+        <h2 className="text-xs font-black uppercase tracking-wider text-neutral-400 dark:text-neutral-500 mb-3">Take a Scan</h2>
+        <div className="grid grid-cols-3 gap-2.5">
+          {SCAN_TYPES.map(t => {
+            const ds = scans ? daysSince(scans, t) : null;
+            const due = ds === null || ds >= 7;
+            return (
+              <button key={t} onClick={() => { hapticTap(); setCaptureType(t); setCaptureOpen(true); }} disabled={busy}
+                className={"relative flex flex-col items-center gap-2 p-4 rounded-2xl border transition-all cursor-pointer active:scale-[0.97] disabled:opacity-50 " + (due ? "border-rose-200/50 dark:border-rose-900/40 bg-gradient-to-b from-rose-50 to-violet-50/30 dark:from-rose-950/20 dark:to-violet-950/10 shadow-sm" : "border-neutral-200/40 dark:border-neutral-800/40 bg-neutral-50/50 dark:bg-neutral-900/20")}>
+                {due && <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-rose-500 animate-pulse" />}
+                {(() => { const Icon = SCAN_META[t].Icon; return <Icon className={"w-6 h-6 " + SCAN_META[t].color} strokeWidth={2} />; })()}
+                <span className="text-xs font-bold text-neutral-700 dark:text-neutral-300">{SCAN_META[t].label}</span>
+                <span className={"text-[9px] font-bold " + (ds != null && ds >= 7 ? "text-rose-500" : "text-neutral-400")}>{ds !== null ? ds + "d ago" : "Not done"}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
 
       {/* Aggregate Score Card */}
       <div className="mb-6">
@@ -815,48 +835,17 @@ function WellnessMain({ userId, displayName }: { userId: string; displayName: st
               </button>
             </div>
 
-            {/* Score + breakdown row */}
+            {/* Score row */}
             <div className="flex items-center gap-5">
               <ScoreRing score={aggregateScore} size="lg" />
-              <div className="flex-1 min-w-0 flex flex-col gap-2">
+              <div className="flex-1 min-w-0 flex flex-col justify-center">
                 <p className="text-[11px] font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">{activeTypes.map(t => SCAN_META[t].label).join(" · ")}</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {SCAN_TYPES.map(t => {
-                    const sc = latestByType[t];
-                    const ds = scans ? daysSince(scans, t) : null;
-                    return (
-                      <button key={t} onClick={() => { hapticTap(); sc ? (setSelectedScan(sc), setReportTab("overview")) : (setCaptureType(t), setCaptureOpen(true)); }}
-                        className={"flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[10px] font-bold transition-all cursor-pointer " + (sc ? "bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 hover:scale-105 active:scale-95" : "bg-neutral-50 dark:bg-neutral-900/50 text-neutral-400 border border-dashed border-neutral-300 dark:border-neutral-700")}>
-                        {(() => { const Icon = SCAN_META[t].Icon; return <Icon className="w-3 h-3" />; })()}
-                        {sc ? <><span>{sc.overall_score}</span>{ds != null && ds >= 7 && <Clock className="w-2.5 h-2.5 text-amber-500" />}</> : <span className={SCAN_META[t].color}>+ {SCAN_META[t].label}</span>}
-                      </button>
-                    );
-                  })}
-                </div>
               </div>
             </div>
           </div>
         )}
       </div>
 
-      {/* New Scan Buttons */}
-      <div className="mb-6">
-        <h2 className="text-xs font-black uppercase tracking-wider text-neutral-400 dark:text-neutral-500 mb-3">New Scan</h2>
-        <div className="grid grid-cols-3 gap-2.5">
-          {SCAN_TYPES.map(t => {
-            const ds = scans ? daysSince(scans, t) : null;
-            const due = ds === null || ds >= 7;
-            return (
-              <button key={t} onClick={() => { hapticTap(); setCaptureType(t); setCaptureOpen(true); }} disabled={busy}
-                className={"relative flex flex-col items-center gap-2 p-4 rounded-2xl border transition-all cursor-pointer active:scale-[0.97] disabled:opacity-50 " + (due ? "border-rose-200/50 dark:border-rose-900/40 bg-gradient-to-b from-rose-50 to-violet-50/30 dark:from-rose-950/20 dark:to-violet-950/10 shadow-sm" : "border-neutral-200/40 dark:border-neutral-800/40 bg-neutral-50/50 dark:bg-neutral-900/20")}>
-                {due && <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-rose-500 animate-pulse" />}
-                {(() => { const Icon = SCAN_META[t].Icon; return <Icon className={"w-6 h-6 " + SCAN_META[t].color} strokeWidth={2} />; })()}
-                <span className="text-xs font-bold text-neutral-700 dark:text-neutral-300">{SCAN_META[t].label}</span>
-                <span className={"text-[9px] font-bold " + (ds != null && ds >= 7 ? "text-rose-500" : "text-neutral-400")}>{ds !== null ? ds + "d ago" : "Not done"}</span>
-              </button>
-            );
-          })}
-        </div>
       </div>
 
         </>

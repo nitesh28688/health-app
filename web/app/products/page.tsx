@@ -105,36 +105,6 @@ function Products({ userId }: { userId: string }) {
   const [boutiqueMatches, setBoutiqueMatches] = useState<any[] | null>(null);
   const [boutiqueLoading, setBoutiqueLoading] = useState(false);
 
-  const [searchingOnline, setSearchingOnline] = useState<Record<string, boolean>>({});
-  const [onlineResults, setOnlineResults] = useState<Record<string, {imageUrl?: string; offers: {retailer: string; price: string; url: string}[]}>>({});
-
-  async function findOnline(key: string, brand: string, name: string) {
-    if (searchingOnline[key]) return;
-    setSearchingOnline(prev => ({ ...prev, [key]: true }));
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error("No session");
-      
-      const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      
-      const res = await fetch("/api/ai/find-online", {
-        method: "POST",
-        headers: { 
-          "Content-Type": "application/json",
-          "Authorization": "Bearer " + session.access_token
-        },
-        body: JSON.stringify({ brand, name, timeZone })
-      });
-      if (!res.ok) throw new Error("Failed");
-      const data = await res.json();
-      setOnlineResults(prev => ({ ...prev, [key]: data }));
-    } catch (e) {
-      console.error("Find online failed:", e);
-      alert("Could not find current pricing for this item online. Try again later.");
-    } finally {
-      setSearchingOnline(prev => ({ ...prev, [key]: false }));
-    }
-  }
 
   useEffect(() => {
     if (viewMode === "boutique" && boutiqueMatches === null && !boutiqueLoading) {
@@ -357,30 +327,14 @@ function Products({ userId }: { userId: string }) {
                           <p className="text-[11px] font-black uppercase tracking-wider text-neutral-400 mb-0.5">{pick.data.brand}</p>
                           <p className="font-bold text-[14px] leading-tight">{pick.data.name}</p>
                         </div>
-                        {onlineResults[pick.key] ? (
-                          <div className="mt-1 flex flex-col gap-2 bg-neutral-50 dark:bg-neutral-900/40 p-2 rounded-xl border border-neutral-100 dark:border-neutral-800">
-                            {onlineResults[pick.key].imageUrl && (
-                              <img src={onlineResults[pick.key].imageUrl} alt="Product Thumbnail" className="w-16 h-16 object-contain rounded-md mx-auto mix-blend-multiply dark:mix-blend-normal bg-transparent" />
-                            )}
-                            <div className="flex flex-col gap-1.5">
-                              {onlineResults[pick.key].offers.map((offer, idx) => (
-                                <a key={idx} href={offer.url} target="_blank" rel="noreferrer" className="w-full bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/50 font-bold py-1.5 px-2.5 rounded-lg text-[10px] flex items-center justify-between hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors">
-                                  <span>{offer.retailer}</span>
-                                  <span>{offer.price}</span>
-                                </a>
-                              ))}
-                            </div>
-                          </div>
-                        ) : (
-                          <button 
-                            onClick={() => findOnline(pick.key, pick.data.brand, pick.data.name)}
-                            disabled={searchingOnline[pick.key]}
-                            className="mt-1 w-full bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 font-bold py-2 rounded-xl text-xs flex items-center justify-center gap-1.5 active:scale-[0.98] transition-transform disabled:opacity-70 disabled:active:scale-100"
-                          >
-                            {searchingOnline[pick.key] ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ShoppingBag className="w-3.5 h-3.5" />}
-                            {searchingOnline[pick.key] ? "Searching..." : "Find Online"}
-                          </button>
-                        )}
+                        <a 
+                          href={`https://www.google.com/search?tbm=shop&q=${encodeURIComponent(pick.data.brand + " " + pick.data.name)}`}
+                          target="_blank" rel="noreferrer"
+                          className="mt-1 w-full bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 font-bold py-2 rounded-xl text-xs flex items-center justify-center gap-1.5 active:scale-[0.98] transition-transform"
+                        >
+                          <ShoppingBag className="w-3.5 h-3.5" />
+                          Find Online
+                        </a>
                       </div>
                     ))}
                   </div>
