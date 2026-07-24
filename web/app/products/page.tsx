@@ -4,7 +4,8 @@ import { AppShell } from "../AppShell";
 import { supabase } from "@/lib/supabase";
 import { compressImage } from "@/lib/imageCompress";
 import { PageSkeleton } from "@/lib/Skeleton";
-import { Camera, Package, AlertTriangle, CheckCircle2, XCircle, Clock, Keyboard, Plus, X, History, Sparkles, ShoppingBag } from "lucide-react";
+import Link from "next/link";
+import { Camera, Package, AlertTriangle, CheckCircle2, XCircle, Clock, Keyboard, Plus, X, History, Sparkles, ShoppingBag, Scan } from "lucide-react";
 import { normalizeProductKey } from "@/lib/productKey";
 
 interface ProductPreview {
@@ -315,7 +316,18 @@ function Products({ userId }: { userId: string }) {
               ))}
             </ul>
           ) : (
-            <p className="text-sm text-neutral-500 text-center py-8">Couldn't load matches right now.</p>
+            <div className="mt-8 mb-6 flex flex-col items-center justify-center text-center animate-in fade-in slide-in-from-bottom-4 duration-700">
+              <div className="w-24 h-24 rounded-full bg-rose-50/50 dark:bg-rose-900/20 flex items-center justify-center mb-4 relative">
+                 <div className="absolute inset-0 rounded-full border-2 border-dashed border-rose-200 dark:border-rose-800 animate-[spin_20s_linear_infinite]" />
+                 <div className="absolute inset-2 rounded-full bg-gradient-to-br from-rose-100 to-pink-100 dark:from-rose-900/40 dark:to-pink-900/40 shadow-inner" />
+                 <Sparkles className="w-10 h-10 text-rose-400 relative z-10 animate-pulse drop-shadow-sm" style={{ animationDuration: '3s' }} />
+              </div>
+              <h3 className="text-lg font-bold text-neutral-800 dark:text-neutral-200">Unlock your Boutique</h3>
+              <p className="text-sm text-neutral-500 mt-1 max-w-[260px]">Take your first Wellness Scan to get personalized, top-tier product recommendations.</p>
+              <Link href="/wellness" className="mt-4 bg-gradient-to-r from-rose-500 to-pink-600 text-white font-bold py-2.5 px-5 rounded-xl shadow-md shadow-rose-500/20 active:scale-[0.98] transition-transform flex items-center gap-2">
+                <Scan className="w-4 h-4" /> Go to Scanner
+              </Link>
+            </div>
           )}
         </div>
       )}
@@ -450,9 +462,15 @@ function Products({ userId }: { userId: string }) {
       )}
 
       {products.length === 0 ? (
-        <p className="text-sm text-neutral-400 text-center py-8">
-          Your shelf is empty — check your first product above.
-        </p>
+        <div className="mt-8 mb-6 flex flex-col items-center justify-center text-center animate-in fade-in slide-in-from-bottom-4 duration-700">
+          <div className="w-24 h-24 rounded-full bg-rose-50/50 dark:bg-rose-900/20 flex items-center justify-center mb-4 relative">
+             <div className="absolute inset-0 rounded-full border-2 border-dashed border-rose-200 dark:border-rose-800 animate-[spin_20s_linear_infinite]" />
+             <div className="absolute inset-2 rounded-full bg-gradient-to-br from-rose-100 to-pink-100 dark:from-rose-900/40 dark:to-pink-900/40 shadow-inner" />
+             <Package className="w-10 h-10 text-rose-400 relative z-10 animate-bounce drop-shadow-sm" style={{ animationDuration: '3s' }} />
+          </div>
+          <h3 className="text-lg font-bold text-neutral-800 dark:text-neutral-200">Your Shelf is Empty</h3>
+          <p className="text-sm text-neutral-500 mt-1 max-w-[240px]">Scan a product's ingredient label to check if it's a good match for you.</p>
+        </div>
       ) : (
         <ul className="flex flex-col gap-2.5">
           {products.map((p) => {
