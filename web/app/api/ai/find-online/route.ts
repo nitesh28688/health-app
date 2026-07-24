@@ -22,12 +22,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Missing brand or name" }, { status: 400 });
     }
 
+    const country = req.headers.get("x-vercel-ip-country") || req.headers.get("cf-ipcountry") || "US";
+
     const prompt = `Search online for the product "${brand} ${name}".
-Find it across multiple major retailers.
-Determine the current best price and the exact URL to buy it at that price.
+Find it across multiple major retailers that ship to the country code: ${country}.
+Determine the current best price in the local currency for ${country} and the exact URL to buy it at that price.
 Return ONLY a valid JSON object in this exact format, with no markdown formatting:
 {
-  "bestPrice": "$XX.XX",
+  "bestPrice": "Price in local currency (e.g. ₹750, $15.00, etc)",
   "retailer": "Retailer Name",
   "url": "https://..."
 }`;
