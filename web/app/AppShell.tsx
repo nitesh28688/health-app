@@ -184,10 +184,10 @@ function NavTabs({ mode, onModeToggle }: { mode: AppMode; onModeToggle: () => vo
               animate={{ opacity: 1, scale: 1, rotate: 0 }}
               exit={{ opacity: 0, scale: 0.5, rotate: 90 }}
               transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-              className="relative drop-shadow-md z-20 flex flex-col items-center justify-center mt-1"
+              className="relative drop-shadow-md z-20 flex flex-col items-center justify-center mt-1 w-full"
             >
               <DestIcon className="w-6 h-6 mb-1" strokeWidth={2.5} />
-              <span className="font-bold text-[10px] tracking-wide leading-none">{isWellness ? "CORE" : "WELLNESS"}</span>
+              <span className="font-bold text-[9px] tracking-[0.1em] leading-none whitespace-nowrap">{isWellness ? "CORE" : "WELLNESS"}</span>
             </motion.div>
           </AnimatePresence>
         </button>
