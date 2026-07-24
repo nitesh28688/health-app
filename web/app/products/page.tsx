@@ -5,7 +5,7 @@ import { supabase } from "@/lib/supabase";
 import { compressImage } from "@/lib/imageCompress";
 import { PageSkeleton } from "@/lib/Skeleton";
 import Link from "next/link";
-import { Camera, Package, AlertTriangle, CheckCircle2, XCircle, Clock, Keyboard, Plus, X, History, Sparkles, ShoppingBag, Scan } from "lucide-react";
+import { Camera, Package, AlertTriangle, CheckCircle2, XCircle, Clock, Keyboard, Plus, X, History, Sparkles, ShoppingBag, Scan, Loader2, ArrowRight } from "lucide-react";
 import { normalizeProductKey } from "@/lib/productKey";
 
 interface ProductPreview {
@@ -104,6 +104,35 @@ function Products({ userId }: { userId: string }) {
   const [viewMode, setViewMode] = useState<"shelf" | "boutique">("shelf");
   const [boutiqueMatches, setBoutiqueMatches] = useState<any[] | null>(null);
   const [boutiqueLoading, setBoutiqueLoading] = useState(false);
+
+  const [searchingOnline, setSearchingOnline] = useState<Record<number, boolean>>({});
+  const [onlineResults, setOnlineResults] = useState<Record<number, {retailer: string; bestPrice: string; url: string}>>({});
+
+  async function findOnline(index: number, brand: string, name: string) {
+    if (searchingOnline[index]) return;
+    setSearchingOnline(prev => ({ ...prev, [index]: true }));
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("No session");
+      
+      const res = await fetch("/api/ai/find-online", {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": "Bearer " + session.access_token
+        },
+        body: JSON.stringify({ brand, name })
+      });
+      if (!res.ok) throw new Error("Failed");
+      const data = await res.json();
+      setOnlineResults(prev => ({ ...prev, [index]: data }));
+    } catch (e) {
+      console.error("Find online failed:", e);
+      alert("Could not find current pricing for this item online. Try again later.");
+    } finally {
+      setSearchingOnline(prev => ({ ...prev, [index]: false }));
+    }
+  }
 
   useEffect(() => {
     if (viewMode === "boutique" && boutiqueMatches === null && !boutiqueLoading) {
@@ -309,9 +338,25 @@ function Products({ userId }: { userId: string }) {
                     <span className="shrink-0 text-sm font-bold text-rose-500 bg-rose-50 dark:bg-rose-950/30 px-2 py-0.5 rounded-lg">{m.price_estimate}</span>
                   </div>
                   <p className="text-[13px] text-neutral-500 leading-relaxed bg-neutral-50 dark:bg-neutral-900/50 p-2.5 rounded-xl border border-neutral-100 dark:border-neutral-800">{m.reason}</p>
-                  <button className="mt-1 w-full bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 font-bold py-2.5 rounded-xl text-sm flex items-center justify-center gap-1.5 active:scale-[0.98] transition-transform">
-                    <ShoppingBag className="w-4 h-4" /> Find Online
-                  </button>
+                  
+                  {onlineResults[i] ? (
+                    <a href={onlineResults[i].url} target="_blank" rel="noreferrer" className="mt-1 w-full bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/50 font-bold py-2.5 px-4 rounded-xl text-sm flex items-center justify-between active:scale-[0.98] transition-transform">
+                      <div className="flex flex-col items-start text-left">
+                        <span className="text-[11px] font-black uppercase opacity-70 mb-0.5">Best Price at {onlineResults[i].retailer}</span>
+                        <span className="text-base">{onlineResults[i].bestPrice}</span>
+                      </div>
+                      <ArrowRight className="w-5 h-5 opacity-50" />
+                    </a>
+                  ) : (
+                    <button 
+                      onClick={() => findOnline(i, m.brand, m.name)}
+                      disabled={searchingOnline[i]}
+                      className="mt-1 w-full bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 font-bold py-2.5 rounded-xl text-sm flex items-center justify-center gap-1.5 active:scale-[0.98] transition-transform disabled:opacity-70 disabled:active:scale-100"
+                    >
+                      {searchingOnline[i] ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShoppingBag className="w-4 h-4" />}
+                      {searchingOnline[i] ? "Searching Retailers..." : "Find Online"}
+                    </button>
+                  )}
                 </li>
               ))}
             </ul>
