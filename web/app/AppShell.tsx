@@ -165,13 +165,13 @@ function NavTabs({ mode, onModeToggle }: { mode: AppMode; onModeToggle: () => vo
   return (
     <div className="max-w-md mx-auto flex px-2 py-1 relative z-10">
       {items}
-      <div className="absolute left-1/2 top-[-24px] -translate-x-1/2 pointer-events-none z-20">
+      <div className="absolute left-1/2 top-[-20px] -translate-x-1/2 pointer-events-none z-20">
         <button
           onClick={() => {
             hapticTap();
             onModeToggle();
           }}
-          className={`relative w-16 h-16 rounded-full ${destBg} text-white flex items-center justify-center active:scale-90 transition-all duration-200 pointer-events-auto overflow-hidden`}
+          className={`relative h-[52px] px-5 rounded-full ${destBg} text-white flex items-center justify-center active:scale-95 transition-all duration-200 pointer-events-auto overflow-hidden border border-white/20`}
           style={{ boxShadow: "0 10px 22px -4px rgba(0,0,0,0.45)" }}
           aria-label={`Switch to ${isWellness ? "Core" : "Wellness"} mode`}
         >
@@ -180,13 +180,14 @@ function NavTabs({ mode, onModeToggle }: { mode: AppMode; onModeToggle: () => vo
           <AnimatePresence mode="wait">
             <motion.div
               key={mode}
-              initial={{ opacity: 0, scale: 0.5, rotate: -90 }}
-              animate={{ opacity: 1, scale: 1, rotate: 0 }}
-              exit={{ opacity: 0, scale: 0.5, rotate: 90 }}
-              transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-              className="relative drop-shadow-md z-20"
+              initial={{ opacity: 0, y: 10, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -10, scale: 0.95 }}
+              transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+              className="relative drop-shadow-md z-20 flex items-center gap-2"
             >
-              <DestIcon className="w-8 h-8" strokeWidth={2.5} />
+              <DestIcon className="w-5 h-5" strokeWidth={2.5} />
+              <span className="font-bold text-[15px] tracking-wide">{isWellness ? "Core" : "Wellness"}</span>
             </motion.div>
           </AnimatePresence>
         </button>
